@@ -1,0 +1,125 @@
+syntax = "proto2";
+
+import "enum.proto";
+import "google/protobuf/descriptor.proto";
+
+package midi;
+
+extend google.protobuf.FieldOptions {
+  optional int32 maxval = 50001;
+  optional int32 minval = 50002;
+  optional float fmaxval = 50003;
+  optional float fminval = 50004;
+}
+
+message ContinuousFeature {
+  optional float av_polyphony = 1;
+  optional float note_duration = 3;
+  optional float note_duration_norm = 4;
+}
+
+message BarFeatures {
+  optional int32 onset_density = 1;
+  optional int32 onset_polyphony_min = 2;
+  optional int32 onset_polyphony_max = 3;
+}
+
+message TrackLevelAttributeControlDistributions {
+  repeated int32 polyphony_quantile = 1;
+  repeated int32 note_duration_quantile = 2;
+  repeated int32 note_density = 3;
+  repeated int32 onset_polyphony = 4;
+  repeated int32 onset_density = 5;
+  repeated int32 note_duration = 8;
+}
+
+message TrackFeatures {
+  optional int32 min_pitch = 1;
+  optional int32 max_pitch = 2;
+  optional float av_polyphony = 3;
+  optional int32 note_density = 4;
+  optional int32 note_density_v2 = 5;
+  optional int32 max_polyphony = 6;
+  optional bool should_prune = 7;
+  optional int32 order = 8;
+  optional float note_duration = 9;
+  optional string genre_str = 10;
+  optional int32 min_polyphony_q = 11;
+  optional int32 max_polyphony_q = 12;
+  optional int32 min_note_duration_q = 13;
+  optional int32 max_note_duration_q = 14;
+  repeated int32 polyphony_distribution = 15;
+  optional float note_density_value = 16;
+
+  optional int32 min_polyphony_hard = 18;
+  optional int32 max_polyphony_hard = 19;
+  optional int32 min_note_duration_hard = 20;
+  optional int32 max_note_duration_hard = 21;
+
+  optional int32 onset_polyphony_min = 24;
+  optional int32 onset_polyphony_max = 25;
+  optional int32 onset_density = 26;
+  optional int32 onset_density_min = 27;
+  optional int32 onset_density_max = 28;
+  repeated int32 duration_distribution = 29;
+
+  optional int32 genre = 32;
+  optional int32 note_density_level = 35;
+
+  optional int32 contains_note_duration_thirty_second = 40;
+  optional int32 contains_note_duration_sixteenth = 41;
+  optional int32 contains_note_duration_eighth = 42;
+  optional int32 contains_note_duration_quarter = 43;
+  optional int32 contains_note_duration_half = 44;
+  optional int32 contains_note_duration_whole = 45;
+
+  optional TrackLevelAttributeControlDistributions attribute_control_distributions = 30; // store them all here
+  
+}
+
+message PieceFeatures {
+  optional string genre = 1;
+}
+
+message Note {
+  optional int32 start = 1;
+  optional int32 end = 2;
+  optional int32 pitch = 3;
+  optional int32 tick_delta = 4;
+}
+
+message ValidTrack {
+  repeated int32 tracks = 1;
+}
+
+message Item {
+  optional uint64 start = 1;
+  optional uint64 end = 2;
+  optional uint64 src_size = 3;
+}
+
+message Dataset { 
+  repeated Item train = 1;
+  repeated Item valid = 2;
+  repeated Item test = 3;
+}
+
+message ModelMetadata {
+  optional string encoder = 1;
+  optional int32 num_layers = 2;
+  optional int32 num_heads = 3;
+  optional int32 num_hidden = 4;
+  optional int32 model_dim = 5;
+  optional bool new_state = 6;
+}
+
+message GenreData {
+  optional string discogs = 1;
+  optional string lastfm = 2;
+  optional string tagtraum = 3;
+}
+
+message MetadataLabels {
+  optional GenreMusicmap genre = 1;
+  optional int32 nomml = 6;
+}

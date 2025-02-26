@@ -1,0 +1,6 @@
+[submodule "libraries/pybind11"]
+	path = libraries/pybind11
+	url = https://github.com/pybind/pybind11.git
+[submodule "libraries/midifile"]
+	path = libraries/midifile
+	url = https://github.com/craigsapp/midifile.git

@@ -1,0 +1,87 @@
+# .gitignore
+
+build.sh
+
+# feature_extraction stuff
+python_experiment_scripts/**/*.json
+python_experiment_scripts/**/*.csv
+python_experiment_scripts/**/*.pdf
+python_experiment_scripts/**/*.numbers
+python_experiment_scripts/**/*.txt
+python_experiment_scripts/examples/**/*.mid
+
+python_scripts_for_testing/examples/*.mid
+python_scripts_for_testing/examples/
+
+# Ignore compilation folders / dependencies
+#midifile/
+libtorch/
+libtorch_cpu/
+#pybind11/
+build/
+python_lib/
+CMakeFiles/
+CMakeScripts/
+CMakeCache.txt
+cmake_install.cmake
+Debug/
+
+# Ignore the libtorch directory
+/libraries/libtorch
+/libraries/libtorch_cpu
+#/libraries/pybind11
+#/libraries/midifile
+
+/python_lib/
+/python_scripts/training_files
+
+# ignore dataset files
+*.arr
+*.arr.header
+
+# ignore dstore
+.DS_Store
+
+# Ignore the model.pt file
+**/*.pt
+*.pt
+
+#ignore visual studio metadata
+.vs/
+.vscode
+
+#ignore build directory
+/out/
+
+*.out
+
+#ignore random files
+2539bytes.txt
+CMakeLists_CPP.txt
+
+/libraries/protobuf/.vs/
+/libraries/protobuf/out/
+
+/libraries/torch/.vs/
+/libraries/torch/out/
+
+# exceptions
+!python_experiment_scripts/onset_density_test.pdf
+!python_experiment_scripts/onset_density_test.json
+!python_experiment_scripts/onset_polyphony_test.json
+!python_experiment_scripts/musicmap_genre_data.json
+
+!python_experiment_scripts/onset_polyphony_test_mono.json
+!python_experiment_scripts/onset_polyphony_test_poly.json
+!python_experiment_scripts/onset_polyphony_v_original_test_mono.json
+!python_experiment_scripts/onset_polyphony_v_original_test_poly.json
+
+# pycache folders
+*/__pycache__/*
+
+#training outputs
+*/checkpoints/*
+*/logs/*
+*/midigpt.cpython-38-x86_64-linux-gnu.so
+
+notes/*

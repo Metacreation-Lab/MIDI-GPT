@@ -1,0 +1,12 @@
+syntax = "proto2";
+
+package midi;
+
+enum TRACK_TYPE {
+  AUX_DRUM_TRACK = 8;
+  AUX_INST_TRACK = 9;
+  STANDARD_TRACK = 10;
+  STANDARD_DRUM_TRACK = 11;
+  STANDARD_BOTH = 12;
+  NUM_TRACK_TYPES = 16;
+}
