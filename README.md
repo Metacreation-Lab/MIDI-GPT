@@ -6,6 +6,8 @@ This is the repository for MIDI-GPT, a generative system based on the Transforme
 
 # Using MIDI-GPT 
 
+The model provided is trained on GigaMIDI, and includes the following controls: midi instrument, density (1-10), note duration, and number of polyphony voices. It also allows you to turn on/off velocity and micro-timing (to capture interpretation).
+
 ## Installation
 
 To successfully install the midigpt python library, use the script ```midigpt_setup_helper.sh```. You may first download this script on its own and run it, which will clone the repository and build the library. Below is an example of the usage:
