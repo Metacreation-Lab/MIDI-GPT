@@ -13,7 +13,7 @@ The model provided is trained on GigaMIDI, and includes the following controls: 
 To successfully install the midigpt python library, use the script ```midigpt_setup_helper.sh```. You may first download this script on its own and run it, which will clone the repository and build the library. Below is an example of the usage:
 
 ```sh
-bash midigpt_setup_helper.sh -d midigpt_dir
+bash midigpt_setup_helper.sh -i -c -d midigpt_dir
 ```
 
 >**Note:** Python 3.8 is required for the library
