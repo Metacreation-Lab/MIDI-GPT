@@ -70,8 +70,8 @@ source ./ENV/bin/activate
 pip install --no-index --upgrade pip
 
 # For training only
-pip install torch==1.13.0+computecanada
-pip install transformers==4.26.1+computecanada          
+pip install torch==1.13.0
+pip install transformers==4.26.1         
 ```
 4. Finally, just call the bash script with the correct argument:
 ```sh
