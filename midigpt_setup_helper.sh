@@ -5,12 +5,12 @@ replace=no
 test_train=no
 inference=no
 mac=no
-python_path=/Library/Frameworks/Python.framework/Versions/3.8/bin
+python_path=python3
 og=no
 
 usage="
 $(basename "$0") [-h] [-n] [-c] [-i] [-m] [-r] [-d 
-directory] 
+directory] [-p python]
 -- Script for setting up and testing the MIDI-GPT repository
 
 where:
@@ -19,12 +19,13 @@ where:
     -c  Clone the github MIDI-GPT repository
 	-i  If you wish to setup repository for inference
     -d  Provide directory name where repo is/will be cloned
+	-p Provide python executable/path to use for environment
     -r  Replace directory if already exists
     -m  If on MacOS CPU
 	"
 
 
-OPTSTRING=":cnhiomrd:k:"
+OPTSTRING=":cnhiomrd:p:"
 
 while getopts ${OPTSTRING} opt; do
 case ${opt} in
@@ -49,6 +50,9 @@ clone=yes
 ;;
 d)
 repo=${OPTARG}
+;;
+p)
+python_path=${OPTARG}
 ;;
 :)
 echo "Option -${OPTARG} requires an argument"
@@ -108,7 +112,7 @@ else
 }
 fi
 
-${python_path}/virtualenv --no-download ./ENV
+${python_path} -m venv ./ENV
 
 else
 if ! [[ -d MIDI-GPT ]] 
@@ -173,7 +177,7 @@ cd $PWD/MIDI-GPT/python_scripts
 
 echo "Testing training script"
 
-python3 -c "import train"
+${python_path} -c "import train"
 
 echo "Import tests done" 
 
