@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
 
-SET(CMAKE_CXX_STANDARD 20)
-SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #we add the following line to fix a linkage issue between torch and midifile
 #https://stackoverflow.com/questions/68922557/c-linker-error-undefined-reference-when-linking-package-libtorch-and-shared
@@ -63,6 +64,7 @@ PYBIND11_ADD_MODULE(midigpt ${SRCS})
 
 #Adding include folders of libraries to our target so we can reference them with #include
 #Add subdirectory adds those to main project so they can be CMAKEd. Include dirs allows us to reference functions in main.
+target_compile_features(midigpt PUBLIC cxx_std_17)
 target_include_directories(midigpt PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libraries/protobuf/include)
 if (NOT no_torch)
 	target_include_directories(midigpt PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libraries/torch/include)
