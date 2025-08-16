@@ -138,7 +138,7 @@ pip install transformers==4.26.1
 cd MIDI-GPT
 if test "${og}" = "no"
 then
-git checkout main
+git checkout dev
 fi
 
 echo "Starting python library build"
