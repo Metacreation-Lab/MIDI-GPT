@@ -1,0 +1,15 @@
+# Base requirements for MIDI-GPT Python 3.9+
+# Core dependencies needed for basic functionality
+
+# PyTorch - version constraints based on Python version
+torch>=2.0.0,<2.3.0; python_version=="3.9"
+torch>=2.4.0; python_version>="3.10"
+numpy>=1.21.0
+protobuf>=4.0.0
+tqdm>=4.60.0
+
+# Build dependencies (needed for installation)
+pybind11[global]>=2.10.0
+setuptools>=61.0
+wheel>=0.37.0
+cmake>=3.16.0

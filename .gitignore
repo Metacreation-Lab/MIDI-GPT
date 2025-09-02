@@ -1,8 +1,61 @@
-# .gitignore
+# MIDI-GPT .gitignore - Python 3.9 Refactored Version
 
-build.sh
+# Build directories
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dylib
 
-# feature_extraction stuff
+# CMake build files
+CMakeFiles/
+CMakeScripts/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# Python virtual environments
+venv/
+env/
+ENV/
+midigpt_workspace/
+
+# IDE and editor files
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Protobuf generated files
+*.pb.h
+*.pb.cc
+*_pb2.py
+
+# Model and dataset files
+*.pt
+*.pth
+*.arr
+*.arr.header
+
+# Training outputs and logs
+checkpoints/
+logs/
+tensorboard/
+
+# Test and experiment outputs
 python_experiment_scripts/**/*.json
 python_experiment_scripts/**/*.csv
 python_experiment_scripts/**/*.pdf
@@ -13,75 +66,22 @@ python_experiment_scripts/examples/**/*.mid
 python_scripts_for_testing/examples/*.mid
 python_scripts_for_testing/examples/
 
-# Ignore compilation folders / dependencies
-#midifile/
-libtorch/
-libtorch_cpu/
-#pybind11/
-build/
-python_lib/
-CMakeFiles/
-CMakeScripts/
-CMakeCache.txt
-cmake_install.cmake
-Debug/
+# Training files
+python_scripts/training_files/
 
-# Ignore the libtorch directory
-/libraries/libtorch
-/libraries/libtorch_cpu
-#/libraries/pybind11
-#/libraries/midifile
-
-/python_lib/
-/python_scripts/training_files
-
-# ignore dataset files
-*.arr
-*.arr.header
-
-# ignore dstore
-.DS_Store
-
-# Ignore the model.pt file
-**/*.pt
-*.pt
-
-#ignore visual studio metadata
-.vs/
-.vscode
-
-#ignore build directory
-/out/
-
-*.out
-
-#ignore random files
-2539bytes.txt
-CMakeLists_CPP.txt
-
-/libraries/protobuf/.vs/
-/libraries/protobuf/out/
-
-/libraries/torch/.vs/
-/libraries/torch/out/
-
-# exceptions
+# Specific exceptions (keep these files)
 !python_experiment_scripts/onset_density_test.pdf
 !python_experiment_scripts/onset_density_test.json
 !python_experiment_scripts/onset_polyphony_test.json
 !python_experiment_scripts/musicmap_genre_data.json
-
 !python_experiment_scripts/onset_polyphony_test_mono.json
 !python_experiment_scripts/onset_polyphony_test_poly.json
 !python_experiment_scripts/onset_polyphony_v_original_test_mono.json
 !python_experiment_scripts/onset_polyphony_v_original_test_poly.json
 
-# pycache folders
-*/__pycache__/*
-
-#training outputs
-*/checkpoints/*
-*/logs/*
-*/midigpt.cpython-38-x86_64-linux-gnu.so
-
-notes/*
+# Development and testing
+notes/
+*.out
+debug/
+Debug/
+Release/

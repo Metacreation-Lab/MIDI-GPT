@@ -99,7 +99,7 @@ if [[ -n ../$env_name ]]; then
         if $compute_canada; then
             virtualenv ../$env_name
         else
-            python3 -m venv ../$env_name
+            python3.9 -m venv ../$env_name
         fi
     fi
 fi

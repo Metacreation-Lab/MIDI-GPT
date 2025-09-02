@@ -1,0 +1,21 @@
+# Training requirements for MIDI-GPT Python 3.9+
+# Additional dependencies needed for model training
+
+-r requirements.txt
+
+# Transformer and training libraries - compatible with older PyTorch
+transformers>=4.20.0,<4.30.0; python_version=="3.9"
+transformers>=4.30.0; python_version>="3.10"
+tensorboardX>=2.6
+jsonlines>=3.1.0
+
+# Data processing
+pandas>=1.5.0
+scipy>=1.10.0
+
+# Training utilities  
+matplotlib>=3.6.0
+scikit-learn>=1.2.0
+
+# Optional: Distributed training support
+# accelerate>=0.20.0
