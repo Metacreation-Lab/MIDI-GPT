@@ -28,7 +28,7 @@ namespace py = pybind11;
 #include <string>
 #include "../include/dataset_creation/dataset_manipulation/bytes_to_file.h"
 #include "midi.pb.h"
-// #include "../libraries/torch/include/torch_library.h" // Removed - not needed
+#include "../libraries/torch/include/torch_library.h"
 #include "../libraries/protobuf/build/midi.pb.h"
 #include "MidiFile.h"
 #include "./common/data_structures/train_config.h"

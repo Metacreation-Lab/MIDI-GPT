@@ -61,7 +61,7 @@ public:
     std::vector<std::string> types;
     auto enum_descriptor = google::protobuf::GetEnumDescriptor<midi::ATTRIBUTE_CONTROL_TYPE>();
     for (auto c : attribute_control_types) {
-      types.push_back(std::string(enum_descriptor->FindValueByNumber(c)->name()));
+      types.push_back(enum_descriptor->FindValueByNumber(c)->name());
     }
     return types;
   }

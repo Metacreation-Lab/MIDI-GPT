@@ -50,23 +50,23 @@ void validate_protobuf_fields_inner(const T &x, RSJresource &raw_json) {
 		const google::protobuf::FieldDescriptor *fd = descriptor->field(i);
 		bool is_repeated = fd->is_repeated();
 		int field_count = is_repeated ? reflection->FieldSize(x, fd) : 1;
-		if ((is_repeated) && (reflection->FieldSize(x, fd) != (int)raw_json[key_map[std::string(fd->name())]].as_array().size())) {
+		if ((is_repeated) && (reflection->FieldSize(x, fd) != (int)raw_json[key_map[fd->name()]].as_array().size())) {
 			std::ostringstream buffer;
-            buffer << "PROTOBUF ERROR : " << "invalid repeated field value :: " << fd->name() << " = " << raw_json[key_map[std::string(fd->name())]].as<std::string>() << std::endl;
+            buffer << "PROTOBUF ERROR : " << "invalid repeated field value :: " << fd->name() << " = " << raw_json[key_map[fd->name()]].as<std::string>() << std::endl;
 			throw std::invalid_argument(buffer.str());
 		}
 		for (int index=0; index<field_count; index++) {			
-			if ((!is_repeated) && (!reflection->HasField(x, fd)) && (raw_json[key_map[std::string(fd->name())]].exists())) {
+			if ((!is_repeated) && (!reflection->HasField(x, fd)) && (raw_json[key_map[fd->name()]].exists())) {
 				std::ostringstream buffer;
-				buffer << "PROTOBUF ERROR : " << "invalid field value :: " << fd->name() << " = " << raw_json[key_map[std::string(fd->name())]].as<std::string>() << std::endl;
+				buffer << "PROTOBUF ERROR : " << "invalid field value :: " << fd->name() << " = " << raw_json[key_map[fd->name()]].as<std::string>() << std::endl;
 				throw std::invalid_argument(buffer.str());
 			}
 			if (fd->type() == google::protobuf::FieldDescriptor::Type::TYPE_MESSAGE) {
 				if (is_repeated) {
-					validate_protobuf_fields_inner(reflection->GetRepeatedMessage(x,fd,index), raw_json[key_map[std::string(fd->name())]][index]);
+					validate_protobuf_fields_inner(reflection->GetRepeatedMessage(x,fd,index), raw_json[key_map[fd->name()]][index]);
 				}
 				else {
-					validate_protobuf_fields_inner(reflection->GetMessage(x,fd), raw_json[key_map[std::string(fd->name())]]);
+					validate_protobuf_fields_inner(reflection->GetMessage(x,fd), raw_json[key_map[fd->name()]]);
 				}
         	}
 		}

@@ -643,7 +643,7 @@ namespace util_protobuf {
 	template <typename T>
 	std::string enum_to_string(const T &value) {
 		const google::protobuf::EnumDescriptor *descriptor = google::protobuf::GetEnumDescriptor<T>();
-		return std::string(descriptor->FindValueByNumber(value)->name());
+		return descriptor->FindValueByNumber(value)->name();
 	}
 
 	template <typename T>

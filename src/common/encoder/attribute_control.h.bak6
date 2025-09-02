@@ -1026,7 +1026,7 @@ public:
         std::vector<std::string> domain;
         for (int i=0; i<midi::GENRE_MUSICMAP_NONE; i++) {
             const google::protobuf::EnumDescriptor *descriptor = midi::GenreMusicmap_descriptor();
-            std::string name = std::string(descriptor->FindValueByNumber(static_cast<midi::GenreMusicmap>(i+1))->name());
+            std::string name = descriptor->FindValueByNumber(static_cast<midi::GenreMusicmap>(i+1))->name();
             domain.push_back(name);
         }
         return TOKEN_DOMAIN(domain, STRING_VALUES_DOMAIN);

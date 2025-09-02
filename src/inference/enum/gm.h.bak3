@@ -686,7 +686,7 @@ std::vector<std::string> get_instruments_by_category(std::string category) {
 	}
 	for (auto kv : gm_inst_to_category) {
 		if (kv.second == value->number()) {
-			result.push_back( std::string(descriptor->FindValueByNumber(kv.first)->name()) );
+			result.push_back( descriptor->FindValueByNumber(kv.first)->name() );
 		}
 	}
 	return result;
