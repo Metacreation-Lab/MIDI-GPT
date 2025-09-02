@@ -1,106 +1,82 @@
 [build-system]
 requires = [
-    "setuptools>=61.0",
+    "setuptools>=64.0",
     "wheel",
-    "pybind11[global]>=2.10.0",
+    "pybind11[global]>=2.12.0",
     "cmake>=3.16",
-    "protobuf>=4.0.0",
+    "ninja",
+    "torch>=2.0.0",
+    "numpy>=1.21.0,<2.0",
 ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "midigpt"
-version = "1.0.0"
-description = "A generative system for computer-assisted music composition based on Transformer architecture"
+version = "0.1.0"
+description = "MIDI-GPT: A machine learning library for MIDI generation and processing"
 readme = "README.md"
-requires-python = ">=3.9"
-license = {text = "MIT"}
 authors = [
     {name = "Jeff Ens", email = "jeff.ens@example.com"},
     {name = "Rafael Arias", email = "raa60@sfu.ca"},
 ]
-maintainers = [
-    {name = "Rafael Arias", email = "raa60@sfu.ca"},
-]
-keywords = [
-    "music",
-    "midi",
-    "machine-learning",
-    "transformer",
-    "composition",
-    "generation"
-]
+requires-python = ">=3.9"
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: C++",
-    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Multimedia :: Sound/Audio :: MIDI",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
 dependencies = [
-    "torch>=2.0.0,<2.3.0; python_version=='3.9'",
-    "torch>=2.4.0; python_version>='3.10'", 
-    "numpy>=1.21.0",
+    "torch>=2.0.0",
+    "numpy>=1.21.0,<2.0",  # Temporary constraint for compatibility
     "protobuf>=4.0.0",
-    "tqdm>=4.60.0",
+    "transformers>=4.30.0",
+    "tqdm",
+    "pybind11>=2.12.0",
 ]
 
 [project.optional-dependencies]
-training = [
-    "transformers>=4.30.0",
-    "tensorboardX>=2.6",
-    "jsonlines>=3.1.0",
-]
-testing = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-]
 dev = [
-    "midigpt[training,testing]",
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "mypy>=1.5.0",
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "isort",
+    "mypy",
+]
+cuda = [
+    "torch[cuda]>=2.0.0",
+]
+cpu = [
+    "torch[cpu]>=2.0.0", 
 ]
 
 [project.urls]
 Homepage = "https://github.com/Metacreation-Lab/MIDI-GPT"
-Repository = "https://github.com/Metacreation-Lab/MIDI-GPT.git"
-Documentation = "https://github.com/Metacreation-Lab/MIDI-GPT#readme"
-"Bug Reports" = "https://github.com/Metacreation-Lab/MIDI-GPT/issues"
+Repository = "https://github.com/Metacreation-Lab/MIDI-GPT"
+Issues = "https://github.com/Metacreation-Lab/MIDI-GPT/issues"
 
 [tool.setuptools]
-zip-safe = false
+packages = ["midigpt"]
 
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["midigpt*"]
-
-[tool.setuptools.package-data]
-midigpt = ["py.typed", "*.pyi"]
-
-# CMake configuration for C++ extension
-[tool.cmake.define]
-CMAKE_CXX_STANDARD = "20"
-CMAKE_CXX_STANDARD_REQUIRED = "ON"
-CMAKE_POSITION_INDEPENDENT_CODE = "ON"
+[tool.setuptools.package-dir]
+midigpt = "python_lib"
 
 [tool.black]
 line-length = 88
-target-version = ['py39', 'py310', 'py311']
+target-version = ['py39']
 
 [tool.isort]
 profile = "black"
-line_length = 88
 
 [tool.mypy]
 python_version = "3.9"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
+strict = true

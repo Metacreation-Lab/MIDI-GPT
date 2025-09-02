@@ -1,67 +1,156 @@
-#CODE IN PROGRESS, NOT WORKING YET
+"""
+Modern setup.py for MIDI-GPT Python 3.9+ compatibility
+Removes bundled dependencies and uses system packages
+"""
 
-from setuptools import setup, Extension
-from setuptools.command.build_ext import build_ext
+import os
 import sys
-import setuptools
+import subprocess
+from pathlib import Path
+from setuptools import setup, Extension, find_packages
+from setuptools.command.build_ext import build_ext
+import pybind11
 
-__version__ = '0.0.1'
 
-class get_pybind_include(object):
-    """Helper class to determine the pybind11 include path"""
+class CMakeExtension(Extension):
+    def __init__(self, name, sourcedir=''):
+        Extension.__init__(self, name, sources=[])
+        self.sourcedir = os.path.abspath(sourcedir)
 
-    def __init__(self, user=False):
-        self.user = user
 
-    def __str__(self):
-        import pybind11
-        return pybind11.get_include(self.user)
+class CMakeBuild(build_ext):
+    def run(self):
+        try:
+            subprocess.check_output(['cmake', '--version'])
+        except OSError:
+            raise RuntimeError("CMake must be installed to build extensions")
 
-ext_modules = [
-    Extension(
-        'midigpt',
-        ['src/lib.cpp','src/common/data_structures/train_config.cpp','src/dataset_creation/compression/lz4.c',
-	'src/dataset_creation/dataset_manipulation/bytes_to_file.cpp'],
-        include_dirs=[
-            get_pybind_include(),
-            get_pybind_include(user=True)
-        ],
-        language='c++'
-    ),
-]
-
-class BuildExt(build_ext):
-    """A custom build extension for adding compiler-specific options."""
-    c_opts = {
-        'msvc': ['/EHsc'],
-        'unix': [],
-    }
-
-    if sys.platform == 'darwin':
-        c_opts['unix'] += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
-
-    def build_extensions(self):
-        ct = self.compiler.compiler_type
-        opts = self.c_opts.get(ct, [])
-        if ct == 'unix':
-            opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
-            opts.append('-std=c++20')
-        elif ct == 'msvc':
-            opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
         for ext in self.extensions:
-            ext.extra_compile_args = opts
-        build_ext.build_extensions(self)
+            self.build_extension(ext)
+
+    def build_extension(self, ext):
+        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
+        
+        # required for auto-detection of auxiliary "native" libs
+        if not extdir.endswith(os.path.sep):
+            extdir += os.path.sep
+
+        cmake_args = [
+            f'-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}',
+            f'-DPYTHON_EXECUTABLE={sys.executable}',
+            '-DCMAKE_BUILD_TYPE=Release',
+            '-DBUILD_SHARED_LIBS=OFF',
+        ]
+
+        # Handle different Python versions
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        cmake_args.append(f'-DPYTHON_VERSION={python_version}')
+
+        # Platform specific arguments
+        if sys.platform.startswith("darwin"):
+            cmake_args += ['-DMAC_OS=ON']
+        
+        # Handle PyTorch
+        try:
+            import torch
+            print(f"Found PyTorch {torch.__version__}")
+            
+            # Get PyTorch cmake prefix path
+            torch_path = torch.utils.cmake_prefix_path
+            if torch_path:
+                cmake_args.append(f'-DCMAKE_PREFIX_PATH={torch_path}')
+            
+            # Check if CUDA is available
+            if torch.cuda.is_available():
+                cmake_args.append('-DCUDA_AVAILABLE=ON')
+                
+        except ImportError:
+            print("PyTorch not found, building without torch support")
+            cmake_args.append('-DNO_TORCH=ON')
+
+        # Handle protobuf
+        try:
+            import google.protobuf
+            print(f"Found protobuf {google.protobuf.__version__}")
+        except ImportError:
+            raise RuntimeError("protobuf is required but not installed")
+
+        build_args = ['--config', 'Release']
+        
+        # Parallel build
+        if hasattr(self, 'parallel') and self.parallel:
+            build_args += [f'-j{self.parallel}']
+        else:
+            build_args += ['-j4']
+
+        env = os.environ.copy()
+        env['CXXFLAGS'] = f'{env.get("CXXFLAGS", "")} -DVERSION_INFO=\\"{self.distribution.get_version()}\\"'
+        
+        if not os.path.exists(self.build_temp):
+            os.makedirs(self.build_temp)
+
+        subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
+        subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
+
+
+def get_version():
+    """Get version from git or default"""
+    try:
+        result = subprocess.run(['git', 'describe', '--tags', '--always'], 
+                              capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "0.1.0-dev"
+
+
+# Check Python version
+if sys.version_info < (3, 9):
+    raise RuntimeError("Python 3.9 or higher is required")
 
 setup(
-    name='midigpt',
-    version=__version__,
-    author='Jeff Ens, Rafael Arias',
-    author_email='raa60@sfu.ca',
-    url='',
-    description='A Python wrapper for midigpt project',
-    long_description='',
-    ext_modules=ext_modules,
-    install_requires=['pybind11>=2.5.0'],
-    cmdclass={'build_ext': BuildExt},
+    name="midigpt",
+    version=get_version(),
+    author="Jeff Ens, Rafael Arias", 
+    author_email="raa60@sfu.ca",
+    description="MIDI-GPT: Machine learning library for MIDI generation",
+    long_description=open("README.md").read() if os.path.exists("README.md") else "",
+    long_description_content_type="text/markdown",
+    
+    ext_modules=[CMakeExtension('midigpt')],
+    cmdclass={'build_ext': CMakeBuild},
+    
+    python_requires=">=3.9",
+    install_requires=[
+        "torch>=2.0.0",
+        "numpy>=1.21.0,<2.0",  # Temporary constraint
+        "protobuf>=4.0.0",
+        "pybind11>=2.12.0",
+        "transformers>=4.30.0",
+        "tqdm",
+    ],
+    
+    extras_require={
+        'dev': [
+            'pytest>=6.0',
+            'black',
+            'isort',
+            'mypy',
+        ],
+        'cuda': ['torch[cuda]>=2.0.0'],
+        'cpu': ['torch[cpu]>=2.0.0'],
+    },
+    
+    packages=find_packages(),
+    include_package_data=True,
     zip_safe=False,
+    
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers", 
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+    ],
 )

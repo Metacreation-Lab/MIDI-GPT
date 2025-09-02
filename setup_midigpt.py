@@ -1,311 +1,319 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.9
 """
-Setup script for MIDI-GPT with proper C/C++ compilation handling.
-This replaces the pyproject.toml approach for better control over compilation.
+MIDI-GPT setup script - Python 3.9 compatible version
+Replacement for create_python_library.sh
 """
 
 import os
 import sys
+import argparse
 import subprocess
-import sysconfig
+import tempfile
+import shutil
 from pathlib import Path
 
-from pybind11.setup_helpers import Pybind11Extension, build_ext
-from pybind11 import get_cmake_dir
-import pybind11
-
-from setuptools import setup, find_packages
-
-# Check Python version
-if sys.version_info < (3, 9):
-    raise RuntimeError("Python 3.9 or higher is required")
-
 def get_torch_info():
-    """Get PyTorch include and library paths."""
+    """Get PyTorch information with compatibility handling"""
     try:
         import torch
-        return {
-            'include_dirs': torch.utils.cpp_extension.include_paths(),
-            'library_dirs': torch.utils.cpp_extension.library_paths(),
-            'libraries': ['torch', 'torch_cpu'],
-            'version': torch.__version__
+        print(f"PyTorch version: {torch.__version__}")
+        
+        torch_info = {
+            'version': torch.__version__,
+            'include_dirs': [],
+            'library_dirs': [],
+            'libraries': ['torch', 'torch_cpu']
         }
-    except ImportError:
+        
+        # Handle PyTorch include paths across versions
+        try:
+            # Try newer PyTorch API first
+            torch_info['include_dirs'] = torch.utils.cpp_extension.include_paths()
+        except AttributeError:
+            # Fallback for newer versions where API changed
+            try:
+                import torch.utils.cpp_extension as cpp_ext
+                torch_info['include_dirs'] = [
+                    torch.utils.cpp_extension.CUDA_HOME + "/include" if torch.utils.cpp_extension.CUDA_HOME else "",
+                    str(Path(torch.__file__).parent / "include")
+                ]
+                torch_info['include_dirs'] = [p for p in torch_info['include_dirs'] if p and os.path.exists(p)]
+            except:
+                # Manual fallback
+                torch_path = Path(torch.__file__).parent
+                include_path = torch_path / "include"
+                if include_path.exists():
+                    torch_info['include_dirs'] = [str(include_path)]
+                else:
+                    print("Warning: Could not find PyTorch include directory")
+                    torch_info['include_dirs'] = []
+        
+        # Get library paths
+        try:
+            torch_info['library_dirs'] = torch.utils.cpp_extension.library_paths()
+        except AttributeError:
+            torch_path = Path(torch.__file__).parent
+            lib_path = torch_path / "lib"
+            if lib_path.exists():
+                torch_info['library_dirs'] = [str(lib_path)]
+            
+        print(f"Found PyTorch {torch.__version__}")
+        return torch_info
+        
+    except ImportError as e:
+        print(f"PyTorch not available: {e}")
+        return None
+    except Exception as e:
+        print(f"Error getting PyTorch info: {e}")
         return None
 
-def get_protobuf_info():
-    """Get Protobuf include and library information."""
-    # Try pkg-config first
-    try:
-        result = subprocess.run(['pkg-config', '--cflags', '--libs', 'protobuf'], 
-                              capture_output=True, text=True, check=True)
-        
-        # Parse the output
-        flags = result.stdout.strip().split()
-        include_dirs = []
-        library_dirs = []
-        libraries = []
-        
-        for flag in flags:
-            if flag.startswith('-I'):
-                include_dirs.append(flag[2:])
-            elif flag.startswith('-L'):
-                library_dirs.append(flag[2:])
-            elif flag.startswith('-l'):
-                libraries.append(flag[2:])
-        
-        return {
-            'include_dirs': include_dirs,
-            'library_dirs': library_dirs, 
-            'libraries': libraries
-        }
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        # Fallback to common locations
-        return {
-            'include_dirs': ['/usr/local/include', '/usr/include'],
-            'library_dirs': ['/usr/local/lib', '/usr/lib'],
-            'libraries': ['protobuf']
-        }
+def check_dependencies():
+    """Check and install required dependencies"""
+    required_packages = [
+        ("numpy", "numpy<2.0"),  # NumPy compatibility constraint
+        ("torch", "torch>=2.0.0"),
+        ("pybind11", "pybind11>=2.12.0"),
+        ("protobuf", "protobuf>=4.0.0"),
+    ]
+    
+    missing = []
+    for package, pip_spec in required_packages:
+        try:
+            __import__(package)
+        except ImportError:
+            missing.append(pip_spec)
+    
+    if missing:
+        print(f"Installing missing dependencies: {', '.join(missing)}")
+        subprocess.check_call([sys.executable, "-m", "pip", "install"] + missing)
+
+def setup_proto_directory():
+    """Set up protobuf directory structure"""
+    proto_dir = Path("proto")
+    proto_dir.mkdir(exist_ok=True)
+    
+    # Try to copy proto files from old location
+    old_proto_path = Path("libraries/protobuf/src")
+    if old_proto_path.exists():
+        for proto_file in old_proto_path.glob("*.proto"):
+            shutil.copy(proto_file, proto_dir)
+            print(f"Copied {proto_file.name} to proto/")
+    
+    # Check if we have proto files
+    proto_files = list(proto_dir.glob("*.proto"))
+    if not proto_files:
+        print("Warning: No proto files found. Protobuf generation will be skipped.")
+        return False
+    
+    return True
 
 def generate_protobuf_files():
-    """Generate C++ files from .proto definitions."""
-    proto_dir = Path('proto')
+    """Generate protobuf C++ files"""
+    proto_dir = Path("proto")
     if not proto_dir.exists():
         print("Warning: proto/ directory not found. Skipping protobuf generation.")
-        return []
+        return
     
-    # Create build directory for generated files
-    build_dir = Path('build/proto')
-    build_dir.mkdir(parents=True, exist_ok=True)
-    
-    proto_files = list(proto_dir.glob('*.proto'))
+    proto_files = list(proto_dir.glob("*.proto"))
     if not proto_files:
-        print("Warning: No .proto files found in proto/ directory.")
-        return []
+        print("Warning: No proto files found. Skipping protobuf generation.")
+        return
+    
+    build_dir = Path("build")
+    build_dir.mkdir(exist_ok=True)
     
     # Generate protobuf files
-    generated_files = []
     for proto_file in proto_files:
-        # Run protoc command
         cmd = [
-            'protoc',
-            f'--cpp_out={build_dir}',
-            f'--proto_path={proto_dir}',
+            "protoc",
+            f"--cpp_out={build_dir}",
+            f"--proto_path={proto_dir}",
             str(proto_file)
         ]
-        
         try:
-            subprocess.run(cmd, check=True)
-            base_name = proto_file.stem
-            generated_files.extend([
-                str(build_dir / f'{base_name}.pb.cc'),
-                str(build_dir / f'{base_name}.pb.h')
-            ])
-        except subprocess.CalledProcessError as e:
-            print(f"Error generating protobuf for {proto_file}: {e}")
-            sys.exit(1)
-    
-    return [f for f in generated_files if f.endswith('.cc')]
+            subprocess.check_call(cmd)
+            print(f"Generated protobuf files for {proto_file.name}")
+        except subprocess.CalledProcessError:
+            print(f"Warning: Failed to generate protobuf for {proto_file.name}")
+        except FileNotFoundError:
+            print("Warning: protoc not found. Install protobuf compiler.")
 
-def create_extension():
-    """Create the pybind11 extension with proper compilation settings."""
+def create_extension(no_torch=False, mac_os=False, dev=False):
+    """Create the C++ extension"""
+    from setuptools import Extension
+    import pybind11
     
-    # Generate protobuf files
-    proto_sources = generate_protobuf_files()
+    # Get torch info if not disabled
+    torch_info = None
+    if not no_torch:
+        torch_info = get_torch_info()
+        if not torch_info:
+            print("PyTorch not found, building without torch support")
+            no_torch = True
     
-    # C++ source files
-    cpp_sources = [
+    # Base source files
+    sources = [
         "src/lib.cpp",
         "src/common/data_structures/train_config.cpp", 
-        "src/dataset_creation/dataset_manipulation/bytes_to_file.cpp",
-    ] + proto_sources
-    
-    # C source files (compiled separately)
-    c_sources = [
         "src/dataset_creation/compression/lz4.c",
+        "src/dataset_creation/dataset_manipulation/bytes_to_file.cpp",
     ]
+    
+    # Add generated protobuf sources
+    build_dir = Path("build")
+    for pb_file in build_dir.glob("*.pb.cc"):
+        sources.append(str(pb_file))
     
     # Include directories
     include_dirs = [
+        pybind11.get_include(),
         "src",
         "include", 
-        "build/proto",  # For generated protobuf files
-        pybind11.get_include(),
+        str(build_dir),  # For generated protobuf headers
+        "proto",
     ]
+    
+    # Add torch includes if available
+    if torch_info and torch_info['include_dirs']:
+        include_dirs.extend(torch_info['include_dirs'])
     
     # Libraries to link
     libraries = []
     library_dirs = []
     
-    # Add protobuf
-    protobuf_info = get_protobuf_info()
-    include_dirs.extend(protobuf_info['include_dirs'])
-    library_dirs.extend(protobuf_info['library_dirs'])
-    libraries.extend(protobuf_info['libraries'])
-    
-    # Add PyTorch if available
-    torch_info = get_torch_info()
-    compile_args = ['-std=c++20']
-    link_args = []
-    define_macros = []
-    
     if torch_info:
-        print(f"Found PyTorch {torch_info['version']}")
-        include_dirs.extend(torch_info['include_dirs'])
-        library_dirs.extend(torch_info['library_dirs'])
         libraries.extend(torch_info['libraries'])
-    else:
-        print("PyTorch not found, building without PyTorch support")
-        define_macros.append(('NO_TORCH', '1'))
+        if torch_info['library_dirs']:
+            library_dirs.extend(torch_info['library_dirs'])
     
-    # Platform-specific settings
-    if sys.platform.startswith('darwin'):  # macOS
-        compile_args.extend(['-stdlib=libc++', '-mmacosx-version-min=10.9'])
-        link_args.extend(['-stdlib=libc++', '-mmacosx-version-min=10.9'])
+    # Add protobuf
+    libraries.append('protobuf')
     
-    # Create separate extensions for C and C++ files to handle compilation properly
-    extensions = []
+    # Handle midifile - check if bundled version exists
+    midifile_path = Path("libraries/midifile")
+    if midifile_path.exists():
+        include_dirs.append(str(midifile_path / "include"))
+        # Will be built by CMake
     
-    # C++ extension
-    if cpp_sources:
-        cpp_ext = Pybind11Extension(
-            "midigpt",
-            cpp_sources,
-            include_dirs=include_dirs,
-            libraries=libraries,
-            library_dirs=library_dirs,
-            language='c++',
-            cxx_std=20,
-            define_macros=define_macros,
-        )
-        extensions.append(cpp_ext)
+    # Compiler flags
+    extra_compile_args = ['-std=c++17']
+    extra_link_args = []
     
-    # If we have C sources, we need to compile them separately and link
-    # For now, let's include the C file in the C++ compilation but with proper handling
-    if c_sources:
-        # We'll add the C sources to the C++ extension but ensure they're compiled as C
-        # This requires custom compilation handling
-        pass
+    if mac_os:
+        extra_compile_args.extend([
+            '-stdlib=libc++',
+            '-mmacosx-version-min=10.14'
+        ])
     
-    return extensions
-
-# Custom build_ext class to handle mixed C/C++ compilation
-class CustomBuildExt(build_ext):
-    """Custom build extension to handle C and C++ files properly."""
-    
-    def build_extensions(self):
-        # Handle C++ standard and other settings
-        for ext in self.extensions:
-            # Ensure C++20 is set
-            if hasattr(ext, 'cxx_std'):
-                if not any('-std=c++' in flag for flag in ext.extra_compile_args):
-                    ext.extra_compile_args.append(f'-std=c++{ext.cxx_std}')
-        
-        # Call parent build
-        super().build_extensions()
-    
-    def get_ext_filename(self, ext_name):
-        """Override to ensure proper extension naming."""
-        filename = super().get_ext_filename(ext_name)
-        # Remove any extra suffixes that might be added
-        return filename
-
-def get_version():
-    """Get version from version file or default."""
-    try:
-        with open('src/inference/version.h', 'r') as f:
-            content = f.read()
-            # Try to extract version from C++ header
-            import re
-            match = re.search(r'#define\s+VERSION\s+"([^"]+)"', content)
-            if match:
-                return match.group(1)
-    except FileNotFoundError:
-        pass
-    
-    return "1.0.0"
-
-def get_long_description():
-    """Get long description from README."""
-    try:
-        with open('README.md', 'r', encoding='utf-8') as f:
-            return f.read()
-    except FileNotFoundError:
-        return "MIDI-GPT: A generative system for computer-assisted music composition"
-
-# Get PyTorch version constraint based on Python version
-def get_torch_requirement():
-    """Get appropriate torch requirement based on Python version."""
-    if sys.version_info >= (3, 10):
-        return "torch>=2.4.0"
-    elif sys.version_info >= (3, 9):
-        return "torch>=2.0.0,<2.3.0"
-    else:
-        return "torch>=2.0.0"
-
-if __name__ == "__main__":
-    # Check if we're building without torch
-    no_torch = '--no-torch' in sys.argv
     if no_torch:
-        sys.argv.remove('--no-torch')
+        extra_compile_args.append('-DNO_TORCH')
     
-    # Prepare dependencies
-    install_requires = [
-        "numpy>=1.21.0",
-        "protobuf>=4.0.0", 
-        "tqdm>=4.60.0",
-    ]
+    if dev:
+        extra_compile_args.extend(['-g', '-O0'])
+    else:
+        extra_compile_args.extend(['-O3', '-DNDEBUG'])
     
-    if not no_torch:
-        install_requires.append(get_torch_requirement())
+    extension = Extension(
+        'midigpt',
+        sources=sources,
+        include_dirs=include_dirs,
+        libraries=libraries,
+        library_dirs=library_dirs,
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+        language='c++'
+    )
+    
+    return [extension]
+
+def main():
+    parser = argparse.ArgumentParser(description="MIDI-GPT setup script")
+    parser.add_argument("--dev", action="store_true", help="Development build")
+    parser.add_argument("--test", action="store_true", help="Test build")
+    parser.add_argument("--no-torch", action="store_true", help="Build without PyTorch")
+    parser.add_argument("--mac-os", action="store_true", help="Build for macOS")
+    parser.add_argument("--compute-canada", action="store_true", help="Build for Compute Canada")
+    parser.add_argument("--clean", action="store_true", help="Clean build directory")
+    
+    args = parser.parse_args()
+    
+    if args.clean:
+        shutil.rmtree("build", ignore_errors=True)
+        shutil.rmtree("python_lib", ignore_errors=True)
+        print("Cleaned build directories")
+        return
+    
+    print("=== MIDI-GPT Python 3.9 Setup ===")
+    
+    # Check Python version
+    if sys.version_info < (3, 9):
+        print("Error: Python 3.9 or higher required")
+        sys.exit(1)
+    
+    print(f"Using Python {sys.version}")
+    
+    # Check and install dependencies
+    print("Checking dependencies...")
+    check_dependencies()
+    
+    # Setup protobuf
+    print("Setting up protobuf...")
+    has_proto = setup_proto_directory()
+    if has_proto:
+        generate_protobuf_files()
     
     # Create extensions
-    extensions = create_extension()
+    print("Creating C++ extensions...")
+    extensions = create_extension(
+        no_torch=args.no_torch,
+        mac_os=args.mac_os,
+        dev=args.dev
+    )
+    
+    # Build the extension
+    from setuptools import setup
+    from setuptools.command.build_ext import build_ext
+    
+    class CustomBuildExt(build_ext):
+        def build_extensions(self):
+            # Ensure build directory exists
+            os.makedirs("python_lib", exist_ok=True)
+            
+            # Set compiler options
+            for ext in self.extensions:
+                ext.extra_compile_args = ext.extra_compile_args or []
+                ext.extra_compile_args.extend([
+                    '-Wall', '-Wextra', '-Wpedantic',
+                    '-fPIC', '-fvisibility=hidden'
+                ])
+            
+            build_ext.build_extensions(self)
     
     setup(
         name="midigpt",
-        version=get_version(),
-        author="Jeff Ens, Rafael Arias",
-        author_email="raa60@sfu.ca",
-        description="A generative system for computer-assisted music composition",
-        long_description=get_long_description(),
-        long_description_content_type="text/markdown",
-        url="https://github.com/Metacreation-Lab/MIDI-GPT",
-        packages=find_packages(where="src"),
-        package_dir={"": "src"},
+        version="0.1.0",
         ext_modules=extensions,
-        cmdclass={"build_ext": CustomBuildExt},
-        install_requires=install_requires,
-        extras_require={
-            "training": [
-                "transformers>=4.20.0",
-                "tensorboardX>=2.6",
-                "jsonlines>=3.1.0",
-                "pandas>=1.5.0",
-                "scipy>=1.10.0",
-                "matplotlib>=3.6.0",
-                "scikit-learn>=1.2.0",
-            ],
-            "dev": [
-                "pytest>=7.0.0",
-                "black>=23.0.0", 
-                "isort>=5.12.0",
-                "mypy>=1.5.0",
-            ]
-        },
-        python_requires=">=3.9",
-        classifiers=[
-            "Development Status :: 4 - Beta",
-            "Intended Audience :: Developers", 
-            "Intended Audience :: Science/Research",
-            "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.9",
-            "Programming Language :: Python :: 3.10", 
-            "Programming Language :: Python :: 3.11",
-            "Programming Language :: Python :: 3.12",
-            "Programming Language :: C++",
-            "Topic :: Multimedia :: Sound/Audio",
-            "Topic :: Scientific/Engineering :: Artificial Intelligence",
-        ],
+        cmdclass={'build_ext': CustomBuildExt},
         zip_safe=False,
     )
+    
+    if args.test:
+        print("Testing import...")
+        try:
+            import midigpt
+            print("✅ midigpt import successful")
+            
+            # Test basic functionality
+            if hasattr(midigpt, 'getEncoderType'):
+                print("✅ Core functions available")
+            else:
+                print("⚠️  Some functions may be missing")
+                
+        except ImportError as e:
+            print(f"❌ Import failed: {e}")
+            sys.exit(1)
+    
+    print("=== Setup completed successfully ===")
+
+if __name__ == "__main__":
+    main()

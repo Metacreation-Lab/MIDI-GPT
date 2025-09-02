@@ -1,23 +1,22 @@
 cmake_minimum_required(VERSION 3.16)
+project(midigpt LANGUAGES CXX C)
 
-project(midigpt 
-    LANGUAGES CXX C
-    VERSION 1.0.0
-    DESCRIPTION "MIDI-GPT: Generative system for computer-assisted music composition"
-)
-
-# Set C++ standard
-set(CMAKE_CXX_STANDARD 20)
+# Modern C++ standard
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Build options
+# Options
 option(NO_TORCH "Build without PyTorch support" OFF)
-option(ENABLE_TRACING "Enable function tracing" OFF)
+option(MAC_OS "Build for macOS" OFF)
+option(CUDA_AVAILABLE "CUDA is available" OFF)
 
-# Find required packages
+# Find required packages using system package managers
+find_package(PkgConfig REQUIRED)
 find_package(Protobuf REQUIRED)
-find_package(PkgConfig QUIET)
+
+# Find Python
+find_package(Python COMPONENTS Interpreter Development REQUIRED)
 
 # Find pybind11
 find_package(pybind11 REQUIRED)
@@ -25,152 +24,120 @@ find_package(pybind11 REQUIRED)
 # Find PyTorch if not disabled
 if(NOT NO_TORCH)
     find_package(Torch REQUIRED)
-    if(NOT Torch_FOUND)
-        message(FATAL_ERROR "PyTorch not found. Install with: pip install torch>=2.4.0")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+endif()
+
+# Create proto directory if it doesn't exist and move proto files there
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/proto)
+
+# Generate protobuf files in proto/ directory
+set(PROTO_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/proto)
+set(PROTO_FILES
+    ${PROTO_SRC_DIR}/midi.proto
+)
+
+# Check if proto files exist, if not try to copy from old location
+if(NOT EXISTS ${PROTO_SRC_DIR}/midi.proto)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/libraries/protobuf/src/midi.proto)
+        message(STATUS "Copying proto files from libraries/ to proto/")
+        file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/libraries/protobuf/src/midi.proto 
+             DESTINATION ${PROTO_SRC_DIR})
+    else()
+        message(FATAL_ERROR "midi.proto not found. Please ensure proto files are in proto/ directory")
     endif()
 endif()
 
-# Try to find midifile system library, fallback to bundled version
+# Generate protobuf C++ files
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
+
+# Handle midifile - prefer system package or use bundled
 find_path(MIDIFILE_INCLUDE_DIR 
     NAMES MidiFile.h
     PATHS /usr/include /usr/local/include
     PATH_SUFFIXES midifile
 )
 
-if(NOT MIDIFILE_INCLUDE_DIR)
-    message(STATUS "System midifile not found, using bundled version")
-    # We'll handle this case below
-    set(USE_BUNDLED_MIDIFILE ON)
-else()
-    message(STATUS "Found system midifile: ${MIDIFILE_INCLUDE_DIR}")
-    set(USE_BUNDLED_MIDIFILE OFF)
-endif()
-
-# Generate protobuf files
-set(PROTO_FILES
-    proto/enum.proto
-    proto/midi.proto
-    proto/midi_internal.proto
-    proto/track_type.proto
-    proto/feature_extraction.proto
-)
-
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
-
-# Create protobuf library
-add_library(midigpt_proto STATIC ${PROTO_SRCS} ${PROTO_HDRS})
-target_include_directories(midigpt_proto PUBLIC
-    ${Protobuf_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_BINARY_DIR}  # For generated protobuf files
-)
-target_link_libraries(midigpt_proto ${Protobuf_LIBRARIES})
-
-# Handle midifile dependency
-if(USE_BUNDLED_MIDIFILE)
-    # Include bundled midifile as external project or subdirectory
-    # For now, we'll assume it's available in external/midifile
-    add_subdirectory(external/midifile EXCLUDE_FROM_ALL)
-    set(MIDIFILE_TARGET midifile)
-    set(MIDIFILE_INCLUDE_DIRS external/midifile/include)
-else()
-    # Use system midifile
+if(MIDIFILE_INCLUDE_DIR)
+    message(STATUS "Using system midifile")
     find_library(MIDIFILE_LIBRARY NAMES midifile)
     if(NOT MIDIFILE_LIBRARY)
-        message(FATAL_ERROR "midifile library not found")
+        message(STATUS "System midifile library not found, using bundled version")
+        set(USE_BUNDLED_MIDIFILE ON)
     endif()
-    add_library(midifile INTERFACE)
-    target_link_libraries(midifile INTERFACE ${MIDIFILE_LIBRARY})
-    target_include_directories(midifile INTERFACE ${MIDIFILE_INCLUDE_DIR})
-    set(MIDIFILE_TARGET midifile)
+else()
+    message(STATUS "System midifile not found, using bundled version")
+    set(USE_BUNDLED_MIDIFILE ON)
 endif()
 
-# Source files for the main library
+if(USE_BUNDLED_MIDIFILE)
+    # Keep midifile as the only bundled dependency if needed
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/libraries/midifile)
+        add_subdirectory(libraries/midifile)
+        set(MIDIFILE_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libraries/midifile/include)
+        set(MIDIFILE_LIBRARY midifile)
+    else()
+        message(FATAL_ERROR "Neither system nor bundled midifile found")
+    endif()
+endif()
+
+# Main library sources
 set(MIDIGPT_SOURCES
     src/lib.cpp
-    src/lib_encoder.cpp
     src/common/data_structures/train_config.cpp
     src/dataset_creation/compression/lz4.c
     src/dataset_creation/dataset_manipulation/bytes_to_file.cpp
+    ${PROTO_SRCS}
 )
 
-# Collect all header files for better IDE support
-file(GLOB_RECURSE MIDIGPT_HEADERS
-    "src/*.h"
-    "src/*.hpp"
-    "include/*.h"
-    "include/*.hpp"
-)
-
-# Create the main Python extension module
-pybind11_add_module(midigpt ${MIDIGPT_SOURCES} ${MIDIGPT_HEADERS})
-
-# Set target properties
-target_compile_definitions(midigpt PRIVATE VERSION_INFO=${PROJECT_VERSION})
-
-if(NO_TORCH)
-    target_compile_definitions(midigpt PRIVATE NO_TORCH)
-endif()
+# Create the pybind11 module
+pybind11_add_module(midigpt ${MIDIGPT_SOURCES})
 
 # Include directories
 target_include_directories(midigpt PRIVATE
-    src
-    include
-    ${CMAKE_CURRENT_BINARY_DIR}  # For generated protobuf files
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}  # For generated protobuf headers
+    ${PROTO_SRC_DIR}
+    ${MIDIFILE_INCLUDE_DIR}
+    ${Protobuf_INCLUDE_DIRS}
 )
-
-if(USE_BUNDLED_MIDIFILE)
-    target_include_directories(midigpt PRIVATE ${MIDIFILE_INCLUDE_DIRS})
-endif()
 
 # Link libraries
-target_link_libraries(midigpt PRIVATE 
-    midigpt_proto
-    ${MIDIFILE_TARGET}
+target_link_libraries(midigpt PRIVATE
+    ${Protobuf_LIBRARIES}
+    ${MIDIFILE_LIBRARY}
 )
 
+# Link PyTorch if enabled
 if(NOT NO_TORCH)
     target_link_libraries(midigpt PRIVATE ${TORCH_LIBRARIES})
-    
-    # Handle the torch_python library for better Python integration
-    find_library(TORCH_PYTHON_LIBRARY torch_python 
-        PATHS "${TORCH_INSTALL_PREFIX}/lib"
-        NO_DEFAULT_PATH
-    )
-    if(TORCH_PYTHON_LIBRARY)
-        target_link_libraries(midigpt PRIVATE ${TORCH_PYTHON_LIBRARY})
-    endif()
-endif()
-
-# Compiler-specific options
-if(MSVC)
-    target_compile_options(midigpt PRIVATE /W4)
+    target_compile_definitions(midigpt PRIVATE TORCH_AVAILABLE)
 else()
-    target_compile_options(midigpt PRIVATE 
+    target_compile_definitions(midigpt PRIVATE NO_TORCH)
+endif()
+
+# Compiler flags
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(midigpt PRIVATE
         -Wall -Wextra -Wpedantic
+        -fvisibility=hidden
     )
 endif()
 
-# Enable tracing if requested
-if(ENABLE_TRACING AND NOT WIN32)
-    add_library(tracer STATIC src/trace.cpp)
-    target_link_libraries(midigpt PRIVATE tracer)
-    target_compile_options(midigpt PRIVATE -finstrument-functions)
+if(MAC_OS)
+    target_compile_options(midigpt PRIVATE
+        -stdlib=libc++
+        -mmacosx-version-min=10.14
+    )
 endif()
 
-# Ensure we're compatible with PyTorch's ABI
-if(NOT NO_TORCH)
-    target_compile_definitions(midigpt PRIVATE TORCH_EXTENSION_NAME=midigpt)
-    
-    # Set the same C++ ABI as PyTorch
-    if(DEFINED TORCH_CXX_FLAGS)
-        target_compile_options(midigpt PRIVATE ${TORCH_CXX_FLAGS})
-    endif()
-endif()
+# Version info
+target_compile_definitions(midigpt PRIVATE
+    VERSION_INFO="${PROJECT_VERSION}"
+)
 
-# Installation rules (for development installs)
-install(TARGETS midigpt
-    COMPONENT python
-    LIBRARY DESTINATION ${PYBIND11_INSTALL_PREFIX}
-    ARCHIVE DESTINATION ${PYBIND11_INSTALL_PREFIX}
-    RUNTIME DESTINATION ${PYBIND11_INSTALL_PREFIX}
+# Properties
+set_target_properties(midigpt PROPERTIES
+    CXX_VISIBILITY_PRESET "hidden"
+    VISIBILITY_INLINES_HIDDEN ON
 )
