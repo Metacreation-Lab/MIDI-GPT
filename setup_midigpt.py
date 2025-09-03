@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import platform
 from pathlib import Path
 
 try:
@@ -14,6 +15,95 @@ try:
 except ImportError as e:
     print(f"Missing required dependency: {e}")
     sys.exit(1)
+
+def fix_macos_library_paths():
+    """Fix macOS library path issues after build"""
+    if platform.system() != "Darwin":
+        return
+    
+    so_files = list(Path("python_lib").glob("*.so"))
+    if not so_files:
+        print("Warning: No .so files found to fix")
+        return
+    
+    for so_file in so_files:
+        print(f"Fixing library paths for {so_file}")
+        
+        try:
+            # Get current library dependencies
+            result = subprocess.run(['otool', '-L', str(so_file)], 
+                                  capture_output=True, text=True, check=True)
+            
+            # Fix common protobuf path issues
+            if '/usr/local/opt/protobuf/lib/libprotobuf' in result.stdout:
+                # Find the specific protobuf library version
+                for line in result.stdout.split('\n'):
+                    if 'libprotobuf' in line and '/usr/local/opt/protobuf/lib/' in line:
+                        old_path = line.strip().split()[0]
+                        # Extract library name
+                        lib_name = Path(old_path).name
+                        new_path = f"/usr/local/lib/{lib_name}"
+                        
+                        print(f"Fixing protobuf path: {old_path} -> {new_path}")
+                        subprocess.run([
+                            'install_name_tool', '-change', 
+                            old_path, new_path, str(so_file)
+                        ], check=True)
+            
+            # Add rpaths for common library locations
+            rpaths_to_add = [
+                "/usr/local/lib",
+                "/opt/homebrew/lib", 
+                str(Path(sys.executable).parent.parent / "lib" / "python3.9" / "site-packages" / "torch" / "lib")
+            ]
+            
+            for rpath in rpaths_to_add:
+                if Path(rpath).exists():
+                    try:
+                        subprocess.run([
+                            'install_name_tool', '-add_rpath', rpath, str(so_file)
+                        ], check=True, capture_output=True)
+                        print(f"Added rpath: {rpath}")
+                    except subprocess.CalledProcessError:
+                        # Rpath might already exist, ignore
+                        pass
+                        
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Could not fix library paths for {so_file}: {e}")
+
+def test_import():
+    """Test if the built module can be imported"""
+    python_lib = Path("python_lib")
+    if not python_lib.exists():
+        print("Error: python_lib directory not found")
+        return False
+    
+    # Test import
+    try:
+        original_path = sys.path[:]
+        sys.path.insert(0, str(python_lib.absolute()))
+        
+        print("Testing midigpt import...")
+        import midigpt
+        print("✅ SUCCESS: midigpt imported successfully!")
+        return True
+        
+    except ImportError as e:
+        print(f"❌ Import failed: {e}")
+        
+        # Try to give helpful error messages
+        if "symbol not found" in str(e):
+            print("\nThis appears to be a library linking issue.")
+            print("Try running: brew install protobuf")
+            
+        elif "Library not loaded" in str(e):
+            print("\nThis appears to be a library path issue.")
+            print("The fix_macos_library_paths() function should have resolved this.")
+            
+        return False
+        
+    finally:
+        sys.path[:] = original_path
 
 def get_pytorch_info():
     """Get PyTorch compilation information"""
@@ -41,14 +131,12 @@ def check_and_setup_midifile():
         libraries_dir.mkdir(exist_ok=True)
         
         try:
-            # Clone midifile as the original script did
             subprocess.run([
                 "git", "clone", 
                 "https://github.com/craigsapp/midifile", 
                 str(midifile_path)
             ], check=True, capture_output=True)
             
-            # Reset to the specific commit used by the original project
             subprocess.run([
                 "git", "reset", "--hard", "838c62c"
             ], cwd=midifile_path, check=True, capture_output=True)
@@ -67,13 +155,11 @@ def setup_proto_directory():
     proto_dir = Path("proto")
     proto_dir.mkdir(exist_ok=True)
     
-    # Check if proto files already exist
     existing_proto_files = list(proto_dir.glob("*.proto"))
     if existing_proto_files:
         print(f"Found {len(existing_proto_files)} proto files in proto/")
         return True
     
-    # Try to copy proto files from old location
     old_proto_path = Path("libraries/protobuf/src")
     if old_proto_path.exists():
         copied_files = 0
@@ -96,11 +182,9 @@ def generate_protobuf_files():
         print("Warning: No proto files found. Skipping protobuf generation.")
         return
     
-    # Create build directory for new generated files
     build_dir = Path("build")
     build_dir.mkdir(exist_ok=True)
     
-    # Create legacy directory structure that source code expects
     legacy_build_dir = Path("libraries/protobuf/build")
     legacy_build_dir.mkdir(parents=True, exist_ok=True)
     
@@ -123,11 +207,9 @@ def generate_protobuf_files():
         except FileNotFoundError:
             print("  Error: protoc not found. Please install protobuf compiler:")
             print("  macOS: brew install protobuf")
-            print("  Ubuntu: sudo apt-get install protobuf-compiler")
             return
     
     if success:
-        # Copy generated files to legacy location for compatibility
         print("Creating legacy protobuf directory structure...")
         for pb_file in build_dir.glob("*.pb.h"):
             legacy_file = legacy_build_dir / pb_file.name
@@ -140,10 +222,25 @@ def generate_protobuf_files():
     
     print("Protobuf generation complete!")
 
+class BuildExtCommand(build_ext):
+    def build_extensions(self):
+        # Add compiler flags for macOS
+        if platform.system() == "Darwin":
+            for ext in self.extensions:
+                ext.extra_compile_args.extend([
+                    '-std=c++17', '-fPIC', '-O3', '-DNDEBUG', 
+                    '-stdlib=libc++', '-mmacosx-version-min=10.14'
+                ])
+                ext.extra_link_args.extend([
+                    '-stdlib=libc++', '-mmacosx-version-min=10.14'
+                ])
+        
+        super().build_extensions()
+
 def main():
     parser = argparse.ArgumentParser(description="MIDI-GPT setup script")
     parser.add_argument("--dev", action="store_true", help="Development build")
-    parser.add_argument("--test", action="store_true", help="Test build")
+    parser.add_argument("--test", action="store_true", help="Test build and import")
     parser.add_argument("--no-torch", action="store_true", help="Build without PyTorch")
     parser.add_argument("--mac-os", action="store_true", help="Build for macOS")
     parser.add_argument("--clean", action="store_true", help="Clean build directory")
@@ -174,7 +271,7 @@ def main():
     if not midifile_ok:
         print("Warning: midifile library setup failed")
     
-    # Setup protobuf - this must happen before building
+    # Setup protobuf
     print("Setting up protobuf...")
     has_proto = setup_proto_directory()
     if has_proto:
@@ -198,133 +295,117 @@ def main():
         print("Building without PyTorch support")
         no_torch = True
     
-    # Source files  
+    # Source files
     sources = [
         "src/lib.cpp",
         "src/common/data_structures/train_config.cpp",
         "src/dataset_creation/compression/lz4.cpp",
-        "src/dataset_creation/dataset_manipulation/bytes_to_file.cpp",
+        "src/dataset_creation/dataset_manipulation/bytes_to_file.cpp"
     ]
+    
+    # Add generated protobuf source files
+    build_dir = Path("build")
+    if build_dir.exists():
+        pb_cc_files = list(build_dir.glob("*.pb.cc"))
+        for pb_file in pb_cc_files:
+            sources.append(str(pb_file))
+            print(f"Added protobuf source: {pb_file}")
+    
+    # Add midifile source files directly
+    midifile_src_dir = Path("libraries/midifile/src")
+    if midifile_src_dir.exists():
+        midifile_sources = list(midifile_src_dir.glob("*.cpp"))
+        if midifile_sources:
+            for midifile_src in midifile_sources:
+                sources.append(str(midifile_src))
+                print(f"Added midifile source: {midifile_src}")
+        else:
+            # Try .c files if .cpp doesn't exist
+            midifile_sources = list(midifile_src_dir.glob("*.c"))
+            for midifile_src in midifile_sources:
+                sources.append(str(midifile_src))
+                print(f"Added midifile source: {midifile_src}")
+    else:
+        print("Warning: midifile source directory not found")
     
     # Include directories
     include_dirs = [
-        pybind11.get_include(),
-        "src",
-        "include",
-        "build", 
-        "proto",
+        "src", "include", "build", "proto"
     ] + additional_includes
     
     if torch_info['available'] and not no_torch:
-        include_dirs.extend(torch_info.get('include_dirs', []))
+        include_dirs.extend(torch_info['include_dirs'])
     
-    # Libraries - add midifile if available
-    libraries = ['protobuf']
+    # Library directories and libraries
     library_dirs = []
+    libraries = ["protobuf"]
+    
+    # Add midifile library
+    midifile_lib_path = Path("libraries/midifile/lib")
+    if midifile_lib_path.exists():
+        library_dirs.append(str(midifile_lib_path))
+        libraries.append("midifile")
+        print(f"Added midifile library: {midifile_lib_path}")
     
     if torch_info['available'] and not no_torch:
-        libraries.extend(torch_info.get('libraries', []))
-        library_dirs.extend(torch_info.get('library_dirs', []))
+        library_dirs.extend(torch_info['library_dirs'])
+        libraries.extend(torch_info['libraries'])
     
-    # Compiler flags - we need C++17 for modern protobuf
-    extra_compile_args = ['-std=c++17', '-fPIC', '-O3', '-DNDEBUG']
+    # Compiler flags
+    compiler_flags = ['-std=c++17', '-fPIC', '-O3', '-DNDEBUG']
+    if args.mac_os or platform.system() == "Darwin":
+        compiler_flags.extend(['-stdlib=libc++', '-mmacosx-version-min=10.14'])
     
-    if args.mac_os or sys.platform.startswith("darwin"):
-        extra_compile_args.extend(['-stdlib=libc++', '-mmacosx-version-min=10.14'])
-    
-    if no_torch:
-        extra_compile_args.append('-DNO_TORCH')
-    
-    if args.dev:
-        extra_compile_args = [f for f in extra_compile_args if f not in ['-O3', '-DNDEBUG']]
-        extra_compile_args.extend(['-g', '-O0'])
-    
-    print(f"Compiler flags: {extra_compile_args}")
+    print(f"Compiler flags: {compiler_flags}")
     
     # Create extension
-    extension = Extension(
-        'midigpt',
+    ext = Extension(
+        name="midigpt",
         sources=sources,
         include_dirs=include_dirs,
-        libraries=libraries,
         library_dirs=library_dirs,
-        extra_compile_args=extra_compile_args,
-        language='c++'  # This tells setuptools to use C++ compiler for linking
+        libraries=libraries,
+        extra_compile_args=compiler_flags,
+        language="c++"
     )
     
-    # Custom build command to handle mixed C/C++ compilation
-    class CustomBuildExt(build_ext):
-        def build_extensions(self):
-            os.makedirs("python_lib", exist_ok=True)
-            build_ext.build_extensions(self)
-            
-        def build_extension(self, ext):
-            # Handle C and C++ files differently
-            original_sources = ext.sources[:]
-            original_extra_compile_args = ext.extra_compile_args[:]
-            
-            # Separate C and C++ sources
-            c_sources = [s for s in ext.sources if s.endswith('.c')]
-            cpp_sources = [s for s in ext.sources if not s.endswith('.c')]
-            
-            # Compile C files without C++ flags
-            if c_sources:
-                print(f"Compiling C files: {c_sources}")
-                c_flags = [f for f in original_extra_compile_args 
-                          if f not in ['-std=c++17', '-stdlib=libc++']]
-                ext.sources = c_sources
-                ext.extra_compile_args = c_flags
-                super().build_extension(ext)
-            
-            # Compile C++ files with full flags
-            if cpp_sources:
-                print(f"Compiling C++ files: {cpp_sources}")
-                ext.sources = cpp_sources
-                ext.extra_compile_args = original_extra_compile_args
-                super().build_extension(ext)
-            
-            # Restore original values
-            ext.sources = original_sources
-            ext.extra_compile_args = original_extra_compile_args
-            
-        def get_ext_fullpath(self, ext_name):
-            # Force output to python_lib directory
-            filename = self.get_ext_filename(ext_name)
-            return os.path.join("python_lib", filename)
-    
-    # Build - force the correct setuptools command
     print("Starting build process...")
+    print(f"Compiling C++ files: {sources}")
     
-    # Run setup with explicit commands to avoid argument conflicts
-    sys.argv = ['setup.py', 'build_ext', '--inplace']
+    # Override sys.argv to avoid passing our custom args to setup()
+    original_argv = sys.argv[:]
+    sys.argv = ['setup.py', 'build_ext', '--inplace', '--build-lib=python_lib']
     
-    setup(
-        name="midigpt",
-        version="0.1.0",
-        ext_modules=[extension],
-        cmdclass={'build_ext': CustomBuildExt},
-        zip_safe=False,
-    )
-    
-    # Test if requested
-    if args.test:
-        print("Testing import...")
-        test_env = os.environ.copy()
-        test_env['PYTHONPATH'] = f"{os.getcwd()}/python_lib:{test_env.get('PYTHONPATH', '')}"
+    try:
+        setup(
+            name="midigpt",
+            ext_modules=[ext],
+            cmdclass={'build_ext': BuildExtCommand},
+            zip_safe=False
+        )
         
-        result = subprocess.run([
-            sys.executable, "-c", "import midigpt; print('✅ Import successful')"
-        ], env=test_env, capture_output=True, text=True)
+        # Fix macOS library paths after successful build
+        fix_macos_library_paths()
         
-        if result.returncode == 0:
-            print(result.stdout.strip())
-            print("=== Build completed successfully ===")
-        else:
-            print(f"❌ Import test failed: {result.stderr.strip()}")
-            sys.exit(1)
-    else:
-        print("=== Build completed successfully ===")
-        print("To test: export PYTHONPATH=$PWD/python_lib:$PYTHONPATH && python -c 'import midigpt'")
+        print("Build completed successfully!")
+        
+        # Test import if requested
+        if args.test:
+            success = test_import()
+            if success:
+                print("\n🎉 MIDI-GPT Python 3.9 refactoring completed successfully!")
+                print("The library is ready to use.")
+            else:
+                print("\n⚠️  Build completed but import test failed.")
+                print("You may need to install system dependencies:")
+                print("  brew install protobuf")
+                sys.exit(1)
+                
+    except Exception as e:
+        print(f"Build failed: {e}")
+        sys.exit(1)
+    finally:
+        sys.argv[:] = original_argv
 
 if __name__ == "__main__":
     main()
