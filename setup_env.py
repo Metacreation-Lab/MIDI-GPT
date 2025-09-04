@@ -96,28 +96,28 @@ def install_dependencies(has_cuda=False):
     
     print("Installing core dependencies...")
     
-    # Install PyTorch
+    # Install PyTorch - FIXED: Use proper shell escaping
     if has_cuda:
         print("Installing PyTorch with CUDA support...")
-        run_command(f"{pip_cmd} install torch>=2.0.0 torchvision torchaudio "
-                   f"--index-url https://download.pytorch.org/whl/cu118")
+        run_command(f'{pip_cmd} install "torch>=2.0.0" "torchvision" "torchaudio" '
+                   f'--index-url https://download.pytorch.org/whl/cu118')
     else:
         print("Installing CPU-only PyTorch...")
-        run_command(f"{pip_cmd} install torch>=2.0.0 torchvision torchaudio "
-                   f"--index-url https://download.pytorch.org/whl/cpu")
+        run_command(f'{pip_cmd} install "torch>=2.0.0" "torchvision" "torchaudio" '
+                   f'--index-url https://download.pytorch.org/whl/cpu')
     
     # Install other dependencies
     deps = [
-        '"numpy>=1.21.0"',
-        '"protobuf>=4.0.0"', 
-        '"pybind11[global]>=2.12.0"',
-        '"transformers>=4.30.0"',
+        'numpy>=1.21.0',
+        'protobuf>=4.0.0', 
+        'pybind11[global]>=2.12.0',
+        'transformers>=4.30.0',
         'tqdm'
     ]
     
     for dep in deps:
         print(f"Installing {dep}...")
-        run_command(f"{pip_cmd} install {dep}")
+        run_command(f'{pip_cmd} install "{dep}"')
 
 def print_next_steps():
     """Print next steps for the user"""
