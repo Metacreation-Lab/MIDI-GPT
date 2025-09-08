@@ -98,7 +98,11 @@ def get_version():
     try:
         result = subprocess.run(['git', 'describe', '--tags', '--always'], 
                               capture_output=True, text=True, check=True)
-        return result.stdout.strip()
+        version = result.stdout.strip()
+        # Fix invalid version format by adding prefix if it's just a hash
+        if not version[0].isdigit():
+            return f"0.1.0+{version}"
+        return version
     except (subprocess.CalledProcessError, FileNotFoundError):
         return "0.1.0-dev"
 

@@ -1,0 +1,16 @@
+{
+  "metadata": {
+    "timestamp": "2025-09-08T16:42:44.251835",
+    "python_version": "3.9.0 (v3.9.0:9cf6752276, Oct  5 2020, 11:29:23) \n[Clang 6.0 (clang-600.0.57)]",
+    "platform": "darwin",
+    "script_version": "1.0"
+  },
+  "library_info": {
+    "import_success": false,
+    "import_error": "dlopen(/Users/griffinpage/Documents/GitHub/MIDI-GPT/venv/lib/python3.9/site-packages/midigpt.cpython-39-darwin.so, 0x0002): Library not loaded: @rpath/libtorch.dylib\n  Referenced from: <9729CCDF-C9FC-30C9-8E70-31D4B9EC6423> /Users/griffinpage/Documents/GitHub/MIDI-GPT/venv/lib/python3.9/site-packages/midigpt.cpython-39-darwin.so\n  Reason: tried: '/usr/local/lib/libtorch.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/usr/local/lib/libtorch.dylib' (no such file), '/usr/local/lib/libtorch.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/usr/local/lib/libtorch.dylib' (no such file)"
+  },
+  "api_tests": {},
+  "midi_file_tests": {},
+  "encoder_tests": {},
+  "sampling_tests": {}
+}

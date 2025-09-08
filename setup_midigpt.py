@@ -237,6 +237,57 @@ class BuildExtCommand(build_ext):
         
         super().build_extensions()
 
+def install_to_environment():
+    """Install the built library to the current Python environment"""
+    import site
+    import glob
+    
+    # Find the built .so file
+    so_files = glob.glob("python_lib/midigpt*.so")
+    if not so_files:
+        print("❌ No built library found. Run build first.")
+        return False
+    
+    so_file = so_files[0]
+    print(f"Found built library: {so_file}")
+    
+    # Get site-packages directory
+    try:
+        # If we're in a virtual environment, use that
+        if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+            import sysconfig
+            site_packages = sysconfig.get_paths()['purelib']
+        else:
+            # Try to get user site-packages first
+            if hasattr(site, 'getusersitepackages'):
+                site_packages = site.getusersitepackages()
+            else:
+                site_packages = site.getsitepackages()[0]
+        
+        print(f"Installing to: {site_packages}")
+        
+        # Create site-packages if it doesn't exist
+        os.makedirs(site_packages, exist_ok=True)
+        
+        # Copy the .so file
+        dest_file = os.path.join(site_packages, os.path.basename(so_file))
+        shutil.copy2(so_file, dest_file)
+        
+        print(f"✅ Successfully installed {os.path.basename(so_file)} to {site_packages}")
+        
+        # Test the installation
+        try:
+            import midigpt
+            print("✅ Installation verified - midigpt can be imported")
+            return True
+        except ImportError as e:
+            print(f"❌ Installation failed - cannot import midigpt: {e}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Installation failed: {e}")
+        return False
+
 def main():
     parser = argparse.ArgumentParser(description="MIDI-GPT setup script")
     parser.add_argument("--dev", action="store_true", help="Development build")
@@ -244,6 +295,7 @@ def main():
     parser.add_argument("--no-torch", action="store_true", help="Build without PyTorch")
     parser.add_argument("--mac-os", action="store_true", help="Build for macOS")
     parser.add_argument("--clean", action="store_true", help="Clean build directory")
+    parser.add_argument("--install", action="store_true", help="Install to current Python environment")
     
     args = parser.parse_args()
     
@@ -388,18 +440,38 @@ def main():
         fix_macos_library_paths()
         
         print("Build completed successfully!")
-        
-        # Test import if requested
-        if args.test:
-            success = test_import()
-            if success:
-                print("\n🎉 MIDI-GPT Python 3.9 refactoring completed successfully!")
-                print("The library is ready to use.")
-            else:
-                print("\n⚠️  Build completed but import test failed.")
-                print("You may need to install system dependencies:")
-                print("  brew install protobuf")
+
+        # Install if requested
+        if args.install:
+            print("\nInstalling to current Python environment...")
+            install_success = install_to_environment()
+            if not install_success:
+                print("⚠️  Installation failed, but build was successful.")
+                print("You can still use the library by adding python_lib/ to your PYTHONPATH")
                 sys.exit(1)
+        
+        if args.test:
+            # If we installed, test from the installed location
+            if args.install:
+                print("\nTesting installed library...")
+                try:
+                    import midigpt
+                    print("✅ Installed library imports successfully")
+                    print(f"Library version: {midigpt.version()}")
+                except Exception as e:
+                    print(f"❌ Installed library test failed: {e}")
+                    sys.exit(1)
+            else:
+                # Keep your existing test logic here
+                success = test_import()
+                if success:
+                    print("\n🎉 MIDI-GPT Python 3.9 refactoring completed successfully!")
+                    print("The library is ready to use.")
+                else:
+                    print("\n⚠️  Build completed but import test failed.")
+                    print("You may need to install system dependencies:")
+                    print("  brew install protobuf")
+                    sys.exit(1)
                 
     except Exception as e:
         print(f"Build failed: {e}")
