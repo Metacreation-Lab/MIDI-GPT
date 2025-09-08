@@ -34,13 +34,39 @@ def fix_macos_library_paths():
             result = subprocess.run(['otool', '-L', str(so_file)], 
                                   capture_output=True, text=True, check=True)
             
-            # Fix common protobuf path issues
+            # Fix PyTorch library paths
+            torch_lib_paths = []
+            try:
+                import torch
+                torch_lib_path = Path(torch.__file__).parent / "lib"
+                if torch_lib_path.exists():
+                    torch_lib_paths.append(str(torch_lib_path))
+                    print(f"Found PyTorch libraries at: {torch_lib_path}")
+            except ImportError:
+                print("PyTorch not available for path detection")
+            
+            # Fix any @rpath/libtorch.dylib references to absolute paths
+            for line in result.stdout.split('\n'):
+                if '@rpath/libtorch' in line:
+                    old_path = line.strip().split()[0]
+                    lib_name = old_path.replace('@rpath/', '')
+                    
+                    # Try to find the actual library
+                    for torch_path in torch_lib_paths:
+                        candidate = Path(torch_path) / lib_name
+                        if candidate.exists():
+                            print(f"Fixing PyTorch path: {old_path} -> {candidate}")
+                            subprocess.run([
+                                'install_name_tool', '-change',
+                                old_path, str(candidate), str(so_file)
+                            ], check=True)
+                            break
+            
+            # Fix protobuf paths (existing logic)
             if '/usr/local/opt/protobuf/lib/libprotobuf' in result.stdout:
-                # Find the specific protobuf library version
                 for line in result.stdout.split('\n'):
                     if 'libprotobuf' in line and '/usr/local/opt/protobuf/lib/' in line:
                         old_path = line.strip().split()[0]
-                        # Extract library name
                         lib_name = Path(old_path).name
                         new_path = f"/usr/local/lib/{lib_name}"
                         
@@ -50,12 +76,14 @@ def fix_macos_library_paths():
                             old_path, new_path, str(so_file)
                         ], check=True)
             
-            # Add rpaths for common library locations
+            # Add rpaths for library locations
             rpaths_to_add = [
                 "/usr/local/lib",
-                "/opt/homebrew/lib", 
-                str(Path(sys.executable).parent.parent / "lib" / "python3.9" / "site-packages" / "torch" / "lib")
+                "/opt/homebrew/lib"
             ]
+            
+            # Add PyTorch lib paths as rpaths
+            rpaths_to_add.extend(torch_lib_paths)
             
             for rpath in rpaths_to_add:
                 if Path(rpath).exists():
