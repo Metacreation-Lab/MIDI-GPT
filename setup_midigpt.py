@@ -259,8 +259,10 @@ class BuildExtCommand(build_ext):
                     '-std=c++17', '-fPIC', '-O3', '-DNDEBUG', 
                     '-stdlib=libc++', '-mmacosx-version-min=10.14'
                 ])
+                # Add the critical headerpad flag for macOS
                 ext.extra_link_args.extend([
-                    '-stdlib=libc++', '-mmacosx-version-min=10.14'
+                    '-stdlib=libc++', '-mmacosx-version-min=10.14',
+                    '-headerpad_max_install_names'
                 ])
         
         super().build_extensions()
@@ -328,15 +330,31 @@ def main():
     args = parser.parse_args()
     
     if args.clean:
+        import glob
+        
+        # Clean build directories
         for dir_name in ["build", "python_lib", "*.egg-info", "libraries/protobuf/build"]:
-            if Path(dir_name).exists():
-                if dir_name.endswith('*'):
-                    for path in Path('.').glob(dir_name):
-                        if path.is_dir():
-                            shutil.rmtree(path)
-                else:
-                    shutil.rmtree(dir_name, ignore_errors=True)
-        print("Cleaned build directories")
+            if dir_name.endswith('*'):
+                for path in Path('.').glob(dir_name):
+                    if path.exists():
+                        shutil.rmtree(path)
+                        print(f"Removed {path}")
+            else:
+                path = Path(dir_name)
+                if path.exists():
+                    shutil.rmtree(path)
+                    print(f"Removed {path}")
+        
+        # Clean local .so files that can cause import conflicts
+        so_files = glob.glob("*.so") + glob.glob("midigpt*.so")
+        for so_file in so_files:
+            try:
+                os.remove(so_file)
+                print(f"Removed local library file: {so_file}")
+            except OSError:
+                pass
+        
+        print("Cleaned build directories and local library files")
         return
     
     print("=== MIDI-GPT Python 3.9 Setup ===")
