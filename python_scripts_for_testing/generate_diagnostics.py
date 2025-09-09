@@ -14,6 +14,12 @@ from pathlib import Path
 import argparse
 from datetime import datetime
 
+def custom_json_serializer(obj):
+    """Custom JSON serializer for objects that can't be serialized"""
+    if hasattr(obj, '__class__') and hasattr(obj.__class__, '__name__'):
+        return f"<{obj.__class__.__name__} object>"
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
 def safe_execute(func, *args, **kwargs):
     """Execute function safely and return result or error info"""
     try:
@@ -54,7 +60,7 @@ def generate_diagnostics(midi_files, checkpoint_path=None, output_file="diagnost
         diagnostics["library_info"]["import_error"] = str(e)
         # Save what we can and exit
         with open(output_file, 'w') as f:
-            json.dump(diagnostics, f, indent=2)
+            json.dump(diagnostics, f, indent=2, default=custom_json_serializer)
         return False
     
     # Test basic library info
@@ -128,9 +134,15 @@ def generate_diagnostics(midi_files, checkpoint_path=None, output_file="diagnost
     callback_result = safe_execute(midigpt.CallbackManager)
     if callback_result["success"]:
         print("✅ CallbackManager() works")
+        # Store metadata instead of the object itself
+        diagnostics["api_tests"]["callback_manager"] = {
+            "success": True,
+            "object_type": "CallbackManager", 
+            "created": True
+        }
     else:
         print(f"❌ CallbackManager() failed: {callback_result['error']}")
-    diagnostics["api_tests"]["callback_manager"] = callback_result
+        diagnostics["api_tests"]["callback_manager"] = callback_result
     
     # Process MIDI files
     if midi_files and encoder_creation["success"]:
@@ -229,31 +241,31 @@ def generate_diagnostics(midi_files, checkpoint_path=None, output_file="diagnost
                     'tracks': [{
                         'track_id': 0,
                         'temperature': 0.5,
-                        'instrument': 'acoustic_grand_piano',
-                        'density': 10,
-                        'track_type': 10,
-                        'ignore': False,
-                        'selected_bars': [False, True, False, False],  # Generate bar 1 only
-                        'min_polyphony_q': 'POLYPHONY_ANY',
-                        'max_polyphony_q': 'POLYPHONY_ANY',
+                        'instrument': 'acoustic_grand_piano', 
+                        'density': 10, 
+                        'track_type': 10, 
+                        'ignore': False, 
+                        'selected_bars': [False, False, True, False],  # Changed: generate bar 2
+                        'min_polyphony_q': 'POLYPHONY_ANY', 
+                        'max_polyphony_q': 'POLYPHONY_ANY', 
                         'autoregressive': False,
-                        'polyphony_hard_limit': 9
+                        'polyphony_hard_limit': 9 
                     }]
                 }
-                
+
                 param_config = {
-                    'tracks_per_step': 1,
-                    'bars_per_step': 1,
-                    'model_dim': 4,
-                    'percentage': 100,
-                    'batch_size': 1,
-                    'temperature': 1.0,
-                    'max_steps': 5,  # Very short test
-                    'polyphony_hard_limit': 6,
-                    'shuffle': False,
-                    'verbose': False,
+                    'tracks_per_step': 1, 
+                    'bars_per_step': 1, 
+                    'model_dim': 4, 
+                    'percentage': 100, 
+                    'batch_size': 1, 
+                    'temperature': 1.0, 
+                    'max_steps': 200,  # Changed: back to full 200
+                    'polyphony_hard_limit': 6, 
+                    'shuffle': True,   # Changed: enable shuffle
+                    'verbose': True,   # Changed: enable verbose output
                     'ckpt': checkpoint_path,
-                    'sampling_seed': 42,  # Fixed seed
+                    'sampling_seed': -1,  # Changed: random seed like original
                     'mask_top_k': 0
                 }
                 
@@ -294,7 +306,7 @@ def generate_diagnostics(midi_files, checkpoint_path=None, output_file="diagnost
     print(f"\n=== Saving Diagnostics ===")
     try:
         with open(output_file, 'w') as f:
-            json.dump(diagnostics, f, indent=2)
+            json.dump(diagnostics, f, indent=2, default=custom_json_serializer)
         print(f"✅ Diagnostics saved to: {output_file}")
         
         # Print summary
