@@ -217,7 +217,7 @@ cd ./python_lib
 if $mac_os; then
   cmake $cmake_flags .. -Dmac_os=ON -DCMAKE_PREFIX_PATH=$(python3 -c 'import torch;print(torch.utils.cmake_prefix_path)')
 else
-  cmake $cmake_flags ..
+  cmake $cmake_flags .. -DCMAKE_PREFIX_PATH=../libraries/libtorch
 fi
 make
 python3 -c "import midigpt; print('midigpt python library built successfully')"
