@@ -1,0 +1,39 @@
+[build-system]
+requires = ["scikit-build-core>=0.9", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "midigpt"
+version = "0.1.0"
+description = "MIDI music generation — C++/Python hybrid (GPT-2 Transformer)"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.5.1",
+]
+
+[project.optional-dependencies]
+train = [
+    "transformers>=4.40.0",
+    "numpy>=1.26",
+    "tqdm>=4.66",
+    "tensorboard>=2.15",
+    "scipy>=1.11",
+    "matplotlib>=3.8",
+    "pretty_midi>=0.2.10",
+    "attrs>=23.1",
+    "jsonlines>=3.1",
+]
+dataset = [
+    "attrs>=23.1",
+    "jsonlines>=3.1",
+    "numpy>=1.26",
+    "tqdm>=4.66",
+    "pretty_midi>=0.2.10",
+]
+
+[tool.scikit-build]
+cmake.build-type = "Release"
+# The pybind11 extension is the package itself; no pure Python wrapper is needed.
+# The .so is installed to site-packages root via `install(TARGETS midigpt DESTINATION .)`
+# in CMakeLists.txt — scikit-build-core picks it up automatically.
+wheel.packages = []

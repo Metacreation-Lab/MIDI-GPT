@@ -1,87 +1,62 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.21)
+project(midigpt VERSION 0.1.0 LANGUAGES C CXX)
 
-SET(CMAKE_CXX_STANDARD 20)
-SET(CMAKE_CXX_STANDARD_REQUIRED ON)
-SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
-#we add the following line to fix a linkage issue between torch and midifile
-#https://stackoverflow.com/questions/68922557/c-linker-error-undefined-reference-when-linking-package-libtorch-and-shared
-#add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-project(midigpt)
+option(MIDIGPT_NO_TORCH "Exclude LibTorch (training-only / dataset builds)" OFF)
+option(MIDIGPT_TRACE    "Function-level instrumentation (-finstrument-functions)" OFF)
 
-option(compute_canada "Build for Compute Canada" OFF)
-option(mac_os "Build for Mac OS" OFF)
-option(no_torch "No Torch" OFF)
-option(no_pybind "No Pybind" OFF)
-option(trace "Trace" OFF)
+include(cmake/dependencies.cmake)
 
-#Find the necessary packages to be able to link the libraries correctly
-find_package(Protobuf REQUIRED)
-include_directories(${Protobuf_INCLUDE_DIRS})
-
-if(no_torch)
-    add_definitions(-DNO_TORCH)
-endif()
-
-if(NOT no_torch)
-	if(mac_os)
-	  message("USING PYTHON PYTORCH INSTEAD")
-	else()
-	  set(CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/libtorch/")
-	endif()
-	find_package(Torch REQUIRED)
-
-	# This is necessary to avoid a symbol linkage error https://github.com/pytorch/pytorch/issues/38122 
-	# https://github.com/DeepVAC/libdeepvac/blob/master/python/CMakeLists.txt
-	find_library(TORCH_PYTHON_LIBRARY torch_python PATHS "${TORCH_INSTALL_PREFIX}/lib")
-endif()
-
-if(compute_canada)
-  include_directories("/cvmfs/soft.computecanada.ca/easybuild/software/2020/avx512/Core/python/3.8.2/include/python3.8")
-endif()
-
-#Add the directories of libraries so the project can CMake them too
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libraries/protobuf)
-if(NOT no_torch)
-	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libraries/torch)
-endif()
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libraries/pybind11)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libraries/midifile)
-
-#https://stackoverflow.com/questions/8934295/add-source-in-a-subdirectory-to-a-cmake-project/54285898#54285898 
-#https://crascit.com/2016/01/31/enhanced-source-file-handling-with-target_sources/
-
-
-set(SRCS
-	src/common/data_structures/train_config.cpp
-	src/dataset_creation/compression/lz4.c
-	src/dataset_creation/dataset_manipulation/bytes_to_file.cpp
-	src/common/encoder/encoder_all.h
-	src/lib.cpp
+# ── midigpt_core : pure C++ library (no Python) ───────────────────────────────
+add_library(midigpt_core STATIC
+    src/common/data_structures/train_config.cpp
+    src/dataset_creation/compression/lz4.c
+    src/dataset_creation/dataset_manipulation/bytes_to_file.cpp
 )
-PYBIND11_ADD_MODULE(midigpt ${SRCS})
 
-#Adding include folders of libraries to our target so we can reference them with #include
-#Add subdirectory adds those to main project so they can be CMAKEd. Include dirs allows us to reference functions in main.
-target_include_directories(midigpt PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libraries/protobuf/include)
-if (NOT no_torch)
-	target_include_directories(midigpt PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libraries/torch/include)
+target_include_directories(midigpt_core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/libraries/midifile/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/libraries/protobuf/include
+)
+
+target_compile_definitions(midigpt_core
+    PUBLIC $<$<BOOL:${MIDIGPT_NO_TORCH}>:NO_TORCH>
+)
+
+target_link_libraries(midigpt_core PUBLIC midigpt_proto midifile)
+
+if(NOT MIDIGPT_NO_TORCH)
+    target_include_directories(midigpt_core PUBLIC ${TORCH_INCLUDE_DIRS})
+    target_compile_options(midigpt_core PUBLIC ${TORCH_CXX_FLAGS})
+    target_link_libraries(midigpt_core PUBLIC
+        "${TORCH_LIBRARIES}"
+        ${TORCH_PYTHON_LIBRARY}
+    )
 endif()
-target_include_directories(midigpt PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libraries/midifile/include)
 
-#Linking all the libraries
-target_link_libraries(midigpt PRIVATE midigpt_proto) #Our protobuf custom library
-target_link_libraries(midigpt PRIVATE midifile)
-if (NOT no_torch)
-	target_link_libraries(midigpt PRIVATE midigpt_torch) #Our torch custom library
-	#This is necessary to avoid a symbol linkage error https://github.com/pytorch/pytorch/issues/38122 
-	target_link_libraries(midigpt PRIVATE "${TORCH_LIBRARIES}" ${TORCH_PYTHON_LIBRARY})
+if(NOT WIN32)
+    target_compile_options(midigpt_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-if (trace)
-	add_library(tracer STATIC src/trace.cpp)
-	target_link_libraries(midigpt PRIVATE tracer)
-	target_compile_options(midigpt PRIVATE -Wall -Wextra -Wpedantic -finstrument-functions)
-elseif(NOT WIN32)
-	target_compile_options(midigpt PRIVATE -Wall -Wextra -Wpedantic)
+# ── midigpt : pybind11 Python module ──────────────────────────────────────────
+pybind11_add_module(midigpt MODULE src/cpp/bindings/lib.cpp)
+target_link_libraries(midigpt PRIVATE midigpt_core)
+
+if(NOT WIN32)
+    target_compile_options(midigpt PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+# Install the Python extension to the site-packages root so `import midigpt` works.
+install(TARGETS midigpt DESTINATION .)
+
+# ── midigpt_tracer : optional function-level instrumentation ──────────────────
+if(MIDIGPT_TRACE)
+    add_library(midigpt_tracer STATIC src/trace.cpp)
+    target_link_libraries(midigpt PRIVATE midigpt_tracer)
+    target_compile_options(midigpt PRIVATE -finstrument-functions)
 endif()
