@@ -2,10 +2,9 @@
 #include <fstream>
 #include <iostream>
 #include <cstring>
-#include "../../../libraries/protobuf/build/midi.pb.h"
-#include "../../../include/dataset_creation/dataset_manipulation/bytes_to_file.h"
-#include "../../../include/dataset_creation/compression/lz4.h"
-#include "../../../include/dataset_creation/dataset_manipulation/bytes_to_file.h"
+#include "midi.pb.h"
+#include "dataset_creation/dataset_manipulation/bytes_to_file.h"
+#include "dataset_creation/compression/lz4.h"
 
 namespace dataset_manipulation {
 

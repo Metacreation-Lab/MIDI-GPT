@@ -2,8 +2,8 @@
 
 #include <string>
 #include <fstream>
-#include "../../../libraries/protobuf/build/midi.pb.h"
-#include "../compression/lz4.h"
+#include "midi.pb.h"
+#include "dataset_creation/compression/lz4.h"
 
 
 namespace dataset_manipulation {
