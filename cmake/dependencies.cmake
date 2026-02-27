@@ -1,9 +1,23 @@
 # ── Protobuf ──────────────────────────────────────────────────────────────────
 # Requires protobuf development headers and protoc compiler.
-# On Fir/Alliance HPC:  module load protobuf
-# On Ubuntu/Debian:     apt install libprotobuf-dev protobuf-compiler
-# On macOS:             brew install protobuf
-find_package(Protobuf REQUIRED)
+# On Fir/Alliance HPC:  module load abseil protobuf
+# On Ubuntu/Debian:     apt install libprotobuf-dev protobuf-compiler libabsl-dev
+# On macOS:             brew install abseil protobuf
+#
+# Protobuf 3.22+ (v4.x / 24.x) requires Abseil. Use CONFIG mode so that CMake
+# picks up protobuf's own package config file, which chains to abseil and sets
+# up the protobuf::libprotobuf import target with all transitive dependencies.
+# The old-style variables (Protobuf_INCLUDE_DIRS, Protobuf_LIBRARIES) are still
+# populated for backward compatibility by protobuf-module.cmake.
+# MODULE_COMPATIBLE=ON causes protobuf's config to include protobuf-module.cmake,
+# which defines the legacy protobuf_generate_cpp() helper.
+set(protobuf_MODULE_COMPATIBLE ON CACHE BOOL "" FORCE)
+find_package(protobuf CONFIG QUIET)
+if(NOT protobuf_FOUND)
+    # Fallback for systems where protobuf is installed without a config file
+    # (e.g., some older Ubuntu/Debian packages).
+    find_package(Protobuf REQUIRED)
+endif()
 add_subdirectory(libraries/protobuf)   # → target: midigpt_proto
 
 # ── midifile (git submodule) ──────────────────────────────────────────────────
@@ -12,8 +26,9 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libraries/midifile/CMakeLists.txt")
         "midifile submodule is missing.\n"
         "Run: git submodule update --init --recursive")
 endif()
-set(BUILD_PROGRAMS OFF CACHE BOOL "Build midifile CLI tools" FORCE)
-add_subdirectory(libraries/midifile)   # → target: midifile
+# EXCLUDE_FROM_ALL prevents the 27 CLI tool executables in tools/ from being
+# compiled as part of the default build.  Only the `midifile` static lib is needed.
+add_subdirectory(libraries/midifile EXCLUDE_FROM_ALL)   # → target: midifile
 
 # ── pybind11 ──────────────────────────────────────────────────────────────────
 # Prefer pip-installed pybind11 (present when using scikit-build-core or after

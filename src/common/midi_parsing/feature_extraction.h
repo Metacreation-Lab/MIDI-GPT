@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "../../common/midi_parsing/util_protobuf.h"
-#include "../../../libraries/protobuf/build/midi.pb.h"
+#include "midi.pb.h"
 
 namespace feature_extraction {
 

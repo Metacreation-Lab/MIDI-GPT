@@ -7,7 +7,7 @@
 #include <google/protobuf/util/json_util.h>
 
 #include "lz4.h"
-#include "../../../libraries/protobuf/build/midi.pb.h"
+#include "midi.pb.h"
 #include "../../common/encoder/encoder_all.h"
 #include "../../common/midi_parsing/midi_io.h"
 #include "../enum/encoder_types.h"
