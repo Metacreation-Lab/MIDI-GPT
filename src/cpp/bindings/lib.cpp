@@ -8,31 +8,30 @@ namespace py = pybind11;
 
 #include "common/encoder/encoder_all.h"
 
-
 #include "common/midi_parsing/midi_io.h"
-#include "./inference/dataset/jagged.h"
-#include "./inference/enum/model_type.h"
-#include "./inference/enum/encoder_types.h"
-#include "./inference/sampling/control.h"
-#include "./inference/sampling/callback_base.h"
-#include "./inference/version.h"
+#include "inference/dataset/jagged.h"
+#include "inference/enum/model_type.h"
+#include "inference/enum/encoder_types.h"
+#include "inference/sampling/control.h"
+#include "inference/sampling/callback_base.h"
+#include "inference/version.h"
 
-#include "./common/midi_parsing/feature_extraction.h"
+#include "common/midi_parsing/feature_extraction.h"
 
 #ifndef NO_TORCH
-#include "./inference/sampling/sample_internal.h"
-#include "./inference/sampling/multi_step_sample.h"
+#include "inference/sampling/sample_internal.h"
+#include "inference/sampling/multi_step_sample.h"
 #endif
 
 #include <iostream>
 #include <string>
-#include "../include/dataset_creation/dataset_manipulation/bytes_to_file.h"
-#include "../libraries/protobuf/include/proto_library.h"
-#include "../libraries/torch/include/torch_library.h"
-#include "../libraries/protobuf/build/midi.pb.h"
+// bytes_to_file.h is found via the `include/` directory in midigpt_core's include path
+#include "dataset_creation/dataset_manipulation/bytes_to_file.h"
+// midi.pb.h is found via the midigpt_proto target's exported include directory
+#include "midi.pb.h"
 #include "MidiFile.h"
-#include "./common/data_structures/train_config.h"
-#include "./lib_encoder.h"
+#include "common/data_structures/train_config.h"
+#include "lib_encoder.h"
 
 // ======================
 
@@ -47,7 +46,7 @@ std::string generate_py(std::string &status_str, std::string &piece_str, std::st
   #ifndef NO_TORCH
   sampling::sample(&piece, &status, &param, NULL);
   #endif
- 
+
   std::string output_str;
   google::protobuf::util::MessageToJsonString(piece, &output_str);
   return output_str;
@@ -125,7 +124,7 @@ PYBIND11_MODULE(midigpt,handle) {
   handle.def("sample_multi_step", &sampling::sample_multi_step_py);
   handle.def("sample_multi_step_capture_output", [](std::string piece_json, std::string status_json, std::string param_json, int max_attempts, sampling::CallbackManager *callbacks) {
     py::scoped_ostream_redirect stream(
-        std::cout,                               
+        std::cout,
         py::module_::import("sys").attr("stdout") // Python output
     );
     return sampling::sample_multi_step_py(piece_json, status_json, param_json, max_attempts, callbacks);
@@ -192,7 +191,7 @@ PYBIND11_MODULE(midigpt,handle) {
     .def("get_type_mask", &encoder::REPRESENTATION::get_type_mask)
     .def("max_token", &encoder::REPRESENTATION::max_token)
     .def_readonly("token_domains", &encoder::REPRESENTATION::token_domains);
-  
+
   py::class_<encoder::TOKEN_DOMAIN>(handle, "TOKEN_DOMAIN")
     .def(py::init<int>());
 
@@ -249,7 +248,7 @@ py::enum_<midi::TOKEN_TYPE>(handle, "TOKEN_TYPE", py::arithmetic())
   .value("NONE", midi::TOKEN_NONE)
   .export_values();
 
- 
+
 
 // =========================================================
 // =========================================================
