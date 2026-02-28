@@ -159,7 +159,7 @@ libraries/
   midifile/                  git submodule — MIDI file parser
   pybind11/                  git submodule — Python bindings
 python_scripts/              training, dataset creation, conversion scripts
-pip_requirements/            per-task requirement files (HPC manual installs)
+pyproject.toml               package metadata + optional-dependency groups (train, dataset)
 ```
 
 ## CMake targets
