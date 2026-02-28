@@ -129,7 +129,7 @@ class TestCMakeConfigure:
 class TestBuild:
     """Full cmake configure + build cycle."""
 
-    def test_build_no_torch(self, build_dir):
+    def test_build_succeeds(self, build_dir):
         """The session-scoped ``build_dir`` fixture already ran this build.
         If the fixture succeeded, this test trivially passes.  It exists to
         produce a named test entry in the report.
@@ -193,10 +193,9 @@ class TestBuild:
         """The compiled extension must be importable without error."""
         assert built_module is not None
 
-    def test_no_torch_define_respected(self, built_module):
-        """With MIDIGPT_NO_TORCH=ON, inference functions should not be exposed."""
-        # sample_multi_step requires LibTorch; it must be absent in this build
-        assert not hasattr(built_module, "sample_multi_step"), (
-            "sample_multi_step is present but LibTorch was excluded.\n"
-            "The NO_TORCH conditional compilation may be broken."
+    def test_torch_api_present(self, built_module):
+        """With LibTorch enabled, the inference API must be exposed."""
+        assert hasattr(built_module, "sample_multi_step"), (
+            "sample_multi_step is missing — LibTorch may not have been linked.\n"
+            "Ensure the cuda module is loaded before building."
         )

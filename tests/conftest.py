@@ -1,11 +1,11 @@
 """Shared pytest fixtures for MIDI-GPT build and API tests.
 
 The ``build_dir`` and ``built_module`` fixtures perform a real CMake configure
-+ build cycle using MIDIGPT_NO_TORCH=ON so they can run on a login node without
-PyTorch or a GPU.
++ build cycle (with LibTorch) so the full inference API is available.
 
 Prerequisites before running:
-    module load protobuf    # or ensure protoc / libprotobuf are on PATH
+    module load StdEnv/2023 python/3.11.5 gcc/12.3 cmake protobuf/24.4 abseil cuda/12.6
+    source /scratch/triana24/.venvs/midigpt/bin/activate
     pytest tests/
 """
 
@@ -51,10 +51,10 @@ def _run(args: list, cwd=None, extra_env=None, check=True):
 
 @pytest.fixture(scope="session")
 def build_dir(tmp_path_factory):
-    """Configure and build the project with MIDIGPT_NO_TORCH=ON.
+    """Configure and build the project with LibTorch enabled.
 
-    Returns the build directory Path.  Skips if essential build tools are
-    missing (cmake, a C++ compiler, protoc).
+    Returns the build directory Path.  Skips if essential build tools or
+    PyTorch are missing.
     """
     # Require cmake
     r = subprocess.run(
@@ -70,6 +70,14 @@ def build_dir(tmp_path_factory):
             "protoc not found — load it with 'module load protobuf' first"
         )
 
+    # Require torch (needed for LibTorch detection in cmake)
+    try:
+        import torch  # noqa: F401
+    except (ImportError, OSError):
+        pytest.skip(
+            "torch not importable — load cuda module and activate venv first"
+        )
+
     bdir = tmp_path_factory.mktemp("build")
 
     # Configure — pin both PYTHON_EXECUTABLE (pybind11 submodule / old API) and
@@ -81,7 +89,6 @@ def build_dir(tmp_path_factory):
             "-S", str(ROOT),
             "-B", str(bdir),
             "-DCMAKE_BUILD_TYPE=Debug",   # faster than Release for tests
-            "-DMIDIGPT_NO_TORCH=ON",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DPython3_EXECUTABLE={sys.executable}",
         ]
@@ -104,10 +111,13 @@ def built_module(build_dir):
     into ``build_dir/midigpt/`` so pytest can exercise the freshly compiled
     extension without a full ``pip install``.
 
-    We use ``importlib`` directly instead of a bare ``import`` so that any
-    editable-install hooks registered by a previously installed midigpt wheel
-    (e.g. scikit-build-core's ``_midigpt_editable.pth``) cannot intercept the
-    import and accidentally load the wrong shared library.
+    We use ``importlib`` directly to bypass editable-install hooks (e.g.
+    scikit-build-core's ``_midigpt_editable.pth``) that would intercept the
+    import and load the installed version instead of the fresh build.
+
+    Since the build links LibTorch, torch must be imported before the
+    extension .so is dlopen-ed (torch's __init__.py adds its lib/ dir to
+    the dynamic linker search path).
     """
     pkg_dir = build_dir / "midigpt"
     pkg_init = pkg_dir / "__init__.py"
@@ -131,9 +141,33 @@ def built_module(build_dir):
             f"build_dir contents: {list(build_dir.iterdir())}"
         )
 
-    # Load via spec so the package's __path__ is correctly set to pkg_dir,
-    # allowing the relative import `from ._midigpt import *` inside __init__.py
-    # to find the freshly built extension .so.
+    # Import torch first so libtorch.so is mapped into the process before
+    # _midigpt.so is dlopen-ed.
+    import torch  # noqa: F401
+
+    # Pre-register the extension .so from the build dir under both its
+    # qualified name (midigpt._midigpt) and bare name (_midigpt) so that
+    # the editable-install meta-path hook cannot intercept the relative
+    # import inside __init__.py and substitute the installed version.
+    ext_spec = importlib.util.spec_from_file_location(
+        "midigpt._midigpt",
+        str(so_files[0]),
+    )
+    ext_mod = importlib.util.module_from_spec(ext_spec)
+    sys.modules["midigpt._midigpt"] = ext_mod
+    sys.modules["_midigpt"] = ext_mod
+    try:
+        ext_spec.loader.exec_module(ext_mod)
+    except (ImportError, OSError) as exc:
+        sys.modules.pop("midigpt._midigpt", None)
+        sys.modules.pop("_midigpt", None)
+        pytest.fail(
+            f"Could not load _midigpt extension from {so_files[0]}.\n"
+            f"  Error: {exc}"
+        )
+
+    # Execute __init__.py with __path__ pinned to pkg_dir.
+    # from ._midigpt import * finds the pre-loaded module above.
     spec = importlib.util.spec_from_file_location(
         "midigpt",
         str(pkg_init),
