@@ -36,4 +36,4 @@ cmake.build-type = "Release"
 # The pybind11 extension is the package itself; no pure Python wrapper is needed.
 # The .so is installed to site-packages root via `install(TARGETS midigpt DESTINATION .)`
 # in CMakeLists.txt — scikit-build-core picks it up automatically.
-wheel.packages = []
+wheel.packages = ["src/python/midigpt"]

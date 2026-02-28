@@ -43,20 +43,37 @@ if(NOT WIN32)
     target_compile_options(midigpt_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-# ── midigpt : pybind11 Python module ──────────────────────────────────────────
-pybind11_add_module(midigpt MODULE src/cpp/bindings/lib.cpp)
-target_link_libraries(midigpt PRIVATE midigpt_core)
+# ── _midigpt : pybind11 Python extension (internal name) ─────────────────────
+pybind11_add_module(_midigpt MODULE src/cpp/bindings/lib.cpp)
+target_link_libraries(_midigpt PRIVATE midigpt_core)
 
 if(NOT WIN32)
-    target_compile_options(midigpt PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(_midigpt PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-# Install the Python extension to the site-packages root so `import midigpt` works.
-install(TARGETS midigpt DESTINATION .)
+# Install the extension inside the midigpt/ package directory so that
+# `import midigpt` finds the package with __init__.py + _midigpt.so.
+install(TARGETS _midigpt DESTINATION midigpt)
+
+# ── post-build: assemble midigpt/ package in build tree for test imports ──────
+# After compilation, copy __init__.py next to the built _midigpt.so so that
+# pytest can do sys.path.insert(0, build_dir) + import midigpt without a full
+# pip install.
+add_custom_command(TARGET _midigpt POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "${CMAKE_BINARY_DIR}/midigpt"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/python/midigpt/__init__.py"
+        "${CMAKE_BINARY_DIR}/midigpt/__init__.py"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:_midigpt>"
+        "${CMAKE_BINARY_DIR}/midigpt/$<TARGET_FILE_NAME:_midigpt>"
+    COMMENT "Assembling midigpt Python package in build tree"
+)
 
 # ── midigpt_tracer : optional function-level instrumentation ──────────────────
 if(MIDIGPT_TRACE)
     add_library(midigpt_tracer STATIC src/trace.cpp)
-    target_link_libraries(midigpt PRIVATE midigpt_tracer)
-    target_compile_options(midigpt PRIVATE -finstrument-functions)
+    target_link_libraries(_midigpt PRIVATE midigpt_tracer)
+    target_compile_options(_midigpt PRIVATE -finstrument-functions)
 endif()

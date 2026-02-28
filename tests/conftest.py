@@ -9,11 +9,10 @@ Prerequisites before running:
     pytest tests/
 """
 
-import importlib
+import importlib.util
 import os
 import subprocess
 import sys
-import types
 from pathlib import Path
 
 import pytest
@@ -99,25 +98,57 @@ def build_dir(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def built_module(build_dir):
-    """Import the midigpt extension built in ``build_dir``.
+    """Import the midigpt package assembled in ``build_dir/midigpt/``.
 
-    The .so sits directly in the build directory.  We insert it into sys.path
-    so a plain ``import midigpt`` picks it up.
+    The CMake post-build step copies ``__init__.py`` and ``_midigpt.so``
+    into ``build_dir/midigpt/`` so pytest can exercise the freshly compiled
+    extension without a full ``pip install``.
+
+    We use ``importlib`` directly instead of a bare ``import`` so that any
+    editable-install hooks registered by a previously installed midigpt wheel
+    (e.g. scikit-build-core's ``_midigpt_editable.pth``) cannot intercept the
+    import and accidentally load the wrong shared library.
     """
-    build_str = str(build_dir)
-    if build_str not in sys.path:
-        sys.path.insert(0, build_str)
+    pkg_dir = build_dir / "midigpt"
+    pkg_init = pkg_dir / "__init__.py"
 
-    # Reload in case a stale version was imported earlier
-    if "midigpt" in sys.modules:
-        del sys.modules["midigpt"]
+    # Clear stale cached modules from any previous test session or editable install.
+    for mod_name in list(sys.modules):
+        if mod_name == "midigpt" or mod_name.startswith("midigpt."):
+            del sys.modules[mod_name]
+    sys.modules.pop("_midigpt", None)
+
+    so_files = list(pkg_dir.glob("_midigpt*.so")) if pkg_dir.exists() else []
+
+    if not pkg_init.exists():
+        pytest.fail(
+            f"__init__.py not found at {pkg_init}.\n"
+            "Check the CMake POST_BUILD copy command."
+        )
+    if not so_files:
+        pytest.fail(
+            f"No _midigpt*.so found in {pkg_dir}.\n"
+            f"build_dir contents: {list(build_dir.iterdir())}"
+        )
+
+    # Load via spec so the package's __path__ is correctly set to pkg_dir,
+    # allowing the relative import `from ._midigpt import *` inside __init__.py
+    # to find the freshly built extension .so.
+    spec = importlib.util.spec_from_file_location(
+        "midigpt",
+        str(pkg_init),
+        submodule_search_locations=[str(pkg_dir)],
+    )
+    _mod = importlib.util.module_from_spec(spec)
+    sys.modules["midigpt"] = _mod
 
     try:
-        import midigpt as _mod
-    except ImportError as exc:
+        spec.loader.exec_module(_mod)
+    except (ImportError, OSError) as exc:
+        del sys.modules["midigpt"]
         pytest.fail(
             f"Could not import midigpt from {build_dir}.\n"
-            f"  .so files present: {list(build_dir.glob('midigpt*.so'))}\n"
+            f"  _midigpt*.so files: {so_files}\n"
             f"  Error: {exc}"
         )
 

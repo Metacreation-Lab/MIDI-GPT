@@ -106,7 +106,7 @@ std::string json_bytes_to_string(py::bytes &json_bytes) {
 }
 
 
-PYBIND11_MODULE(midigpt,handle) {
+PYBIND11_MODULE(_midigpt,handle) {
 
   handle.def("select_random_segment", &select_random_segment_py);
   handle.def("status_from_piece", &util_protobuf::status_from_piece_py);
