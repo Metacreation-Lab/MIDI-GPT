@@ -137,18 +137,28 @@ class TestBuild:
         assert build_dir.exists()
 
     def test_extension_so_exists(self, build_dir):
-        """The pybind11 .so must be present after a successful build."""
-        so_files = list(build_dir.glob("midigpt*.so"))
+        """The pybind11 .so must be present inside build_dir/midigpt/ after build."""
+        pkg_dir = build_dir / "midigpt"
+        so_files = list(pkg_dir.glob("_midigpt*.so")) if pkg_dir.exists() else []
         assert so_files, (
-            f"No midigpt*.so found in {build_dir}.\n"
-            f"Contents: {list(build_dir.iterdir())}"
+            f"No _midigpt*.so found in {pkg_dir}.\n"
+            f"build_dir contents: {list(build_dir.iterdir())}"
         )
 
     def test_extension_so_is_not_empty(self, build_dir):
-        so_files = list(build_dir.glob("midigpt*.so"))
-        assert so_files, "No midigpt*.so (see test_extension_so_exists)"
+        pkg_dir = build_dir / "midigpt"
+        so_files = list(pkg_dir.glob("_midigpt*.so")) if pkg_dir.exists() else []
+        assert so_files, "No _midigpt*.so (see test_extension_so_exists)"
         size = so_files[0].stat().st_size
         assert size > 1024, f".so is suspiciously small: {size} bytes"
+
+    def test_package_init_exists(self, build_dir):
+        """The post-build step must copy __init__.py into build_dir/midigpt/."""
+        init_file = build_dir / "midigpt" / "__init__.py"
+        assert init_file.exists(), (
+            f"__init__.py not found at {init_file}.\n"
+            "Check the CMake POST_BUILD copy command in CMakeLists.txt."
+        )
 
     def test_core_static_lib_exists(self, build_dir):
         """midigpt_core must be built as a static library."""
