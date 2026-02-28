@@ -16,7 +16,15 @@ find_package(protobuf CONFIG QUIET)
 if(NOT protobuf_FOUND)
     # Fallback for systems where protobuf is installed without a config file
     # (e.g., some older Ubuntu/Debian packages).
-    find_package(Protobuf REQUIRED)
+    find_package(Protobuf QUIET)
+endif()
+if(NOT protobuf_FOUND AND NOT Protobuf_FOUND)
+    message(FATAL_ERROR
+        "protobuf not found.  Install the C++ development headers:\n"
+        "  macOS:   brew install abseil protobuf\n"
+        "  Debian:  apt install libprotobuf-dev protobuf-compiler libabsl-dev\n"
+        "  HPC:     module load abseil protobuf\n"
+        "Then re-run cmake.")
 endif()
 add_subdirectory(libraries/protobuf)   # → target: midigpt_proto
 

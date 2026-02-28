@@ -7,6 +7,8 @@ name = "midigpt"
 version = "0.1.0"
 description = "MIDI music generation — C++/Python hybrid (GPT-2 Transformer)"
 requires-python = ">=3.10"
+# torch is required for inference (sample_multi_step / get_notes).
+# Dataset creation and encoding work without it (build with MIDIGPT_NO_TORCH=ON).
 dependencies = [
     "torch>=2.5.1",
 ]
@@ -33,7 +35,12 @@ dataset = [
 
 [tool.scikit-build]
 cmake.build-type = "Release"
-# The pybind11 extension is the package itself; no pure Python wrapper is needed.
-# The .so is installed to site-packages root via `install(TARGETS midigpt DESTINATION .)`
-# in CMakeLists.txt — scikit-build-core picks it up automatically.
+# src/python/midigpt/__init__.py re-exports the C++ extension (_midigpt.so).
+# The extension itself is installed into the midigpt/ package directory via
+# `install(TARGETS _midigpt DESTINATION midigpt)` in CMakeLists.txt.
 wheel.packages = ["src/python/midigpt"]
+
+# System libraries required before `pip install`:
+#   macOS:  brew install cmake abseil protobuf
+#   Debian: apt install cmake libprotobuf-dev protobuf-compiler libabsl-dev
+#   HPC:    module load cmake protobuf abseil (cuda optional for inference)
