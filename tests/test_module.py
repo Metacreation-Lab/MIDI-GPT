@@ -362,19 +362,19 @@ class TestInstrumentHelpers:
 
 
 # ---------------------------------------------------------------------------
-# NO_TORCH guards
+# Torch inference API
 # ---------------------------------------------------------------------------
 
 
-class TestNoTorchGuards:
-    """Verify that Torch-dependent API is absent in a NO_TORCH build."""
+class TestTorchAPI:
+    """Verify that LibTorch-dependent inference functions are present."""
 
-    def test_sample_multi_step_absent(self, built_module):
-        assert not hasattr(built_module, "sample_multi_step"), (
-            "sample_multi_step should not be present in NO_TORCH builds"
+    def test_sample_multi_step_present(self, built_module):
+        assert hasattr(built_module, "sample_multi_step"), (
+            "sample_multi_step is missing — LibTorch may not have been linked"
         )
 
-    def test_get_notes_absent(self, built_module):
-        assert not hasattr(built_module, "get_notes"), (
-            "get_notes should not be present in NO_TORCH builds"
+    def test_get_notes_present(self, built_module):
+        assert hasattr(built_module, "get_notes"), (
+            "get_notes is missing — LibTorch may not have been linked"
         )
