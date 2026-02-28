@@ -1,0 +1,22 @@
+{
+  "config": {
+    "both_in_one": true,
+    "decode_final": false,
+    "decode_resolution": 1920,
+    "delta_resolution": 1920,
+    "do_multi_fill": false,
+    "resolution": 12,
+    "transpose": 0,
+    "unquantized": false,
+    "use_microtiming": true,
+    "use_velocity_levels": true
+  },
+  "max_token": 840,
+  "pretty_samples": {
+    "0": "TOKEN_PIECE_START = 0",
+    "1": "TOKEN_PIECE_START = 1",
+    "100": "TOKEN_INSTRUMENT = 67",
+    "50": "TOKEN_INSTRUMENT = 8"
+  },
+  "vocab_size": 840
+}
