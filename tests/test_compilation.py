@@ -5,17 +5,18 @@ and responds correctly to options.  They perform real cmake configure + build
 steps using a temporary build directory.
 
 Run:
-    module load protobuf
     pytest tests/test_compilation.py -v
+    (ensure cmake, protoc/protobuf headers, and torch are available first)
 """
 
+import importlib.machinery
 import os
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from conftest import ROOT, _cmake_binary, _run
+from conftest import ROOT, _EXT_SUFFIX, _cmake_binary, _run
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -137,20 +138,20 @@ class TestBuild:
         assert build_dir.exists()
 
     def test_extension_so_exists(self, build_dir):
-        """The pybind11 .so must be present inside build_dir/midigpt/ after build."""
+        """The pybind11 extension must be present inside build_dir/midigpt/ after build."""
         pkg_dir = build_dir / "midigpt"
-        so_files = list(pkg_dir.glob("_midigpt*.so")) if pkg_dir.exists() else []
+        so_files = list(pkg_dir.glob(f"_midigpt*{_EXT_SUFFIX}")) if pkg_dir.exists() else []
         assert so_files, (
-            f"No _midigpt*.so found in {pkg_dir}.\n"
+            f"No _midigpt*{_EXT_SUFFIX} found in {pkg_dir}.\n"
             f"build_dir contents: {list(build_dir.iterdir())}"
         )
 
     def test_extension_so_is_not_empty(self, build_dir):
         pkg_dir = build_dir / "midigpt"
-        so_files = list(pkg_dir.glob("_midigpt*.so")) if pkg_dir.exists() else []
-        assert so_files, "No _midigpt*.so (see test_extension_so_exists)"
+        so_files = list(pkg_dir.glob(f"_midigpt*{_EXT_SUFFIX}")) if pkg_dir.exists() else []
+        assert so_files, f"No _midigpt*{_EXT_SUFFIX} (see test_extension_so_exists)"
         size = so_files[0].stat().st_size
-        assert size > 1024, f".so is suspiciously small: {size} bytes"
+        assert size > 1024, f"Extension is suspiciously small: {size} bytes"
 
     def test_package_init_exists(self, build_dir):
         """The post-build step must copy __init__.py into build_dir/midigpt/."""

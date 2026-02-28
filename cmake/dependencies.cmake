@@ -23,6 +23,7 @@ if(NOT protobuf_FOUND AND NOT Protobuf_FOUND)
         "protobuf not found.  Install the C++ development headers:\n"
         "  macOS:   brew install abseil protobuf\n"
         "  Debian:  apt install libprotobuf-dev protobuf-compiler libabsl-dev\n"
+        "  Windows: vcpkg install protobuf abseil\n"
         "  HPC:     module load abseil protobuf\n"
         "Then re-run cmake.")
 endif()

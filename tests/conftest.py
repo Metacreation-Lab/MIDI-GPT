@@ -17,11 +17,16 @@ PyTorch must also be importable in the active Python environment:
     pip install torch
 """
 
+import importlib.machinery
 import importlib.util
 import os
 import subprocess
 import sys
 from pathlib import Path
+
+# Extension suffix for this interpreter: .cpython-311-x86_64-linux-gnu.so on
+# Linux/Mac, .cp311-win_amd64.pyd on Windows.
+_EXT_SUFFIX = importlib.machinery.EXTENSION_SUFFIXES[0]
 
 import pytest
 
@@ -136,7 +141,7 @@ def built_module(build_dir):
             del sys.modules[mod_name]
     sys.modules.pop("_midigpt", None)
 
-    so_files = list(pkg_dir.glob("_midigpt*.so")) if pkg_dir.exists() else []
+    so_files = list(pkg_dir.glob(f"_midigpt*{_EXT_SUFFIX}")) if pkg_dir.exists() else []
 
     if not pkg_init.exists():
         pytest.fail(
@@ -145,12 +150,12 @@ def built_module(build_dir):
         )
     if not so_files:
         pytest.fail(
-            f"No _midigpt*.so found in {pkg_dir}.\n"
+            f"No _midigpt*{_EXT_SUFFIX} found in {pkg_dir}.\n"
             f"build_dir contents: {list(build_dir.iterdir())}"
         )
 
-    # Import torch first so libtorch.so is mapped into the process before
-    # _midigpt.so is dlopen-ed.
+    # Import torch first so its shared libraries are mapped into the process
+    # before _midigpt is loaded (dlopen on Linux/Mac, LoadLibrary on Windows).
     import torch  # noqa: F401
 
     # Pre-register the extension .so from the build dir under both its
@@ -190,7 +195,7 @@ def built_module(build_dir):
         del sys.modules["midigpt"]
         pytest.fail(
             f"Could not import midigpt from {build_dir}.\n"
-            f"  _midigpt*.so files: {so_files}\n"
+            f"  extension files: {so_files}\n"
             f"  Error: {exc}"
         )
 
