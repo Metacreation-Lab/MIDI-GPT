@@ -77,7 +77,7 @@ CMakeLists_CPP.txt
 !python_experiment_scripts/onset_polyphony_v_original_test_poly.json
 
 # pycache folders
-*/__pycache__/*
+**/__pycache__/**
 
 #training outputs
 */checkpoints/*
