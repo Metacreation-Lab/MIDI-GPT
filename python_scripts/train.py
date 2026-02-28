@@ -62,7 +62,7 @@ if __name__ == "__main__":
   parser.add_argument("--ckpt", type=str, default="")
   parser.add_argument("--ckpt_num", type=int, default=5000)
   parser.add_argument("--output", type=str, default="")
-  parser.add_argument("--log", type=str, default="")
+  parser.add_argument("--log_dir", type=str, default="")
 
   parser.add_argument("--test_only", action="store_true")
   parser.add_argument("--memory_metrics", action="store_true")
@@ -125,7 +125,7 @@ if __name__ == "__main__":
   print("MODEL CONFIG : " + json.dumps(json.load(open(args.config,"r")),indent=4))
   print("ENCODER CONFIG : " + json.dumps(encoder.config.ToJson(),indent=4))
 
-  logging_dir = os.path.join(args.log, "{}".format(name))
+  logging_dir = os.path.join(args.log_dir, "{}".format(name))
   output_dir = os.path.join(args.output, "checkpoints/{}".format(name))
 
   print("LOGGING PATH : " + logging_dir)

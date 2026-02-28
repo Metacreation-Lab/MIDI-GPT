@@ -56,7 +56,7 @@ COMMON_ARGS=(
     --num_bars    "$NUM_BARS"
     --label       "$LABEL"
     --output      "$OUTPUT_DIR"
-    --log         "$LOG_DIR"
+    --log_dir     "$LOG_DIR"
 )
 
 # Optional: checkpoint resume
