@@ -3,10 +3,18 @@
 The ``build_dir`` and ``built_module`` fixtures perform a real CMake configure
 + build cycle (with LibTorch) so the full inference API is available.
 
-Prerequisites before running:
-    module load StdEnv/2023 python/3.11.5 gcc/12.3 cmake protobuf/24.4 abseil cuda/12.6
-    source /scratch/triana24/.venvs/midigpt/bin/activate
-    pytest tests/
+System prerequisites (must be on PATH before running):
+  - cmake >= 3.21
+  - protoc + libprotobuf-dev headers
+  - abseil headers
+  - a C++20 compiler (gcc >= 10, clang >= 12, Apple Clang >= 13)
+
+Install on macOS:     brew install cmake abseil protobuf
+Install on Debian:    apt install cmake libprotobuf-dev protobuf-compiler libabsl-dev
+Install on HPC:       module load cmake protobuf abseil (+ cuda if available)
+
+PyTorch must also be importable in the active Python environment:
+    pip install torch
 """
 
 import importlib.util
@@ -75,7 +83,7 @@ def build_dir(tmp_path_factory):
         import torch  # noqa: F401
     except (ImportError, OSError):
         pytest.skip(
-            "torch not importable — load cuda module and activate venv first"
+            "torch not importable — install it with: pip install torch"
         )
 
     bdir = tmp_path_factory.mktemp("build")
