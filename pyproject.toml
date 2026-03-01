@@ -43,6 +43,11 @@ cmake.build-type = "Release"
 # `install(TARGETS _midigpt DESTINATION midigpt)` in CMakeLists.txt.
 wheel.packages = ["src/python/midigpt"]
 
+[tool.pytest.ini_options]
+markers = [
+    "benchmark: speed benchmarks (deselect with '-m \"not benchmark\"')",
+]
+
 # System libraries required before `pip install`:
 #   macOS:  brew install cmake abseil protobuf
 #   Debian: apt install cmake libprotobuf-dev protobuf-compiler libabsl-dev

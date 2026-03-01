@@ -19,6 +19,7 @@ libtorch/
 libtorch_cpu/
 #pybind11/
 build/
+build_symusic/
 python_lib/
 CMakeFiles/
 CMakeScripts/
