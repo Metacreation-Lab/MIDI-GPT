@@ -48,7 +48,7 @@ class CustomDataset:
     self.current = 0
   
   def _get_batch(self):
-    input_ids, mask = self.dataloader.read_batch_v2(
+    input_ids, mask = self.dataloader.read_batch(
       self.batch_size, self.split_id, self.encoder_mode, self.tc)
     input_ids = np.array(input_ids)
     mask = np.array(mask)
