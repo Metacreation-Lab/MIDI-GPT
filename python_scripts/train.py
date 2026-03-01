@@ -20,7 +20,6 @@ from losses import sim_metric_loss, standard_loss
 from custom_models import *
 from train_dataset import *
 from transformers import Trainer, TrainingArguments
-from callbacks import MemoryUsageCallback, ProfilerCallback
 
 if __name__ == "__main__":
 
@@ -113,11 +112,15 @@ if __name__ == "__main__":
     args.dataset = dataset_path
 
   # setup datasets
+  # CustomDataset is a batch-yielding iterable (not a torch Dataset), so we
+  # monkey-patch Trainer's dataloader methods to return it directly and bypass
+  # the default DataLoader wrapping. compute_loss is also overridden to use
+  # our custom loss function.
   train_dataset = dataset_cls(split_id=0, is_training=True, **vars(args))
   eval_dataset = dataset_cls(split_id=2, is_training=False, overload_batches_per_epoch=1, **vars(args))
-  Trainer.get_train_dataloader = lambda *_args,**_kwargs: train_dataset
-  Trainer.get_eval_dataloader = lambda  *_args,**_kwargs: eval_dataset
-  Trainer.compute_loss = loss_fn
+  Trainer.get_train_dataloader = lambda *_args, **_kwargs: train_dataset
+  Trainer.get_eval_dataloader = lambda *_args, **_kwargs: eval_dataset
+  #Trainer.compute_loss = loss_fn
 
   print("MODEL NAME : " + name)
   print("VOCAB SIZE : " + str(vocab_size))
@@ -183,10 +186,11 @@ if __name__ == "__main__":
   
   training_args = TrainingArguments(
     logging_dir=logging_dir,
-    report_to="tensorboard",
+    report_to=["tensorboard"],
+    disable_tqdm=True,
     output_dir=output_dir,
-    overwrite_output_dir=bool(args.overwrite),
     num_train_epochs=(500000/args.batches_per_epoch)*args.accum_steps,
+    logging_strategy="steps",
     logging_steps=args.log_steps,
     save_steps=args.save_steps,
     save_total_limit=None,
@@ -194,28 +198,20 @@ if __name__ == "__main__":
     gradient_accumulation_steps=args.accum_steps,
     per_device_train_batch_size=args.batch_size//args.ngpu//args.accum_steps,
     per_device_eval_batch_size=args.batch_size//args.ngpu//args.accum_steps,
-    evaluation_strategy="epoch",
+    eval_strategy="epoch",
     prediction_loss_only=True,
     skip_memory_metrics=True
   )
 
-  # For custom memory metrics, don't work and multiply by 100 training time!!!
-  if args.memory_metrics:
-    callbacks = [MemoryUsageCallback, ProfilerCallback]
-  else:
-    callbacks = []
+  callbacks = []
 
   trainer = Trainer(
     model=model,
     args=training_args,
-    data_collator=None,
-    train_dataset=None,
-    eval_dataset=None,
+    train_dataset=train_dataset,
+    eval_dataset=eval_dataset,
     callbacks=callbacks
   )
-
-  trainer.train_dataset = train_dataset
-  trainer.eval_dataset = eval_dataset
 
   if not args.test_only:
     trainer.train(ckpt_path)

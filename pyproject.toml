@@ -11,11 +11,14 @@ requires-python = ">=3.10"
 # Dataset creation and encoding work without it (build with MIDIGPT_NO_TORCH=ON).
 dependencies = [
     "torch>=2.5.1",
+    "torchvision",
+    "torchaudio" 
 ]
 
 [project.optional-dependencies]
 train = [
     "transformers>=4.40.0",
+    "accelerate>=1.1.0",
     "numpy>=1.26",
     "tqdm>=4.66",
     "tensorboard>=2.15",
