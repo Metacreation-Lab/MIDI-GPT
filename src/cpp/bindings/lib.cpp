@@ -29,7 +29,9 @@ namespace py = pybind11;
 #include "dataset_creation/dataset_manipulation/bytes_to_file.h"
 // midi.pb.h is found via the midigpt_proto target's exported include directory
 #include "midi.pb.h"
+#ifndef MIDIGPT_USE_SYMUSIC
 #include "MidiFile.h"
+#endif
 #include "common/data_structures/train_config.h"
 #include "lib_encoder.h"
 
