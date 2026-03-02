@@ -3,6 +3,7 @@
 #include <ATen/core/ivalue.h>
 #include <torch/script.h>
 #include <torch/nn/functional/activation.h>
+#include <torch/cuda.h>
 
 #include <iostream>
 #include <string>
@@ -17,16 +18,34 @@
 
 namespace sampling {
 
+  // Determine the device for inference.  TorchScript tracing bakes device
+  // literals into the graph, so the model must run on the same device it was
+  // traced on.  The traced device is stored in ModelMetadata.traced_device.
+  inline torch::Device device_for_metadata(const midi::ModelMetadata &meta) {
+    if (meta.traced_device() == "cuda" && torch::cuda::is_available()) {
+      data_structures::LOGGER("Using CUDA device (model traced on cuda)");
+      return torch::Device(torch::kCUDA, 0);
+    }
+    if (meta.traced_device() == "cuda" && !torch::cuda::is_available()) {
+      data_structures::LOGGER("WARNING: model traced on cuda but CUDA not available, falling back to CPU");
+    }
+    data_structures::LOGGER("Using CPU device");
+    return torch::Device(torch::kCPU);
+  }
+
   class ModelMeta {
   public:
     torch::jit::Module model;
     midi::ModelMetadata meta;
+    torch::Device device = torch::kCPU;
   };
 
   static const int NUM_LAYERS = 6;
 
-  void load_checkpoint(const std::string &ckpt_path, const std::unique_ptr<ModelMeta> &m) { 
+  void load_checkpoint(const std::string &ckpt_path, const std::unique_ptr<ModelMeta> &m) {
     try {
+      // First load metadata to determine the traced device, then reload
+      // the model on the correct device.
       std::unordered_map<std::string, std::string> loaded_extra_files;
       loaded_extra_files["metadata.json"] = "";
       m->model = torch::jit::load(ckpt_path, torch::kCPU, loaded_extra_files);
@@ -34,6 +53,11 @@ namespace sampling {
         throw std::runtime_error("ERROR LOADING MODEL : MODEL CONTAINS NO METADATA!");
       }
       util_protobuf::string_to_protobuf(loaded_extra_files["metadata.json"], &m->meta);
+      m->device = device_for_metadata(m->meta);
+      if (m->device != torch::kCPU) {
+        // Reload on the target device so all weights + constants match
+        m->model = torch::jit::load(ckpt_path, m->device);
+      }
       data_structures::LOGGER( "MODEL METADATA :" );
     }
     catch (const c10::Error& e) {
@@ -69,6 +93,9 @@ namespace sampling {
       {torch::indexing::Slice(),-1,torch::indexing::Slice()});
     past_key_values = outputs->elements()[1];
 
+    // Move logits to CPU for masking (data_ptr access requires CPU)
+    torch::Device logits_device = logits.device();
+    logits = logits.to(torch::kCPU);
 
     // get logits for first in batch
     std::vector<std::vector<int>> masks_copy;
@@ -98,9 +125,6 @@ namespace sampling {
       }
       std::set<std::string> s( unmasked_types.begin(), unmasked_types.end() );
       unmasked_types.assign( s.begin(), s.end() );
-      for (auto strr : unmasked_types) {
-        std::cout << "NOT MASKED: " << strr << std::endl;
-      }
 
       if (param->mask_top_k() > 0) {
 
@@ -134,6 +158,8 @@ namespace sampling {
       torch::manual_seed(param->sampling_seed());
     }
 
+    // Move logits back to model device for softmax + sampling
+    logits = logits.to(logits_device);
     float temperature = param->temperature();
     auto probs = (logits / temperature).softmax(1);
     auto next_tokens = probs.multinomial(1);
@@ -160,12 +186,13 @@ namespace sampling {
     }
   }
 
-  void make_state(std::vector<torch::jit::IValue> *state, int batch_size, midi::ModelMetadata *meta) {
+  void make_state(std::vector<torch::jit::IValue> *state, int batch_size, midi::ModelMetadata *meta, torch::Device device) {
       data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, "make_state" );
+    auto opts = torch::TensorOptions().device(device);
     for (int i=0; i<meta->num_layers(); i++) {
       std::vector<torch::jit::IValue> tuple;
       for (int j=0; j<2; j++) {
-        tuple.push_back( torch::zeros({batch_size, meta->num_heads(), 0, meta->num_hidden()}) );
+        tuple.push_back( torch::zeros({batch_size, meta->num_heads(), 0, meta->num_hidden()}, opts) );
       }
       state->push_back( torch::ivalue::Tuple::create(tuple) );
     }
@@ -179,16 +206,12 @@ namespace sampling {
     for (int i=0; i<param->batch_size(); i++) {
       scon.push_back( std::make_unique<SAMPLE_CONTROL>(piece, status, param, &mm->meta) );
     }
-    for (auto &sc : scon) {
-      data_structures::LOGGER("REG GRAPH" );
-      sc->rg->graph.print_graphviz();
-    }
     std::vector<int> prompt = scon[0]->prompt;
     std::vector<torch::jit::IValue> inputs;
     std::vector<std::vector<int>> seqs = std::vector<std::vector<int>>(param->batch_size(), prompt);
     scon[0]->rep->show(prompt);
 
-    auto opts = torch::TensorOptions().dtype(torch::kInt64);
+    auto opts = torch::TensorOptions().dtype(torch::kInt64).device(mm->device);
     torch::Tensor x = torch::zeros({param->batch_size(), (int)prompt.size()}, opts);
     for (int k=0; k<param->batch_size(); k++) {
       for (int i=0; i<(int)prompt.size(); i++) {
@@ -198,7 +221,7 @@ namespace sampling {
     inputs.push_back( x );
     std::vector<torch::jit::IValue> state;
     if ((param) && (mm->meta.new_state())) {
-        make_state(&state, param->batch_size(), &mm->meta);
+        make_state(&state, param->batch_size(), &mm->meta, mm->device);
     }
     inputs.push_back(torch::ivalue::Tuple::create(state));
 

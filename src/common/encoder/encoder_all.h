@@ -67,9 +67,7 @@ public:
   ~ExpressiveEncoder() {}
 
   void preprocess_piece(midi::Piece *p) {
-    util_protobuf::calculate_note_durations(p);
-    util_protobuf::update_av_polyphony_and_note_duration(p);
-    util_protobuf::update_note_density(p);
+    util_protobuf::preprocess_tracks(p);
   }
 
   void set_scheme(int res, int delta_res, int delta_vocab_size, int abs_pos_vocab_size) {

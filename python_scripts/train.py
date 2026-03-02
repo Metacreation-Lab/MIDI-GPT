@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
   parser.add_argument("--expressive", action="store_true")
   parser.add_argument("--num_bars", type=int, default=4)
-  parser.add_argument("--min_tracks", type=int, default=2)
+  parser.add_argument("--min_tracks", type=int, default=1)
   parser.add_argument("--max_tracks", type=int, default=12)
   parser.add_argument("--max_seq_len", type=int, default=2048)
   parser.add_argument("--no_max_length", type=int, default=0)
@@ -46,7 +46,7 @@ if __name__ == "__main__":
   parser.add_argument("--accum_steps", type=int, default=1)
   parser.add_argument("--batch_size", type=int, default=32)
   parser.add_argument("--batches_per_epoch", type=int, default=1000)
-  parser.add_argument("--lr", type=float, default=1e-4)
+  parser.add_argument("--lr", type=float, default=1e-3)
 
   parser.add_argument("--overwrite", type=int, default=1)
   parser.add_argument("--save_steps", type=int, default=5000)
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     report_to=["tensorboard"],
     disable_tqdm=True,
     output_dir=output_dir,
-    num_train_epochs=(500000/args.batches_per_epoch)*args.accum_steps,
+    num_train_epochs=(100000/args.batches_per_epoch)*args.accum_steps,
     logging_strategy="steps",
     logging_steps=args.log_steps,
     save_steps=args.save_steps,

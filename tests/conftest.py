@@ -200,3 +200,60 @@ def built_module(build_dir):
         )
 
     return _mod
+
+
+# ── inference fixtures ────────────────────────────────────────────────────────
+
+
+@pytest.fixture(scope="session")
+def ckpt_path():
+    """Resolve a TorchScript checkpoint for inference tests.
+
+    Reads from MIDIGPT_CKPT env var.  Skips if unset or file missing.
+    """
+    path = os.environ.get("MIDIGPT_CKPT", "")
+    if not path:
+        pytest.skip("MIDIGPT_CKPT env var not set — skipping inference tests")
+    if not os.path.isfile(path):
+        pytest.skip(f"Checkpoint not found: {path}")
+    return path
+
+
+@pytest.fixture(scope="session")
+def sample_piece_json():
+    """Load a test MIDI file into a JSON string via ExpressiveEncoder."""
+    import json
+
+    try:
+        import midigpt
+    except ImportError:
+        pytest.skip("midigpt not installed")
+
+    midi_dir = ROOT / "tests" / "midi_files" / "singletrack"
+    midi_files = sorted(midi_dir.glob("*.mid"))
+    if not midi_files:
+        midi_dir = ROOT / "tests" / "midi_files"
+        midi_files = sorted(midi_dir.glob("**/*.mid"))
+    if not midi_files:
+        pytest.skip("No test MIDI files found")
+
+    enc = midigpt.ExpressiveEncoder()
+    for k, v in {
+        "both_in_one": True, "unquantized": False, "do_multi_fill": False,
+        "use_velocity_levels": True, "use_microtiming": True, "transpose": 0,
+        "resolution": 12, "decode_resolution": 1920, "decode_final": False,
+        "delta_resolution": 1920,
+    }.items():
+        setattr(enc.config, k, v)
+
+    # Try files until one parses successfully
+    for mf in midi_files:
+        try:
+            piece_json = enc.midi_to_json(str(mf))
+            piece = json.loads(piece_json)
+            if piece.get("tracks") and len(piece["tracks"][0].get("bars", [])) >= 3:
+                return piece_json
+        except Exception:
+            continue
+
+    pytest.skip("No suitable test MIDI file found (need >= 3 bars)")

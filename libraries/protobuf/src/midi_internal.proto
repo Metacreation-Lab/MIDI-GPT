@@ -111,6 +111,7 @@ message ModelMetadata {
   optional int32 num_hidden = 4;
   optional int32 model_dim = 5;
   optional bool new_state = 6;
+  optional string traced_device = 7;  // "cpu" or "cuda"
 }
 
 message GenreData {

@@ -299,7 +299,7 @@ public:
       }
       catch (const std::exception &exc)
       {
-        std::cerr << exc.what() << std::endl;
+        //std::cerr << exc.what() << std::endl;
       }
     }
     batch.pad(0);

@@ -227,7 +227,7 @@
       },
       {
         "delta": -70,
-        "internalDuration": 15,
+        "internalDuration": 1,
         "pitch": 58,
         "time": 18,
         "velocity": 72
@@ -1011,7 +1011,7 @@
       },
       {
         "delta": 70,
-        "internalDuration": 202,
+        "internalDuration": 5,
         "pitch": 81,
         "time": 39,
         "velocity": 73
@@ -3524,7 +3524,7 @@
       },
       {
         "delta": 75,
-        "internalDuration": 102,
+        "internalDuration": 3,
         "pitch": 60,
         "time": 29,
         "velocity": 70
@@ -4175,7 +4175,7 @@
       },
       {
         "delta": 15,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 60,
         "time": 9,
         "velocity": 51
@@ -4805,7 +4805,7 @@
       },
       {
         "delta": 45,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 60,
         "time": 11,
         "velocity": 76
@@ -5421,7 +5421,7 @@
       },
       {
         "delta": 55,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 60,
         "time": 13,
         "velocity": 78
@@ -8137,7 +8137,7 @@
       },
       {
         "delta": -70,
-        "internalDuration": 726,
+        "internalDuration": 5,
         "pitch": 78,
         "time": 47,
         "velocity": 76
@@ -9194,7 +9194,7 @@
       },
       {
         "delta": -60,
-        "internalDuration": 82,
+        "internalDuration": 1,
         "pitch": 64,
         "time": 27,
         "velocity": 78
@@ -9698,7 +9698,7 @@
       },
       {
         "delta": 15,
-        "internalDuration": 310,
+        "internalDuration": 2,
         "pitch": 77,
         "time": 38,
         "velocity": 94
@@ -10426,7 +10426,7 @@
       },
       {
         "delta": -10,
-        "internalDuration": 38,
+        "internalDuration": 1,
         "pitch": 69,
         "time": 6,
         "velocity": 66
@@ -10496,7 +10496,7 @@
       },
       {
         "delta": -25,
-        "internalDuration": 29,
+        "internalDuration": 1,
         "pitch": 65,
         "time": 15,
         "velocity": 65
@@ -10552,7 +10552,7 @@
       },
       {
         "delta": 35,
-        "internalDuration": 76,
+        "internalDuration": 1,
         "pitch": 62,
         "time": 24,
         "velocity": 68
@@ -10594,7 +10594,7 @@
       },
       {
         "delta": 25,
-        "internalDuration": 19,
+        "internalDuration": 9,
         "pitch": 67,
         "time": 34,
         "velocity": 78
@@ -10797,14 +10797,14 @@
       },
       {
         "delta": 15,
-        "internalDuration": 15,
+        "internalDuration": 10,
         "pitch": 57,
         "time": 19,
         "velocity": 78
       },
       {
         "delta": -30,
-        "internalDuration": 15,
+        "internalDuration": 10,
         "pitch": 60,
         "time": 19,
         "velocity": 70
@@ -11091,7 +11091,7 @@
       },
       {
         "delta": 70,
-        "internalDuration": 38,
+        "internalDuration": 1,
         "pitch": 69,
         "time": 22,
         "velocity": 61
@@ -11322,7 +11322,7 @@
       },
       {
         "delta": -40,
-        "internalDuration": 19,
+        "internalDuration": 1,
         "pitch": 65,
         "time": 12,
         "velocity": 71
@@ -11364,7 +11364,7 @@
       },
       {
         "delta": 40,
-        "internalDuration": 24,
+        "internalDuration": 10,
         "pitch": 64,
         "time": 16,
         "velocity": 89
@@ -11917,7 +11917,7 @@
       },
       {
         "delta": -55,
-        "internalDuration": 24,
+        "internalDuration": 1,
         "pitch": 69,
         "time": 3,
         "velocity": 77
@@ -12288,7 +12288,7 @@
       },
       {
         "delta": 55,
-        "internalDuration": 105,
+        "internalDuration": 2,
         "pitch": 74,
         "time": 7,
         "velocity": 84
@@ -12379,7 +12379,7 @@
       },
       {
         "delta": -40,
-        "internalDuration": 22,
+        "internalDuration": 16,
         "pitch": 46,
         "time": 16,
         "velocity": 93
@@ -13023,7 +13023,7 @@
       },
       {
         "delta": -5,
-        "internalDuration": 18,
+        "internalDuration": 1,
         "pitch": 71,
         "time": 22,
         "velocity": 32
@@ -13352,7 +13352,7 @@
       },
       {
         "delta": 40,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 48,
         "time": 0,
         "velocity": 79
@@ -14332,7 +14332,7 @@
       },
       {
         "delta": -75,
-        "internalDuration": 18,
+        "internalDuration": 1,
         "pitch": 52,
         "time": 10,
         "velocity": 67
@@ -17853,7 +17853,7 @@
       },
       {
         "delta": 55,
-        "internalDuration": 94,
+        "internalDuration": 8,
         "pitch": 36,
         "time": 35,
         "velocity": 95
@@ -18322,7 +18322,7 @@
       },
       {
         "delta": -25,
-        "internalDuration": 46,
+        "internalDuration": 8,
         "pitch": 55,
         "time": 44,
         "velocity": 102
@@ -18399,7 +18399,7 @@
       },
       {
         "delta": 60,
-        "internalDuration": 7,
+        "internalDuration": 2,
         "pitch": 65,
         "time": 9,
         "velocity": 95
@@ -19764,7 +19764,7 @@
       },
       {
         "delta": -5,
-        "internalDuration": 124,
+        "internalDuration": 1,
         "pitch": 55,
         "time": 35,
         "velocity": 81
@@ -19799,14 +19799,14 @@
       },
       {
         "delta": 70,
-        "internalDuration": 87,
+        "internalDuration": 8,
         "pitch": 45,
         "time": 40,
         "velocity": 96
       },
       {
         "delta": 45,
-        "internalDuration": 87,
+        "internalDuration": 8,
         "pitch": 57,
         "time": 40,
         "velocity": 95
@@ -19932,7 +19932,7 @@
       },
       {
         "delta": -40,
-        "internalDuration": 9,
+        "internalDuration": 1,
         "pitch": 62,
         "time": 27,
         "velocity": 87
@@ -20016,7 +20016,7 @@
       },
       {
         "delta": -65,
-        "internalDuration": 9,
+        "internalDuration": 1,
         "pitch": 50,
         "time": 36,
         "velocity": 76
@@ -20261,7 +20261,7 @@
       },
       {
         "delta": -30,
-        "internalDuration": 6,
+        "internalDuration": 1,
         "pitch": 46,
         "time": 26,
         "velocity": 89
@@ -23698,7 +23698,7 @@
       },
       {
         "delta": -10,
-        "internalDuration": 33,
+        "internalDuration": 9,
         "pitch": 55,
         "time": 44,
         "velocity": 98
@@ -23880,7 +23880,7 @@
       },
       {
         "delta": -35,
-        "internalDuration": 9,
+        "internalDuration": 1,
         "pitch": 62,
         "time": 33,
         "velocity": 89
@@ -24741,7 +24741,7 @@
       },
       {
         "delta": -20,
-        "internalDuration": 149,
+        "internalDuration": 1,
         "pitch": 68,
         "time": 41,
         "velocity": 98
@@ -26323,7 +26323,7 @@
       },
       {
         "delta": -15,
-        "internalDuration": 1590,
+        "internalDuration": 2,
         "pitch": 71,
         "time": 29,
         "velocity": 77
@@ -27471,7 +27471,7 @@
       },
       {
         "delta": 50,
-        "internalDuration": 35,
+        "internalDuration": 1,
         "pitch": 70,
         "time": 2,
         "velocity": 82
@@ -27863,7 +27863,7 @@
       },
       {
         "delta": 55,
-        "internalDuration": 25,
+        "internalDuration": 2,
         "pitch": 70,
         "time": 2,
         "velocity": 64
@@ -34086,7 +34086,7 @@
       },
       {
         "delta": 15,
-        "internalDuration": 218,
+        "internalDuration": 4,
         "pitch": 67,
         "time": 12,
         "velocity": 66
@@ -37075,7 +37075,7 @@
       },
       {
         "delta": -80,
-        "internalDuration": 34,
+        "internalDuration": 2,
         "pitch": 65,
         "time": 41,
         "velocity": 75
@@ -37509,7 +37509,7 @@
       },
       {
         "delta": 0,
-        "internalDuration": 14,
+        "internalDuration": 2,
         "pitch": 46,
         "time": 3,
         "velocity": 69
@@ -38468,7 +38468,7 @@
       },
       {
         "delta": -60,
-        "internalDuration": 272,
+        "internalDuration": 11,
         "pitch": 71,
         "time": 15,
         "velocity": 49
@@ -38762,7 +38762,7 @@
       },
       {
         "delta": -60,
-        "internalDuration": 1369,
+        "internalDuration": 9,
         "pitch": 48,
         "time": 47,
         "velocity": 52
@@ -39063,7 +39063,7 @@
       },
       {
         "delta": -20,
-        "internalDuration": 56,
+        "internalDuration": 1,
         "pitch": 57,
         "time": 44,
         "velocity": 44
@@ -39231,7 +39231,7 @@
       },
       {
         "delta": -40,
-        "internalDuration": 4,
+        "internalDuration": 1,
         "pitch": 60,
         "time": 10,
         "velocity": 56
@@ -39595,7 +39595,7 @@
       },
       {
         "delta": 25,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 53,
         "time": 38,
         "velocity": 77
@@ -40127,7 +40127,7 @@
       },
       {
         "delta": 65,
-        "internalDuration": 5,
+        "internalDuration": 2,
         "pitch": 72,
         "time": 32,
         "velocity": 67
@@ -40155,7 +40155,7 @@
       },
       {
         "delta": 60,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 65,
         "time": 34,
         "velocity": 73
@@ -40267,7 +40267,7 @@
       },
       {
         "delta": -30,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 65,
         "time": 43,
         "velocity": 74
@@ -40435,7 +40435,7 @@
       },
       {
         "delta": 20,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 65,
         "time": 8,
         "velocity": 76
@@ -40771,7 +40771,7 @@
       },
       {
         "delta": 35,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 65,
         "time": 34,
         "velocity": 64
@@ -42731,7 +42731,7 @@
       },
       {
         "delta": -65,
-        "internalDuration": 228,
+        "internalDuration": 1,
         "pitch": 65,
         "time": 27,
         "velocity": 70
@@ -43151,7 +43151,7 @@
       },
       {
         "delta": 25,
-        "internalDuration": 650,
+        "internalDuration": 10,
         "pitch": 83,
         "time": 35,
         "velocity": 69
@@ -44208,7 +44208,7 @@
       },
       {
         "delta": 35,
-        "internalDuration": 82,
+        "internalDuration": 2,
         "pitch": 69,
         "time": 14,
         "velocity": 72
@@ -44481,7 +44481,7 @@
       },
       {
         "delta": -45,
-        "internalDuration": 40,
+        "internalDuration": 4,
         "pitch": 62,
         "time": 33,
         "velocity": 75
@@ -44495,7 +44495,7 @@
       },
       {
         "delta": -50,
-        "internalDuration": 40,
+        "internalDuration": 2,
         "pitch": 74,
         "time": 33,
         "velocity": 77
@@ -44950,7 +44950,7 @@
       },
       {
         "delta": 65,
-        "internalDuration": 140,
+        "internalDuration": 7,
         "pitch": 63,
         "time": 10,
         "velocity": 63
@@ -45419,14 +45419,14 @@
       },
       {
         "delta": 15,
-        "internalDuration": 10,
+        "internalDuration": 7,
         "pitch": 74,
         "time": 26,
         "velocity": 86
       },
       {
         "delta": -70,
-        "internalDuration": 9,
+        "internalDuration": 4,
         "pitch": 70,
         "time": 27,
         "velocity": 70
@@ -45468,7 +45468,7 @@
       },
       {
         "delta": 60,
-        "internalDuration": 38,
+        "internalDuration": 1,
         "pitch": 62,
         "time": 35,
         "velocity": 59
@@ -45545,7 +45545,7 @@
       },
       {
         "delta": 45,
-        "internalDuration": 10,
+        "internalDuration": 1,
         "pitch": 67,
         "time": 44,
         "velocity": 63
@@ -45769,7 +45769,7 @@
       },
       {
         "delta": 75,
-        "internalDuration": 10,
+        "internalDuration": 1,
         "pitch": 69,
         "time": 33,
         "velocity": 57
@@ -45797,7 +45797,7 @@
       },
       {
         "delta": 65,
-        "internalDuration": 208,
+        "internalDuration": 1,
         "pitch": 53,
         "time": 38,
         "velocity": 74
@@ -45874,7 +45874,7 @@
       },
       {
         "delta": -75,
-        "internalDuration": 9,
+        "internalDuration": 5,
         "pitch": 74,
         "time": 5,
         "velocity": 84
@@ -45993,7 +45993,7 @@
       },
       {
         "delta": 70,
-        "internalDuration": 29,
+        "internalDuration": 1,
         "pitch": 74,
         "time": 22,
         "velocity": 70
@@ -46007,7 +46007,7 @@
       },
       {
         "delta": -75,
-        "internalDuration": 9,
+        "internalDuration": 1,
         "pitch": 70,
         "time": 23,
         "velocity": 68
@@ -46140,7 +46140,7 @@
       },
       {
         "delta": 55,
-        "internalDuration": 65,
+        "internalDuration": 1,
         "pitch": 77,
         "time": 2,
         "velocity": 75
@@ -46371,7 +46371,7 @@
       },
       {
         "delta": -5,
-        "internalDuration": 42,
+        "internalDuration": 1,
         "pitch": 74,
         "time": 39,
         "velocity": 77
@@ -46420,7 +46420,7 @@
       },
       {
         "delta": 0,
-        "internalDuration": 23,
+        "internalDuration": 7,
         "pitch": 69,
         "time": 44,
         "velocity": 88
@@ -47582,7 +47582,7 @@
       },
       {
         "delta": 50,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 60,
         "time": 12,
         "velocity": 87
@@ -48086,7 +48086,7 @@
       },
       {
         "delta": 15,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 53,
         "time": 5,
         "velocity": 84
@@ -48233,7 +48233,7 @@
       },
       {
         "delta": 60,
-        "internalDuration": 33,
+        "internalDuration": 2,
         "pitch": 76,
         "time": 16,
         "velocity": 84
@@ -49857,7 +49857,7 @@
       },
       {
         "delta": 60,
-        "internalDuration": 367,
+        "internalDuration": 9,
         "pitch": 45,
         "time": 1,
         "velocity": 79
@@ -51138,7 +51138,7 @@
       },
       {
         "delta": -35,
-        "internalDuration": 217,
+        "internalDuration": 5,
         "pitch": 57,
         "time": 7,
         "velocity": 66
@@ -52608,7 +52608,7 @@
       },
       {
         "delta": -60,
-        "internalDuration": 64,
+        "internalDuration": 1,
         "pitch": 69,
         "time": 16,
         "velocity": 58
@@ -52762,7 +52762,7 @@
       },
       {
         "delta": -45,
-        "internalDuration": 50,
+        "internalDuration": 6,
         "pitch": 50,
         "time": 43,
         "velocity": 95
@@ -52776,7 +52776,7 @@
       },
       {
         "delta": -65,
-        "internalDuration": 50,
+        "internalDuration": 5,
         "pitch": 74,
         "time": 43,
         "velocity": 98
@@ -52888,7 +52888,7 @@
       },
       {
         "delta": -80,
-        "internalDuration": 92,
+        "internalDuration": 7,
         "pitch": 65,
         "time": 14,
         "velocity": 95
@@ -53042,7 +53042,7 @@
       },
       {
         "delta": -45,
-        "internalDuration": 47,
+        "internalDuration": 1,
         "pitch": 58,
         "time": 36,
         "velocity": 94
@@ -53098,7 +53098,7 @@
       },
       {
         "delta": 10,
-        "internalDuration": 6,
+        "internalDuration": 1,
         "pitch": 60,
         "time": 40,
         "velocity": 93
@@ -53217,7 +53217,7 @@
       },
       {
         "delta": 45,
-        "internalDuration": 60,
+        "internalDuration": 10,
         "pitch": 51,
         "time": 2,
         "velocity": 94
@@ -83310,7 +83310,7 @@
       },
       {
         "delta": -15,
-        "internalDuration": 62,
+        "internalDuration": 3,
         "pitch": 74,
         "time": 18,
         "velocity": 79
@@ -83408,7 +83408,7 @@
       },
       {
         "delta": 35,
-        "internalDuration": 5,
+        "internalDuration": 3,
         "pitch": 79,
         "time": 34,
         "velocity": 83
@@ -83471,7 +83471,7 @@
       },
       {
         "delta": -15,
-        "internalDuration": 1403,
+        "internalDuration": 11,
         "pitch": 81,
         "time": 40,
         "velocity": 79
@@ -84668,7 +84668,7 @@
       },
       {
         "delta": 65,
-        "internalDuration": 1657,
+        "internalDuration": 6,
         "pitch": 64,
         "time": 25,
         "velocity": 54
@@ -85795,7 +85795,7 @@
       },
       {
         "delta": 15,
-        "internalDuration": 8,
+        "internalDuration": 2,
         "pitch": 74,
         "time": 43,
         "velocity": 69
@@ -87111,7 +87111,7 @@
       },
       {
         "delta": -75,
-        "internalDuration": 8,
+        "internalDuration": 2,
         "pitch": 74,
         "time": 43,
         "velocity": 73
@@ -88378,7 +88378,7 @@
       },
       {
         "delta": -45,
-        "internalDuration": 142,
+        "internalDuration": 1,
         "pitch": 75,
         "time": 3,
         "velocity": 87
@@ -90989,7 +90989,7 @@
       },
       {
         "delta": 65,
-        "internalDuration": 334,
+        "internalDuration": 2,
         "pitch": 72,
         "time": 15,
         "velocity": 67
@@ -93152,7 +93152,7 @@
       },
       {
         "delta": -55,
-        "internalDuration": 187,
+        "internalDuration": 4,
         "pitch": 67,
         "time": 47,
         "velocity": 72
@@ -93362,7 +93362,7 @@
       },
       {
         "delta": -35,
-        "internalDuration": 17,
+        "internalDuration": 2,
         "pitch": 62,
         "time": 33,
         "velocity": 91
@@ -98094,7 +98094,7 @@
       },
       {
         "delta": 5,
-        "internalDuration": 32,
+        "internalDuration": 13,
         "pitch": 69,
         "time": 9,
         "velocity": 83
@@ -101755,7 +101755,7 @@
       },
       {
         "delta": -20,
-        "internalDuration": 64,
+        "internalDuration": 2,
         "pitch": 67,
         "time": 46,
         "velocity": 80
@@ -103421,7 +103421,7 @@
       },
       {
         "delta": 30,
-        "internalDuration": 64,
+        "internalDuration": 2,
         "pitch": 78,
         "time": 41,
         "velocity": 96
@@ -104226,7 +104226,7 @@
       },
       {
         "delta": 40,
-        "internalDuration": 28,
+        "internalDuration": 2,
         "pitch": 75,
         "time": 43,
         "velocity": 79
@@ -107978,14 +107978,14 @@
       },
       {
         "delta": 40,
-        "internalDuration": 4,
+        "internalDuration": 1,
         "pitch": 60,
         "time": 46,
         "velocity": 89
       },
       {
         "delta": 60,
-        "internalDuration": 139,
+        "internalDuration": 2,
         "pitch": 75,
         "time": 46,
         "velocity": 92
@@ -110302,7 +110302,7 @@
       },
       {
         "delta": -15,
-        "internalDuration": 8,
+        "internalDuration": 3,
         "pitch": 70,
         "time": 17,
         "velocity": 72
@@ -113795,7 +113795,7 @@
       },
       {
         "delta": 35,
-        "internalDuration": 83,
+        "internalDuration": 1,
         "pitch": 67,
         "time": 11,
         "velocity": 61
@@ -113823,7 +113823,7 @@
       },
       {
         "delta": 70,
-        "internalDuration": 84,
+        "internalDuration": 1,
         "pitch": 65,
         "time": 15,
         "velocity": 55
@@ -116098,7 +116098,7 @@
       },
       {
         "delta": -55,
-        "internalDuration": 294,
+        "internalDuration": 2,
         "pitch": 76,
         "time": 45,
         "velocity": 81
@@ -116938,7 +116938,7 @@
       },
       {
         "delta": 45,
-        "internalDuration": 12,
+        "internalDuration": 1,
         "pitch": 74,
         "time": 32,
         "velocity": 72
@@ -117932,7 +117932,7 @@
       },
       {
         "delta": 70,
-        "internalDuration": 31,
+        "internalDuration": 13,
         "pitch": 58,
         "time": 21,
         "velocity": 55
@@ -119920,7 +119920,7 @@
       },
       {
         "delta": 15,
-        "internalDuration": 7,
+        "internalDuration": 2,
         "pitch": 76,
         "time": 44,
         "velocity": 74
@@ -119983,7 +119983,7 @@
       },
       {
         "delta": 65,
-        "internalDuration": 7,
+        "internalDuration": 2,
         "pitch": 70,
         "time": 5,
         "velocity": 82
@@ -120333,7 +120333,7 @@
       },
       {
         "delta": -20,
-        "internalDuration": 37,
+        "internalDuration": 1,
         "pitch": 89,
         "time": 2,
         "velocity": 86
@@ -124078,7 +124078,7 @@
       },
       {
         "delta": -20,
-        "internalDuration": 306,
+        "internalDuration": 6,
         "pitch": 82,
         "time": 46,
         "velocity": 85
@@ -124575,7 +124575,7 @@
       },
       {
         "delta": -15,
-        "internalDuration": 77,
+        "internalDuration": 5,
         "pitch": 57,
         "time": 35,
         "velocity": 66
@@ -125849,7 +125849,7 @@
       },
       {
         "delta": 0,
-        "internalDuration": 37,
+        "internalDuration": 4,
         "pitch": 69,
         "time": 23,
         "velocity": 72
@@ -126542,7 +126542,7 @@
       },
       {
         "delta": 30,
-        "internalDuration": 34,
+        "internalDuration": 2,
         "pitch": 70,
         "time": 24,
         "velocity": 68
@@ -127942,7 +127942,7 @@
       },
       {
         "delta": 40,
-        "internalDuration": 10,
+        "internalDuration": 1,
         "pitch": 44,
         "time": 18,
         "velocity": 72
@@ -127977,7 +127977,7 @@
       },
       {
         "delta": -70,
-        "internalDuration": 28,
+        "internalDuration": 1,
         "pitch": 56,
         "time": 21,
         "velocity": 66
@@ -128271,7 +128271,7 @@
       },
       {
         "delta": 60,
-        "internalDuration": 84,
+        "internalDuration": 2,
         "pitch": 41,
         "time": 46,
         "velocity": 69
@@ -128943,7 +128943,7 @@
       },
       {
         "delta": -45,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 48,
         "time": 6,
         "velocity": 74
@@ -129839,7 +129839,7 @@
       },
       {
         "delta": 55,
-        "internalDuration": 28,
+        "internalDuration": 2,
         "pitch": 46,
         "time": 22,
         "velocity": 74
@@ -130665,7 +130665,7 @@
       },
       {
         "delta": 70,
-        "internalDuration": 51,
+        "internalDuration": 2,
         "pitch": 68,
         "time": 24,
         "velocity": 86
@@ -130721,7 +130721,7 @@
       },
       {
         "delta": 40,
-        "internalDuration": 5,
+        "internalDuration": 2,
         "pitch": 70,
         "time": 28,
         "velocity": 92
@@ -130791,7 +130791,7 @@
       },
       {
         "delta": 40,
-        "internalDuration": 70,
+        "internalDuration": 1,
         "pitch": 67,
         "time": 32,
         "velocity": 84
@@ -130840,7 +130840,7 @@
       },
       {
         "delta": 70,
-        "internalDuration": 39,
+        "internalDuration": 1,
         "pitch": 77,
         "time": 36,
         "velocity": 102
@@ -131386,7 +131386,7 @@
       },
       {
         "delta": 5,
-        "internalDuration": 9,
+        "internalDuration": 5,
         "pitch": 76,
         "time": 18,
         "velocity": 89
@@ -134998,7 +134998,7 @@
       },
       {
         "delta": 25,
-        "internalDuration": 15,
+        "internalDuration": 1,
         "pitch": 53,
         "time": 7,
         "velocity": 62
@@ -135481,7 +135481,7 @@
       },
       {
         "delta": 10,
-        "internalDuration": 68,
+        "internalDuration": 2,
         "pitch": 63,
         "time": 47,
         "velocity": 63
@@ -135663,7 +135663,7 @@
       },
       {
         "delta": -10,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 52,
         "time": 15,
         "velocity": 71
@@ -136181,7 +136181,7 @@
       },
       {
         "delta": -20,
-        "internalDuration": 28,
+        "internalDuration": 1,
         "pitch": 73,
         "time": 7,
         "velocity": 67
@@ -136356,7 +136356,7 @@
       },
       {
         "delta": -55,
-        "internalDuration": 11,
+        "internalDuration": 1,
         "pitch": 51,
         "time": 19,
         "velocity": 77
@@ -143965,7 +143965,7 @@
       },
       {
         "delta": 15,
-        "internalDuration": 88,
+        "internalDuration": 1,
         "pitch": 82,
         "time": 34,
         "velocity": 100
@@ -144819,7 +144819,7 @@
       },
       {
         "delta": 65,
-        "internalDuration": 7,
+        "internalDuration": 5,
         "pitch": 72,
         "time": 8,
         "velocity": 78
@@ -145239,7 +145239,7 @@
       },
       {
         "delta": 5,
-        "internalDuration": 11,
+        "internalDuration": 1,
         "pitch": 74,
         "time": 4,
         "velocity": 59
@@ -145323,7 +145323,7 @@
       },
       {
         "delta": 30,
-        "internalDuration": 5,
+        "internalDuration": 2,
         "pitch": 70,
         "time": 17,
         "velocity": 74
@@ -145743,7 +145743,7 @@
       },
       {
         "delta": 0,
-        "internalDuration": 5,
+        "internalDuration": 2,
         "pitch": 75,
         "time": 13,
         "velocity": 81
@@ -146758,7 +146758,7 @@
       },
       {
         "delta": -65,
-        "internalDuration": 238,
+        "internalDuration": 10,
         "pitch": 77,
         "time": 21,
         "velocity": 76
@@ -147381,7 +147381,7 @@
       },
       {
         "delta": 5,
-        "internalDuration": 1316,
+        "internalDuration": 6,
         "pitch": 66,
         "time": 39,
         "velocity": 73
@@ -147507,7 +147507,7 @@
       },
       {
         "delta": 15,
-        "internalDuration": 264,
+        "internalDuration": 6,
         "pitch": 55,
         "time": 12,
         "velocity": 50
@@ -147661,7 +147661,7 @@
       },
       {
         "delta": 75,
-        "internalDuration": 294,
+        "internalDuration": 6,
         "pitch": 60,
         "time": 35,
         "velocity": 85
@@ -148795,7 +148795,7 @@
       },
       {
         "delta": 65,
-        "internalDuration": 37,
+        "internalDuration": 3,
         "pitch": 77,
         "time": 41,
         "velocity": 67
@@ -151882,7 +151882,7 @@
       },
       {
         "delta": -10,
-        "internalDuration": 60,
+        "internalDuration": 2,
         "pitch": 73,
         "time": 13,
         "velocity": 79
@@ -154374,7 +154374,7 @@
       },
       {
         "delta": -45,
-        "internalDuration": 96,
+        "internalDuration": 4,
         "pitch": 77,
         "time": 31,
         "velocity": 60
@@ -154521,7 +154521,7 @@
       },
       {
         "delta": 75,
-        "internalDuration": 20,
+        "internalDuration": 1,
         "pitch": 58,
         "time": 8,
         "velocity": 66
@@ -154612,14 +154612,14 @@
       },
       {
         "delta": 65,
-        "internalDuration": 7,
+        "internalDuration": 1,
         "pitch": 57,
         "time": 18,
         "velocity": 70
       },
       {
         "delta": 5,
-        "internalDuration": 7,
+        "internalDuration": 1,
         "pitch": 69,
         "time": 18,
         "velocity": 78
@@ -154759,7 +154759,7 @@
       },
       {
         "delta": 30,
-        "internalDuration": 75,
+        "internalDuration": 10,
         "pitch": 71,
         "time": 33,
         "velocity": 74
@@ -154829,7 +154829,7 @@
       },
       {
         "delta": 40,
-        "internalDuration": 48,
+        "internalDuration": 5,
         "pitch": 60,
         "time": 44,
         "velocity": 36
@@ -156110,7 +156110,7 @@
       },
       {
         "delta": 50,
-        "internalDuration": 35,
+        "internalDuration": 1,
         "pitch": 70,
         "time": 22,
         "velocity": 50
@@ -156880,7 +156880,7 @@
       },
       {
         "delta": -10,
-        "internalDuration": 35,
+        "internalDuration": 1,
         "pitch": 70,
         "time": 19,
         "velocity": 65
@@ -159575,7 +159575,7 @@
       },
       {
         "delta": 50,
-        "internalDuration": 5,
+        "internalDuration": 1,
         "pitch": 69,
         "time": 38,
         "velocity": 74
@@ -159876,7 +159876,7 @@
       },
       {
         "delta": 65,
-        "internalDuration": 63,
+        "internalDuration": 1,
         "pitch": 72,
         "time": 21,
         "velocity": 90
