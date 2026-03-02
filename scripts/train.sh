@@ -29,8 +29,6 @@
 # =============================================================================
 set -euo pipefail
 
-git checkout main
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
@@ -39,11 +37,11 @@ DATASET="/home/triana24/scratch/.midigpt/datasets/EXPRESSIVE_ENCODER_NUM_BARS=4_
 CONFIG="/home/triana24/scratch/MIDI-GPT/python_scripts/config/gpt2.json"
 ENCODING="EXPRESSIVE_ENCODER"
 ARCH="gpt2"
-NGPU=4
-BATCH_SIZE=256
+NGPU=1
+BATCH_SIZE=32
 NUM_BARS=4
-LABEL="v3"
-WALLTIME="12:00:00"
+LABEL="v5_1e3"
+WALLTIME="24:00:00"
 MEM="64G"
 ACCOUNT="${SBATCH_ACCOUNT:-def-pasquier}"
 VENV="${VENV:-/scratch/triana24/.venvs/midigpt}"

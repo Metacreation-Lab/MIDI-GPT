@@ -83,8 +83,8 @@ class CustomDataset:
       while True:
         try:
           return self._get_batch()
-        except Exception as e:
-          print("ERROR IN BATCHER : ", e)
+        except Exception:
+          pass
     raise StopIteration
   
   def __len__(self):

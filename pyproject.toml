@@ -21,12 +21,13 @@ train = [
     "accelerate>=1.1.0",
     "numpy>=1.26",
     "tqdm>=4.66",
-    "tensorboard>=2.15",
+    "tensorboard~=2.17",
     "scipy>=1.11",
     "matplotlib>=3.8",
     "pretty_midi>=0.2.10",
     "attrs>=23.1",
     "jsonlines>=3.1",
+    "optuna>=3.0",
 ]
 dataset = [
     "attrs>=23.1",
@@ -46,6 +47,7 @@ wheel.packages = ["src/python/midigpt"]
 [tool.pytest.ini_options]
 markers = [
     "benchmark: speed benchmarks (deselect with '-m \"not benchmark\"')",
+    "inference: tests requiring a TorchScript checkpoint (set MIDIGPT_CKPT env var)",
 ]
 
 # System libraries required before `pip install`:

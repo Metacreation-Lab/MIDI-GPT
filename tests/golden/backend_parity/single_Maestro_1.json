@@ -360,7 +360,7 @@
       },
       {
         "delta": -30,
-        "internalDuration": 421,
+        "internalDuration": 1,
         "pitch": 69,
         "time": 2,
         "velocity": 52
@@ -3713,7 +3713,7 @@
       },
       {
         "delta": -15,
-        "internalDuration": 433,
+        "internalDuration": 1,
         "pitch": 69,
         "time": 20,
         "velocity": 57
@@ -5330,7 +5330,7 @@
       },
       {
         "delta": -5,
-        "internalDuration": 4,
+        "internalDuration": 2,
         "pitch": 78,
         "time": 8,
         "velocity": 73
@@ -9817,7 +9817,7 @@
       },
       {
         "delta": 40,
-        "internalDuration": 21,
+        "internalDuration": 4,
         "pitch": 73,
         "time": 14,
         "velocity": 55
@@ -12470,7 +12470,7 @@
       },
       {
         "delta": 35,
-        "internalDuration": 7,
+        "internalDuration": 3,
         "pitch": 72,
         "time": 39,
         "velocity": 71
@@ -17930,7 +17930,7 @@
       },
       {
         "delta": 75,
-        "internalDuration": 6,
+        "internalDuration": 2,
         "pitch": 59,
         "time": 24,
         "velocity": 52
@@ -22543,7 +22543,7 @@
       },
       {
         "delta": 45,
-        "internalDuration": 6,
+        "internalDuration": 2,
         "pitch": 59,
         "time": 23,
         "velocity": 66
@@ -25595,7 +25595,7 @@
       },
       {
         "delta": 0,
-        "internalDuration": 1015,
+        "internalDuration": 4,
         "pitch": 79,
         "time": 3,
         "velocity": 63
@@ -30005,7 +30005,7 @@
       },
       {
         "delta": -80,
-        "internalDuration": 125,
+        "internalDuration": 10,
         "pitch": 75,
         "time": 16,
         "velocity": 77
@@ -30985,7 +30985,7 @@
       },
       {
         "delta": 30,
-        "internalDuration": 4,
+        "internalDuration": 1,
         "pitch": 68,
         "time": 9,
         "velocity": 68
@@ -31685,7 +31685,7 @@
       },
       {
         "delta": -40,
-        "internalDuration": 43,
+        "internalDuration": 3,
         "pitch": 85,
         "time": 32,
         "velocity": 73
@@ -32000,7 +32000,7 @@
       },
       {
         "delta": 0,
-        "internalDuration": 17,
+        "internalDuration": 1,
         "pitch": 88,
         "time": 16,
         "velocity": 74
