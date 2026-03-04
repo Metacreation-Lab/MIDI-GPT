@@ -165,6 +165,65 @@ enum BooleanLevel {
   BOOLEAN_TRUE = 2;
 }
 
+enum PitchClassCountLevel {
+  PITCH_CLASS_COUNT_ANY = 0;
+  PITCH_CLASS_COUNT_ONE = 1;
+  PITCH_CLASS_COUNT_TWO = 2;
+  PITCH_CLASS_COUNT_THREE = 3;
+  PITCH_CLASS_COUNT_FOUR = 4;
+  PITCH_CLASS_COUNT_FIVE = 5;
+  PITCH_CLASS_COUNT_SIX = 6;
+  PITCH_CLASS_COUNT_SEVEN = 7;
+  PITCH_CLASS_COUNT_EIGHT = 8;
+  PITCH_CLASS_COUNT_NINE = 9;
+  PITCH_CLASS_COUNT_TEN = 10;
+  PITCH_CLASS_COUNT_ELEVEN = 11;
+  PITCH_CLASS_COUNT_TWELVE = 12;
+}
+
+enum KeySignatureLevel {
+  KEY_SIGNATURE_ANY = 0;
+  KEY_SIGNATURE_C_MAJOR = 1;
+  KEY_SIGNATURE_Db_MAJOR = 2;
+  KEY_SIGNATURE_D_MAJOR = 3;
+  KEY_SIGNATURE_Eb_MAJOR = 4;
+  KEY_SIGNATURE_E_MAJOR = 5;
+  KEY_SIGNATURE_F_MAJOR = 6;
+  KEY_SIGNATURE_Gb_MAJOR = 7;
+  KEY_SIGNATURE_G_MAJOR = 8;
+  KEY_SIGNATURE_Ab_MAJOR = 9;
+  KEY_SIGNATURE_A_MAJOR = 10;
+  KEY_SIGNATURE_Bb_MAJOR = 11;
+  KEY_SIGNATURE_B_MAJOR = 12;
+  KEY_SIGNATURE_C_MINOR = 13;
+  KEY_SIGNATURE_Db_MINOR = 14;
+  KEY_SIGNATURE_D_MINOR = 15;
+  KEY_SIGNATURE_Eb_MINOR = 16;
+  KEY_SIGNATURE_E_MINOR = 17;
+  KEY_SIGNATURE_F_MINOR = 18;
+  KEY_SIGNATURE_Gb_MINOR = 19;
+  KEY_SIGNATURE_G_MINOR = 20;
+  KEY_SIGNATURE_Ab_MINOR = 21;
+  KEY_SIGNATURE_A_MINOR = 22;
+  KEY_SIGNATURE_Bb_MINOR = 23;
+  KEY_SIGNATURE_B_MINOR = 24;
+}
+
+enum DecileLevel {
+  DECILE_LEVEL_ANY = 0;
+  DECILE_LEVEL_ONE = 1;
+  DECILE_LEVEL_TWO = 2;
+  DECILE_LEVEL_THREE = 3;
+  DECILE_LEVEL_FOUR = 4;
+  DECILE_LEVEL_FIVE = 5;
+  DECILE_LEVEL_SIX = 6;
+  DECILE_LEVEL_SEVEN = 7;
+  DECILE_LEVEL_EIGHT = 8;
+  DECILE_LEVEL_NINE = 9;
+  DECILE_LEVEL_TEN = 10;
+  DECILE_LEVEL_NONE = 11;
+}
+
 /*
 The Event Message is used to represent a MIDI note onset or offset.
 */
@@ -276,6 +335,8 @@ message StatusBar {
   optional BarLevelOnsetDensityLevel onset_density = 3;
   optional BarLevelOnsetPolyphonyLevel onset_polyphony_min = 4;
   optional BarLevelOnsetPolyphonyLevel onset_polyphony_max = 5;
+  repeated bool pitch_class_set = 6;
+  optional DecileLevel tension = 7;
 }
 
 /*
@@ -331,7 +392,16 @@ message StatusTrack {
   optional BooleanLevel contains_note_duration_quarter = 39;
   optional BooleanLevel contains_note_duration_half = 40;
   optional BooleanLevel contains_note_duration_whole = 41;
-  
+
+  optional PitchClassCountLevel pitch_class_count = 18;
+  optional KeySignatureLevel key_signature = 27;
+  optional DecileLevel valence_spotify = 32;
+  optional DecileLevel energy_spotify = 33;
+  optional DecileLevel danceability_spotify = 34;
+  optional DecileLevel danceability = 35;
+  optional DecileLevel wnbd_syncopation = 42;
+  optional DecileLevel repetition = 43;
+
   /*
   Sets a hard limit on the polyphony on this track. This is implemented by keeping a record of all the currently sounding notes, and preventing the model from generating note-onset tokens when the limit is reached.
   */

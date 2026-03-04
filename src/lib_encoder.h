@@ -5,6 +5,8 @@ void init_encoders(py::module &handle) {
 
 	py::enum_<enums::ENCODER_TYPE>(handle, "ENCODER_TYPE", py::arithmetic())
     .value("EXPRESSIVE_ENCODER", enums::ENCODER_TYPE::EXPRESSIVE_ENCODER)
+    .value("STEINBERG_WPCS_ENCODER", enums::ENCODER_TYPE::STEINBERG_WPCS_ENCODER)
+    .value("STEINBERG_W_P_C_S_ENCODER", enums::ENCODER_TYPE::STEINBERG_WPCS_ENCODER)
 		.value("NO_ENCODER", enums::ENCODER_TYPE::NO_ENCODER)
 		.export_values();
 
@@ -26,5 +28,22 @@ void init_encoders(py::module &handle) {
     .def("set_scheme", &encoder::ExpressiveEncoder::set_scheme)
     .def_readonly("config", &encoder::ExpressiveEncoder::config)
     .def_readonly("rep", &encoder::ExpressiveEncoder::rep);
+
+  py::class_<encoder::SteinbergWPCSEncoder>(handle, "SteinbergWPCSEncoder")
+    .def(py::init<>())
+    .def("encode", &encoder::SteinbergWPCSEncoder::encode)
+    .def("decode", &encoder::SteinbergWPCSEncoder::decode)
+    .def("midi_to_json", &encoder::SteinbergWPCSEncoder::midi_to_json)
+    .def("midi_to_tokens", &encoder::SteinbergWPCSEncoder::midi_to_tokens)
+    .def("json_to_midi", &encoder::SteinbergWPCSEncoder::json_to_midi)
+    .def("json_track_to_midi", &encoder::SteinbergWPCSEncoder::json_track_to_midi)
+    .def("json_to_tokens", &encoder::SteinbergWPCSEncoder::json_to_tokens)
+    .def("tokens_to_json", &encoder::SteinbergWPCSEncoder::tokens_to_json)
+    .def("tokens_to_midi", &encoder::SteinbergWPCSEncoder::tokens_to_midi)
+    .def("pretty", &encoder::SteinbergWPCSEncoder::pretty)
+    .def("vocab_size", &encoder::SteinbergWPCSEncoder::vocab_size)
+    .def("get_attribute_control_types", &encoder::SteinbergWPCSEncoder::get_attribute_control_types)
+    .def_readonly("config", &encoder::SteinbergWPCSEncoder::config)
+    .def_readonly("rep", &encoder::SteinbergWPCSEncoder::rep);
 
 }

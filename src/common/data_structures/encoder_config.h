@@ -19,6 +19,15 @@ namespace data_structures {
             decode_resolution = resolution;
             decode_final = false;
             delta_resolution = 1920;
+            force_instrument = false;
+            use_note_duration_encoding = false;
+            use_absolute_time_encoding = false;
+            mark_time_sigs = false;
+            mark_note_duration_quantile = false;
+            mark_polyphony_quantile = false;
+            mark_drum_density = false;
+            use_drum_offsets = false;
+            min_tracks = 1;
         }
 
         std::map<std::string, std::string> ToJson() {
@@ -90,6 +99,15 @@ namespace data_structures {
         int decode_resolution;
         bool decode_final;
         int delta_resolution;
+        bool force_instrument;
+        bool use_note_duration_encoding;
+        bool use_absolute_time_encoding;
+        bool mark_time_sigs;
+        bool mark_note_duration_quantile;
+        bool mark_polyphony_quantile;
+        bool mark_drum_density;
+        bool use_drum_offsets;
+        int min_tracks;
         std::set<std::tuple<int, int>> multi_fill;
     };
 }
