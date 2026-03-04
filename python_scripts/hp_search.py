@@ -16,10 +16,6 @@ import optuna
 from transformers import (
     GPT2Config,
     GPT2LMHeadModel,
-    TransfoXLConfig,
-    TransfoXLLMHeadModel,
-    BertConfig,
-    BertForMaskedLM,
     Trainer,
     TrainingArguments,
     TrainerCallback,
@@ -52,20 +48,6 @@ def build_model(args, vocab_size):
     if args.arch == "gpt2":
         config = GPT2Config().from_json_file(args.config)
         model_cls = GPT2LMHeadModel
-    elif args.arch == "xl":
-        config = TransfoXLConfig().from_json_file(args.config)
-        model_cls = TransfoXLLMHeadModel
-    elif args.arch == "metric":
-        config = GPT2Config().from_json_file(args.config)
-        model_cls = GPT2Encoder
-    elif args.arch == "control":
-        config = GPT2LMHeadModelContConfig().from_json_file(args.config)
-        encoder = midigpt.getEncoder(midigpt.getEncoderType(args.encoding))
-        config.n_control_dim = encoder.config.embed_dim
-        model_cls = GPT2LMHeadModelCont
-    elif args.arch == "bert":
-        config = BertConfig().from_json_file(args.config)
-        model_cls = BertForMaskedLM
     else:
         raise NotImplementedError(f"Unknown architecture: {args.arch}")
     config.vocab_size = vocab_size

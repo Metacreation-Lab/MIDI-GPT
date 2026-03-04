@@ -38,7 +38,7 @@ class TestVersion:
 # getEncoderTypeList() → list[str]
 # ---------------------------------------------------------------------------
 
-KNOWN_ENCODERS = ["EXPRESSIVE_ENCODER"]
+KNOWN_ENCODERS = ["EXPRESSIVE_ENCODER", "STEINBERG_WPCS_ENCODER"]
 
 
 class TestEncoderAPI:
@@ -90,6 +90,91 @@ class TestEncoderAPI:
         assert callable(built_module.getAttributeControlStr)
         with pytest.raises(RuntimeError):
             built_module.getAttributeControlStr("INVALID_CONTROL_TYPE")
+
+
+# ---------------------------------------------------------------------------
+# SteinbergWPCSEncoder-specific tests
+# ---------------------------------------------------------------------------
+
+
+class TestSteinbergWPCSEncoder:
+    def test_construct(self, built_module):
+        enc = built_module.SteinbergWPCSEncoder()
+        assert enc is not None
+
+    def test_vocab_size_positive(self, built_module):
+        enc = built_module.SteinbergWPCSEncoder()
+        assert enc.vocab_size() > 0
+
+    def test_has_representation(self, built_module):
+        enc = built_module.SteinbergWPCSEncoder()
+        assert isinstance(enc.rep, built_module.REPRESENTATION)
+        assert enc.rep.max_token() > 0
+
+    def test_config_resolution_is_24(self, built_module):
+        enc = built_module.SteinbergWPCSEncoder()
+        assert enc.config.resolution == 24
+
+    def test_attribute_control_types(self, built_module):
+        enc = built_module.SteinbergWPCSEncoder()
+        ac_types = enc.get_attribute_control_types()
+        assert isinstance(ac_types, list)
+        assert len(ac_types) == 6
+        expected = {
+            "ATTRIBUTE_CONTROL_TRACK_LEVEL_ONSET_DENSITY",
+            "ATTRIBUTE_CONTROL_TRACK_LEVEL_ONSET_POLYPHONY",
+            "ATTRIBUTE_CONTROL_TRACK_LEVEL_NOTE_DURATION",
+            "ATTRIBUTE_CONTROL_REPETITION",
+            "ATTRIBUTE_CONTROL_GENRE",
+            "ATTRIBUTE_CONTROL_BAR_LEVEL_PITCH_CLASS_SET",
+        }
+        assert set(ac_types) == expected
+
+    def test_encoder_type_enum(self, built_module):
+        assert hasattr(built_module.ENCODER_TYPE, "STEINBERG_WPCS_ENCODER")
+
+    def test_get_encoder_type_round_trip(self, built_module):
+        et = built_module.getEncoderType("STEINBERG_WPCS_ENCODER")
+        assert et == built_module.ENCODER_TYPE.STEINBERG_WPCS_ENCODER
+
+    def test_get_encoder_returns_object(self, built_module):
+        et = built_module.getEncoderType("STEINBERG_WPCS_ENCODER")
+        enc = built_module.getEncoder(et)
+        assert enc is not None
+        assert enc.vocab_size() > 0
+
+    def test_get_encoder_size(self, built_module):
+        n = built_module.getEncoderSize(
+            built_module.ENCODER_TYPE.STEINBERG_WPCS_ENCODER
+        )
+        assert isinstance(n, int) and n > 0
+
+    def test_encode_decode_round_trip(self, built_module):
+        """Test encode/decode round trip with a real MIDI file."""
+        midi_path = (
+            Path(__file__).parent.parent
+            / "python_scripts_for_testing"
+            / "mtest.mid"
+        )
+        if not midi_path.exists():
+            pytest.skip(f"Test MIDI file not found: {midi_path}")
+
+        enc = built_module.SteinbergWPCSEncoder()
+        piece_json = enc.midi_to_json(str(midi_path))
+        assert isinstance(piece_json, str) and len(piece_json) > 0
+
+        tokens = enc.json_to_tokens(piece_json)
+        assert isinstance(tokens, list) and len(tokens) > 0
+
+        # all tokens should be within vocab range
+        assert all(0 <= t < enc.vocab_size() for t in tokens)
+
+        decoded_json = enc.tokens_to_json(tokens)
+        assert isinstance(decoded_json, str) and len(decoded_json) > 0
+
+    def test_in_encoder_type_list(self, built_module):
+        lst = built_module.getEncoderTypeList()
+        assert "STEINBERG_WPCS_ENCODER" in lst
 
 
 # ---------------------------------------------------------------------------
