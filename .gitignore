@@ -87,5 +87,8 @@ CMakeLists_CPP.txt
 
 notes/*
 
+# secrets
+.env
+
 # claude
 .claude

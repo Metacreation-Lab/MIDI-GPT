@@ -16,6 +16,9 @@ from tqdm import tqdm
 
 from subprocess import check_output
 
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
+
 from losses import sim_metric_loss, standard_loss
 from custom_models import *
 from train_dataset import *
@@ -47,6 +50,7 @@ if __name__ == "__main__":
   parser.add_argument("--batch_size", type=int, default=32)
   parser.add_argument("--batches_per_epoch", type=int, default=1000)
   parser.add_argument("--lr", type=float, default=1e-3)
+  parser.add_argument("--total_steps", type=int, default=100000)
 
   parser.add_argument("--overwrite", type=int, default=1)
   parser.add_argument("--save_steps", type=int, default=5000)
@@ -65,6 +69,9 @@ if __name__ == "__main__":
 
   parser.add_argument("--test_only", action="store_true")
   parser.add_argument("--memory_metrics", action="store_true")
+
+  parser.add_argument("--wandb_project", type=str, default="midi-gpt")
+  parser.add_argument("--no_wandb", action="store_true")
 
   args = parser.parse_args()
   args.expressive = (args.encoding == "EXPRESSIVE_ENCODER") and args.expressive
@@ -182,14 +189,27 @@ if __name__ == "__main__":
   # Create Memory metrics callback
 
   # =================================================================
-  # training 
-  
+  # training
+
+  reporters = ["tensorboard"]
+  if not args.no_wandb and os.getenv("WANDB_API_KEY"):
+    import wandb
+    os.environ["WANDB_PROJECT"] = args.wandb_project
+    os.environ["WANDB_RUN_GROUP"] = args.label
+    wandb.init(
+      project=args.wandb_project,
+      name=name,
+      group=args.label,
+      config={**vars(args), "vocab_size": vocab_size, "git_commit": current_git_commit_hash},
+    )
+    reporters.append("wandb")
+
   training_args = TrainingArguments(
     logging_dir=logging_dir,
-    report_to=["tensorboard"],
+    report_to=reporters,
     disable_tqdm=True,
     output_dir=output_dir,
-    num_train_epochs=(100000/args.batches_per_epoch)*args.accum_steps,
+    num_train_epochs=(args.total_steps/args.batches_per_epoch)*args.accum_steps,
     logging_strategy="steps",
     logging_steps=args.log_steps,
     save_steps=args.save_steps,

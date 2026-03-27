@@ -6,6 +6,7 @@
 namespace enums {
 
 enum ENCODER_TYPE {
+  EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER,
   EXPRESSIVE_ENCODER,
   STEINBERG_WPCS_ENCODER,
   NO_ENCODER
@@ -13,6 +14,7 @@ enum ENCODER_TYPE {
 
 std::unique_ptr<encoder::ENCODER> getEncoder(ENCODER_TYPE et) {
   switch (et) {
+    case EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER: return std::make_unique<encoder::ElVelocityDurationPolyphonyYellowEncoder>();
     case EXPRESSIVE_ENCODER: return std::make_unique<encoder::ExpressiveEncoder>();
     case STEINBERG_WPCS_ENCODER: return std::make_unique<encoder::SteinbergWPCSEncoder>();
     case NO_ENCODER: return NULL;
@@ -21,6 +23,7 @@ std::unique_ptr<encoder::ENCODER> getEncoder(ENCODER_TYPE et) {
 }
 
 ENCODER_TYPE getEncoderType(const std::string &s) {
+  if (s == "EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER") return EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER;
   if (s == "EXPRESSIVE_ENCODER") return EXPRESSIVE_ENCODER;
   if (s == "STEINBERG_WPCS_ENCODER") return STEINBERG_WPCS_ENCODER;
   if (s == "STEINBERG_W_P_C_S_ENCODER") return STEINBERG_WPCS_ENCODER;
@@ -29,6 +32,7 @@ ENCODER_TYPE getEncoderType(const std::string &s) {
 
 std::vector<std::string> getEncoderTypeList() {
   std::vector<std::string> list;
+  list.push_back("EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER");
   list.push_back("EXPRESSIVE_ENCODER");
   list.push_back("STEINBERG_WPCS_ENCODER");
   return list;
