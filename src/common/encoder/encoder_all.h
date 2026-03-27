@@ -107,6 +107,62 @@ public:
   }
 };
 
+class ElVelocityDurationPolyphonyYellowEncoder : public ENCODER {
+public:
+  ElVelocityDurationPolyphonyYellowEncoder() {
+    config = std::make_shared<data_structures::EncoderConfig>();
+    config->both_in_one = true;
+    config->force_instrument = true;
+    config->mark_note_duration_quantile = true;
+    config->mark_polyphony_quantile = true;
+    config->use_note_duration_encoding = true;
+    config->use_absolute_time_encoding = true;
+    config->mark_time_sigs = true;
+    config->mark_drum_density = true;
+    config->use_drum_offsets = false;
+    config->use_velocity_levels = true;
+    config->min_tracks = 1;
+    config->resolution = 12;
+
+    rep = std::make_shared<REPRESENTATION>(REPRESENTATION({
+      {midi::TOKEN_PIECE_START, TOKEN_DOMAIN(2)},
+      {midi::TOKEN_NUM_BARS, TOKEN_DOMAIN({4,8}, INT_VALUES_DOMAIN)},
+      {midi::TOKEN_BAR, TOKEN_DOMAIN(1)},
+      {midi::TOKEN_BAR_END, TOKEN_DOMAIN(1)},
+      {midi::TOKEN_TIME_SIGNATURE, TOKEN_DOMAIN(
+        enums::YELLOW_TS_MAP,TIMESIG_MAP_DOMAIN)},
+      {midi::TOKEN_TRACK, TOKEN_DOMAIN({
+        midi::STANDARD_TRACK,
+        midi::STANDARD_DRUM_TRACK
+      },INT_VALUES_DOMAIN)},
+      {midi::TOKEN_TRACK_END, TOKEN_DOMAIN(1)},
+      {midi::TOKEN_INSTRUMENT, TOKEN_DOMAIN(enums::PRETRAIN_GROUPING,INT_MAP_DOMAIN)},
+      {midi::TOKEN_NOTE_ONSET, TOKEN_DOMAIN(128)},
+      {midi::TOKEN_NOTE_DURATION, TOKEN_DOMAIN(96)},
+      {midi::TOKEN_TIME_ABSOLUTE_POS, TOKEN_DOMAIN(192)},
+      {midi::TOKEN_FILL_IN_PLACEHOLDER, TOKEN_DOMAIN(1)},
+      {midi::TOKEN_FILL_IN_START, TOKEN_DOMAIN(1)},
+      {midi::TOKEN_FILL_IN_END, TOKEN_DOMAIN(1)},
+
+      add_attribute_control_to_representation(midi::TOKEN_MIN_NOTE_DURATION),
+      add_attribute_control_to_representation(midi::TOKEN_MAX_NOTE_DURATION),
+      add_attribute_control_to_representation(midi::TOKEN_MIN_POLYPHONY),
+      add_attribute_control_to_representation(midi::TOKEN_MAX_POLYPHONY),
+      add_attribute_control_to_representation(midi::TOKEN_DENSITY_LEVEL),
+
+      {midi::TOKEN_VELOCITY_LEVEL, TOKEN_DOMAIN(enums::DEFAULT_VELOCITY_MAP,INT_MAP_DOMAIN)}
+    }));
+
+  }
+  ~ElVelocityDurationPolyphonyYellowEncoder() {}
+
+  void preprocess_piece(midi::Piece *p) {
+    util_protobuf::calculate_note_durations(p);
+    util_protobuf::update_av_polyphony_and_note_duration(p);
+    util_protobuf::update_note_density(p);
+  }
+};
+
 // ================================================
 // Shared representations and base classes
 // ================================================

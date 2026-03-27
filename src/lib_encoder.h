@@ -4,11 +4,29 @@ namespace py = pybind11;
 void init_encoders(py::module &handle) {
 
 	py::enum_<enums::ENCODER_TYPE>(handle, "ENCODER_TYPE", py::arithmetic())
+    .value("EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER", enums::ENCODER_TYPE::EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER)
     .value("EXPRESSIVE_ENCODER", enums::ENCODER_TYPE::EXPRESSIVE_ENCODER)
     .value("STEINBERG_WPCS_ENCODER", enums::ENCODER_TYPE::STEINBERG_WPCS_ENCODER)
     .value("STEINBERG_W_P_C_S_ENCODER", enums::ENCODER_TYPE::STEINBERG_WPCS_ENCODER)
 		.value("NO_ENCODER", enums::ENCODER_TYPE::NO_ENCODER)
 		.export_values();
+
+  py::class_<encoder::ElVelocityDurationPolyphonyYellowEncoder>(handle, "ElVelocityDurationPolyphonyYellowEncoder")
+    .def(py::init<>())
+    .def("encode", &encoder::ElVelocityDurationPolyphonyYellowEncoder::encode)
+    .def("decode", &encoder::ElVelocityDurationPolyphonyYellowEncoder::decode)
+    .def("midi_to_json", &encoder::ElVelocityDurationPolyphonyYellowEncoder::midi_to_json)
+    .def("midi_to_tokens", &encoder::ElVelocityDurationPolyphonyYellowEncoder::midi_to_tokens)
+    .def("json_to_midi", &encoder::ElVelocityDurationPolyphonyYellowEncoder::json_to_midi)
+    .def("json_track_to_midi", &encoder::ElVelocityDurationPolyphonyYellowEncoder::json_track_to_midi)
+    .def("json_to_tokens", &encoder::ElVelocityDurationPolyphonyYellowEncoder::json_to_tokens)
+    .def("tokens_to_json", &encoder::ElVelocityDurationPolyphonyYellowEncoder::tokens_to_json)
+    .def("tokens_to_midi", &encoder::ElVelocityDurationPolyphonyYellowEncoder::tokens_to_midi)
+    .def("pretty", &encoder::ElVelocityDurationPolyphonyYellowEncoder::pretty)
+    .def("vocab_size", &encoder::ElVelocityDurationPolyphonyYellowEncoder::vocab_size)
+    .def("get_attribute_control_types", &encoder::ElVelocityDurationPolyphonyYellowEncoder::get_attribute_control_types)
+    .def_readonly("config", &encoder::ElVelocityDurationPolyphonyYellowEncoder::config)
+    .def_readonly("rep", &encoder::ElVelocityDurationPolyphonyYellowEncoder::rep);
 
   py::class_<encoder::ExpressiveEncoder>(handle, "ExpressiveEncoder")
     .def(py::init<>())
