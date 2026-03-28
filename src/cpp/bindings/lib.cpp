@@ -21,6 +21,7 @@ namespace py = pybind11;
 #ifndef NO_TORCH
 #include "inference/sampling/sample_internal.h"
 #include "inference/sampling/multi_step_sample.h"
+#include "inference/realtime/realtime_session.h"
 #endif
 
 #include <iostream>
@@ -132,6 +133,32 @@ PYBIND11_MODULE(_midigpt,handle) {
     return sampling::sample_multi_step_py(piece_json, status_json, param_json, max_attempts, callbacks);
   });
   handle.def("get_notes", &sampling::get_notes_py);
+
+  // ── Real-time inference ──────────────────────────────────────────────────
+  py::class_<sampling::RealtimeConfig>(handle, "RealtimeConfig")
+    .def(py::init<>())
+    .def_readwrite("encoder_type",               &sampling::RealtimeConfig::encoder_type)
+    .def_readwrite("model_path",                 &sampling::RealtimeConfig::model_path)
+    .def_readwrite("temperature",                &sampling::RealtimeConfig::temperature)
+    .def_readwrite("max_gen_tokens_per_advance", &sampling::RealtimeConfig::max_gen_tokens_per_advance)
+    .def_readwrite("use_lookahead",              &sampling::RealtimeConfig::use_lookahead)
+    .def_readwrite("lookahead_bars",             &sampling::RealtimeConfig::lookahead_bars)
+    .def_readwrite("max_seq_len",                &sampling::RealtimeConfig::max_seq_len)
+    .def_readwrite("total_bars",                 &sampling::RealtimeConfig::total_bars);
+
+  py::class_<sampling::RealtimeSession>(handle, "RealtimeSession")
+    .def(py::init<const sampling::RealtimeConfig&>())
+    .def("init_input_track",  &sampling::RealtimeSession::init_input_track)
+    .def("init_output_track", &sampling::RealtimeSession::init_output_track)
+    .def("start",             &sampling::RealtimeSession::start)
+    .def("push_note",         &sampling::RealtimeSession::push_note)
+    .def("complete_bar",      &sampling::RealtimeSession::complete_bar)
+    .def("advance",           &sampling::RealtimeSession::advance)
+    .def("seek",              &sampling::RealtimeSession::seek)
+    .def("reset",             &sampling::RealtimeSession::reset)
+    .def("rebuild_cache",     &sampling::RealtimeSession::rebuild_cache)
+    .def("current_bar",       &sampling::RealtimeSession::current_bar)
+    .def("cache_length",      &sampling::RealtimeSession::cache_length);
 #endif
 
   handle.def("compute_all_attribute_controls", &encoder::compute_all_attribute_controls_py);
@@ -189,6 +216,7 @@ PYBIND11_MODULE(_midigpt,handle) {
     .def(py::init<std::vector<std::pair<midi::TOKEN_TYPE,encoder::TOKEN_DOMAIN>>>())
     .def("decode", &encoder::REPRESENTATION::decode)
     .def("is_token_type", &encoder::REPRESENTATION::is_token_type)
+    .def("has_token_type", &encoder::REPRESENTATION::has_token_type)
     .def("in_domain", &encoder::REPRESENTATION::in_domain)
     .def("encode", &encoder::REPRESENTATION::encode)
     .def("encode_partial", &encoder::REPRESENTATION::encode_partial_py_int)
@@ -217,7 +245,13 @@ py::class_<data_structures::EncoderConfig,std::shared_ptr<data_structures::Encod
   .def_readwrite("decode_resolution", &data_structures::EncoderConfig::decode_resolution)
   .def_readwrite("decode_final", &data_structures::EncoderConfig::decode_final)
   .def_readwrite("delta_resolution", &data_structures::EncoderConfig::delta_resolution)
-  .def_readwrite("multi_fill", &data_structures::EncoderConfig::multi_fill);
+  .def_readwrite("multi_fill", &data_structures::EncoderConfig::multi_fill)
+  .def_readwrite("do_mask_augmentation", &data_structures::EncoderConfig::do_mask_augmentation)
+  .def_readwrite("mask_apply_probability", &data_structures::EncoderConfig::mask_apply_probability)
+  .def_readwrite("mask_type", &data_structures::EncoderConfig::mask_type)
+  .def_readwrite("mask_bar_fraction", &data_structures::EncoderConfig::mask_bar_fraction)
+  .def_readwrite("mask_max_lookahead", &data_structures::EncoderConfig::mask_max_lookahead)
+  .def_readwrite("mask_seed", &data_structures::EncoderConfig::mask_seed);
 
 py::enum_<midi::TOKEN_TYPE>(handle, "TOKEN_TYPE", py::arithmetic())
   .value("PIECE_START", midi::TOKEN_PIECE_START)
@@ -253,6 +287,7 @@ py::enum_<midi::TOKEN_TYPE>(handle, "TOKEN_TYPE", py::arithmetic())
   .value("MIN_NOTE_DURATION_HARD", midi::TOKEN_MIN_NOTE_DURATION_HARD)
   .value("MAX_NOTE_DURATION_HARD", midi::TOKEN_MAX_NOTE_DURATION_HARD)
   .value("NONE", midi::TOKEN_NONE)
+  .value("MASK_BAR", midi::TOKEN_MASK_BAR)
   .export_values();
 
 
