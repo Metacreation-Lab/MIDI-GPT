@@ -8,6 +8,7 @@ void init_encoders(py::module &handle) {
     .value("EXPRESSIVE_ENCODER", enums::ENCODER_TYPE::EXPRESSIVE_ENCODER)
     .value("STEINBERG_WPCS_ENCODER", enums::ENCODER_TYPE::STEINBERG_WPCS_ENCODER)
     .value("STEINBERG_W_P_C_S_ENCODER", enums::ENCODER_TYPE::STEINBERG_WPCS_ENCODER)
+    .value("GHOST_ENCODER", enums::ENCODER_TYPE::GHOST_ENCODER)
 		.value("NO_ENCODER", enums::ENCODER_TYPE::NO_ENCODER)
 		.export_values();
 
@@ -63,5 +64,22 @@ void init_encoders(py::module &handle) {
     .def("get_attribute_control_types", &encoder::SteinbergWPCSEncoder::get_attribute_control_types)
     .def_readonly("config", &encoder::SteinbergWPCSEncoder::config)
     .def_readonly("rep", &encoder::SteinbergWPCSEncoder::rep);
+
+  py::class_<encoder::GhostEncoder>(handle, "GhostEncoder")
+    .def(py::init<>())
+    .def("encode", &encoder::GhostEncoder::encode)
+    .def("decode", &encoder::GhostEncoder::decode)
+    .def("midi_to_json", &encoder::GhostEncoder::midi_to_json)
+    .def("midi_to_tokens", &encoder::GhostEncoder::midi_to_tokens)
+    .def("json_to_midi", &encoder::GhostEncoder::json_to_midi)
+    .def("json_track_to_midi", &encoder::GhostEncoder::json_track_to_midi)
+    .def("json_to_tokens", &encoder::GhostEncoder::json_to_tokens)
+    .def("tokens_to_json", &encoder::GhostEncoder::tokens_to_json)
+    .def("tokens_to_midi", &encoder::GhostEncoder::tokens_to_midi)
+    .def("pretty", &encoder::GhostEncoder::pretty)
+    .def("vocab_size", &encoder::GhostEncoder::vocab_size)
+    .def("get_attribute_control_types", &encoder::GhostEncoder::get_attribute_control_types)
+    .def_readonly("config", &encoder::GhostEncoder::config)
+    .def_readonly("rep", &encoder::GhostEncoder::rep);
 
 }

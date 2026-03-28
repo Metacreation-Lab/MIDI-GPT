@@ -70,6 +70,12 @@ if __name__ == "__main__":
   parser.add_argument("--test_only", action="store_true")
   parser.add_argument("--memory_metrics", action="store_true")
 
+  parser.add_argument("--mask_augmentation", action="store_true", help="Enable mask-bar augmentation during training")
+  parser.add_argument("--mask_apply_probability", type=float, default=0.5, help="Fraction of samples that get any masking (gate)")
+  parser.add_argument("--mask_type", type=int, default=0, help="0=random, 1=structured-future, 2=mixed")
+  parser.add_argument("--mask_bar_fraction", type=float, default=0.25, help="Max fraction of bars to mask when gate fires")
+  parser.add_argument("--mask_max_lookahead", type=int, default=4, help="Max lookahead bars for structured-future masking")
+
   parser.add_argument("--wandb_project", type=str, default="midi-gpt")
   parser.add_argument("--no_wandb", action="store_true")
 

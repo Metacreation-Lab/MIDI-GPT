@@ -177,6 +177,11 @@ PYBIND11_MODULE(_midigpt,handle) {
     .def_readwrite("microtiming", &data_structures::TrainConfig::microtiming)
     .def_readwrite("decode_resolution", &data_structures::TrainConfig::decode_resolution)
     .def_readwrite("delta_resolution", &data_structures::TrainConfig::delta_resolution)
+    .def_readwrite("do_mask_augmentation", &data_structures::TrainConfig::do_mask_augmentation)
+    .def_readwrite("mask_apply_probability", &data_structures::TrainConfig::mask_apply_probability)
+    .def_readwrite("mask_type", &data_structures::TrainConfig::mask_type)
+    .def_readwrite("mask_bar_fraction", &data_structures::TrainConfig::mask_bar_fraction)
+    .def_readwrite("mask_max_lookahead", &data_structures::TrainConfig::mask_max_lookahead)
     .def("to_json", &data_structures::TrainConfig::ToJson)
     .def("from_json", &data_structures::TrainConfig::FromJson);
 
