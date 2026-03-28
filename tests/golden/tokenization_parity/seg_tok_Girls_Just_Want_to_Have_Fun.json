@@ -1,0 +1,5999 @@
+{
+  "config": {
+    "both_in_one": true,
+    "decode_final": false,
+    "decode_resolution": 1920,
+    "delta_resolution": 1920,
+    "do_multi_fill": false,
+    "resolution": 12,
+    "transpose": 0,
+    "unquantized": false,
+    "use_microtiming": true,
+    "use_velocity_levels": true
+  },
+  "segment": {
+    "events": [
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 0,
+        "velocity": 67
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 1,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 6,
+        "velocity": 76
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 7,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 12,
+        "velocity": 121
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 13,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 18,
+        "velocity": 85
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 19,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 24,
+        "velocity": 68
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 25,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 30,
+        "velocity": 89
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 31,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 36,
+        "velocity": 121
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 37,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 42,
+        "velocity": 82
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 43,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 0,
+        "velocity": 65
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 1,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 6,
+        "velocity": 56
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 7,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 12,
+        "velocity": 121
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 13,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 18,
+        "velocity": 65
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 19,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 24,
+        "velocity": 58
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 25,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 30,
+        "velocity": 74
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 31,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 36,
+        "velocity": 121
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 37,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 42,
+        "velocity": 65
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 43,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 0,
+        "velocity": 67
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 1,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 6,
+        "velocity": 76
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 7,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 12,
+        "velocity": 121
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 13,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 18,
+        "velocity": 85
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 19,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 24,
+        "velocity": 68
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 25,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 30,
+        "velocity": 89
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 31,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 36,
+        "velocity": 121
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 37,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 42,
+        "velocity": 82
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 43,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 0,
+        "velocity": 65
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 1,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 6,
+        "velocity": 56
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 7,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 12,
+        "velocity": 121
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 13,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 18,
+        "velocity": 65
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 19,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 24,
+        "velocity": 58
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 25,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 30,
+        "velocity": 74
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 31,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 36,
+        "velocity": 121
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 37,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 42,
+        "velocity": 65
+      },
+      {
+        "delta": 0,
+        "pitch": 42,
+        "time": 43,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 12,
+        "velocity": 92
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 13,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 36,
+        "velocity": 92
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 37,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 12,
+        "velocity": 89
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 13,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 36,
+        "velocity": 92
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 37,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 12,
+        "velocity": 92
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 13,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 36,
+        "velocity": 92
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 37,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 12,
+        "velocity": 89
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 13,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 36,
+        "velocity": 92
+      },
+      {
+        "delta": 0,
+        "pitch": 38,
+        "time": 37,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 39,
+        "time": 0,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 39,
+        "time": 12,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 39,
+        "time": 18,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 39,
+        "time": 21,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 37,
+        "time": 24,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 37,
+        "time": 36,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 37,
+        "time": 42,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 37,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 30,
+        "time": 0,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 30,
+        "time": 12,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 30,
+        "time": 18,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 30,
+        "time": 21,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 30,
+        "time": 24,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 30,
+        "time": 36,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 30,
+        "time": 0,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 30,
+        "time": 12,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 30,
+        "time": 18,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 30,
+        "time": 21,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 34,
+        "time": 24,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 34,
+        "time": 33,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 37,
+        "time": 36,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 37,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 39,
+        "time": 0,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 39,
+        "time": 12,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 39,
+        "time": 18,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 39,
+        "time": 21,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 39,
+        "time": 24,
+        "velocity": 95
+      },
+      {
+        "delta": -16,
+        "pitch": 39,
+        "time": 36,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 77,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 80,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 77,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 80,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 77,
+        "time": 33,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 80,
+        "time": 33,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 33,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 77,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 80,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 77,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 80,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 77,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 80,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 77,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 80,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 77,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 80,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 33,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 33,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 33,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 33,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 33,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 33,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 6,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 8,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 9,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 18,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 21,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 30,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 32,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 33,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 33,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 42,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 45,
+        "velocity": 70
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 0,
+        "velocity": 104
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 1,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 18,
+        "velocity": 107
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 19,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 24,
+        "velocity": 107
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 25,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 0,
+        "velocity": 104
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 1,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 18,
+        "velocity": 104
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 19,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 24,
+        "velocity": 104
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 25,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 0,
+        "velocity": 104
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 1,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 18,
+        "velocity": 107
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 19,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 24,
+        "velocity": 107
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 25,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 0,
+        "velocity": 104
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 1,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 18,
+        "velocity": 104
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 19,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 24,
+        "velocity": 104
+      },
+      {
+        "delta": 0,
+        "pitch": 36,
+        "time": 25,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 0,
+        "velocity": 69
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 2,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 3,
+        "velocity": 49
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 5,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 9,
+        "velocity": 58
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 15,
+        "velocity": 54
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 17,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 18,
+        "velocity": 69
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 49,
+        "time": 24,
+        "velocity": 63
+      },
+      {
+        "delta": -64,
+        "pitch": 49,
+        "time": 26,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 49,
+        "time": 42,
+        "velocity": 69
+      },
+      {
+        "delta": -64,
+        "pitch": 49,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 45,
+        "velocity": 82
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 0,
+        "velocity": 69
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 2,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 3,
+        "velocity": 56
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 5,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 9,
+        "velocity": 63
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 15,
+        "velocity": 69
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 17,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 18,
+        "velocity": 73
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 24,
+        "velocity": 73
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 26,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 49,
+        "time": 42,
+        "velocity": 82
+      },
+      {
+        "delta": -64,
+        "pitch": 49,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 45,
+        "velocity": 98
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 0,
+        "velocity": 73
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 2,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 3,
+        "velocity": 58
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 5,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 9,
+        "velocity": 58
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 15,
+        "velocity": 58
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 17,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 18,
+        "velocity": 58
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 24,
+        "velocity": 58
+      },
+      {
+        "delta": -64,
+        "pitch": 54,
+        "time": 26,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 49,
+        "time": 36,
+        "velocity": 82
+      },
+      {
+        "delta": -64,
+        "pitch": 49,
+        "time": 38,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 0,
+        "velocity": 87
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 2,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 3,
+        "velocity": 56
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 5,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 9,
+        "velocity": 76
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 15,
+        "velocity": 73
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 17,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 18,
+        "velocity": 66
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 24,
+        "velocity": 60
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 26,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 49,
+        "time": 42,
+        "velocity": 87
+      },
+      {
+        "delta": -64,
+        "pitch": 49,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 51,
+        "time": 45,
+        "velocity": 82
+      },
+      {
+        "delta": -64,
+        "pitch": 51,
+        "time": 47,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 0,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 82,
+        "time": 9,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 12,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 82,
+        "time": 21,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 80,
+        "time": 24,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 80,
+        "time": 30,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 30,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 78,
+        "time": 36,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 77,
+        "time": 36,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 77,
+        "time": 42,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 6,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 85,
+        "time": 9,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 12,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 85,
+        "time": 15,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 18,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 85,
+        "time": 21,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 24,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 85,
+        "time": 27,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 30,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 85,
+        "time": 33,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 33,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 85,
+        "time": 48,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 83,
+        "time": 6,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 83,
+        "time": 9,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 9,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 82,
+        "time": 18,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 80,
+        "time": 18,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 80,
+        "time": 21,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 21,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 78,
+        "time": 33,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 80,
+        "time": 33,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 80,
+        "time": 36,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 36,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 82,
+        "time": 42,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 87,
+        "time": 12,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 87,
+        "time": 18,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 85,
+        "time": 24,
+        "velocity": 104
+      },
+      {
+        "delta": -80,
+        "pitch": 85,
+        "time": 33,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 83,
+        "time": 33,
+        "velocity": 104
+      },
+      {
+        "delta": -16,
+        "pitch": 83,
+        "time": 36,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 82,
+        "time": 36,
+        "velocity": 104
+      }
+    ],
+    "internalHasTimeSignatures": true,
+    "internalMetadataLabels": {},
+    "internalTicksPerQuarter": 120,
+    "internalValidSegments": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84
+    ],
+    "internalValidTracksV2": [
+      {
+        "tracks": [
+          5
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          5
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          7,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "tracks": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          9,
+          10,
+          11
+        ]
+      }
+    ],
+    "resolution": 12,
+    "tempo": 122,
+    "tracks": [
+      {
+        "bars": [
+          {
+            "events": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              32,
+              33,
+              34,
+              35,
+              36,
+              37,
+              38,
+              39,
+              40,
+              41,
+              42,
+              43,
+              44,
+              45,
+              46,
+              47
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              48,
+              49,
+              50,
+              51,
+              52,
+              53,
+              54,
+              55,
+              56,
+              57,
+              58,
+              59,
+              60,
+              61,
+              62,
+              63
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          }
+        ],
+        "instrument": 0,
+        "trackType": "STANDARD_DRUM_TRACK"
+      },
+      {
+        "bars": [
+          {
+            "events": [
+              64,
+              65,
+              66,
+              67
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              68,
+              69,
+              70,
+              71
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              72,
+              73,
+              74,
+              75
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              76,
+              77,
+              78,
+              79
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          }
+        ],
+        "instrument": 0,
+        "trackType": "STANDARD_DRUM_TRACK"
+      },
+      {
+        "bars": [
+          {
+            "events": [
+              80,
+              81,
+              82,
+              83,
+              84,
+              85,
+              86,
+              87
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              88,
+              89,
+              90,
+              91,
+              92,
+              93
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              94,
+              95,
+              96,
+              97,
+              98,
+              99,
+              100,
+              101
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              102,
+              103,
+              104,
+              105,
+              106,
+              107
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          }
+        ],
+        "instrument": 34,
+        "trackType": "STANDARD_TRACK"
+      },
+      {
+        "bars": [
+          {
+            "events": [
+              108,
+              109,
+              110,
+              111,
+              112,
+              113,
+              114,
+              115,
+              116,
+              117,
+              118,
+              119,
+              120,
+              121,
+              122,
+              123,
+              124,
+              125,
+              126,
+              127,
+              128,
+              129,
+              130,
+              131,
+              132,
+              133,
+              134,
+              135,
+              136,
+              137,
+              138,
+              139,
+              140,
+              141,
+              142,
+              143,
+              144,
+              145,
+              146,
+              147,
+              148,
+              149,
+              150,
+              151,
+              152,
+              153,
+              154,
+              155
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              156,
+              157,
+              158,
+              159,
+              160,
+              161,
+              162,
+              163,
+              164,
+              165,
+              166,
+              167,
+              168,
+              169,
+              170,
+              171,
+              172,
+              173,
+              174,
+              175,
+              176,
+              177,
+              178,
+              179,
+              180,
+              181,
+              182,
+              183,
+              184,
+              185,
+              186,
+              187,
+              188,
+              189,
+              190,
+              191,
+              192,
+              193,
+              194,
+              195,
+              196,
+              197,
+              198,
+              199,
+              200,
+              201,
+              202,
+              203
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              204,
+              205,
+              206,
+              207,
+              208,
+              209,
+              210,
+              211,
+              212,
+              213,
+              214,
+              215,
+              216,
+              217,
+              218,
+              219,
+              220,
+              221,
+              222,
+              223,
+              224,
+              225,
+              226,
+              227,
+              228,
+              229,
+              230,
+              231,
+              232,
+              233,
+              234,
+              235,
+              236,
+              237,
+              238,
+              239,
+              240,
+              241,
+              242,
+              243,
+              244,
+              245,
+              246,
+              247,
+              248,
+              249,
+              250,
+              251
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              252,
+              253,
+              254,
+              255,
+              256,
+              257,
+              258,
+              259,
+              260,
+              261,
+              262,
+              263,
+              264,
+              265,
+              266,
+              267,
+              268,
+              269,
+              270,
+              271,
+              272,
+              273,
+              274,
+              275,
+              276,
+              277,
+              278,
+              279,
+              280,
+              281,
+              282,
+              283,
+              284,
+              285,
+              286,
+              287,
+              288,
+              289,
+              290,
+              291,
+              292,
+              293,
+              294,
+              295,
+              296,
+              297
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          }
+        ],
+        "instrument": 16,
+        "trackType": "STANDARD_TRACK"
+      },
+      {
+        "bars": [
+          {
+            "events": [
+              298,
+              299,
+              300,
+              301,
+              302,
+              303
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              304,
+              305,
+              306,
+              307,
+              308,
+              309
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              310,
+              311,
+              312,
+              313,
+              314,
+              315
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              316,
+              317,
+              318,
+              319,
+              320,
+              321
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          }
+        ],
+        "instrument": 16,
+        "trackType": "STANDARD_DRUM_TRACK"
+      },
+      {
+        "bars": [
+          {
+            "events": [
+              322,
+              323,
+              324,
+              325,
+              326,
+              327,
+              328,
+              329,
+              330,
+              331,
+              332,
+              333,
+              334,
+              335,
+              336,
+              337
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              338,
+              339,
+              340,
+              341,
+              342,
+              343,
+              344,
+              345,
+              346,
+              347,
+              348,
+              349,
+              350,
+              351,
+              352,
+              353
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              354,
+              355,
+              356,
+              357,
+              358,
+              359,
+              360,
+              361,
+              362,
+              363,
+              364,
+              365,
+              366,
+              367
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              368,
+              369,
+              370,
+              371,
+              372,
+              373,
+              374,
+              375,
+              376,
+              377,
+              378,
+              379,
+              380,
+              381,
+              382,
+              383
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          }
+        ],
+        "instrument": 28,
+        "trackType": "STANDARD_TRACK"
+      },
+      {
+        "bars": [
+          {
+            "events": [
+              384,
+              385,
+              386,
+              387,
+              388,
+              389,
+              390,
+              391,
+              392,
+              393
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              394,
+              395,
+              396,
+              397,
+              398,
+              399,
+              400,
+              401,
+              402,
+              403,
+              404,
+              405
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              406,
+              407,
+              408,
+              409,
+              410,
+              411,
+              412,
+              413,
+              414,
+              415,
+              416,
+              417
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              418,
+              419,
+              420,
+              421,
+              422,
+              423,
+              424
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          }
+        ],
+        "instrument": 26,
+        "trackType": "STANDARD_TRACK"
+      }
+    ]
+  },
+  "tokens": [
+    0,
+    2,
+    43,
+    45,
+    830,
+    4,
+    19,
+    737,
+    196,
+    384,
+    746,
+    196,
+    390,
+    791,
+    196,
+    396,
+    755,
+    196,
+    402,
+    738,
+    196,
+    408,
+    759,
+    196,
+    414,
+    791,
+    196,
+    420,
+    752,
+    196,
+    5,
+    4,
+    19,
+    735,
+    196,
+    384,
+    726,
+    196,
+    390,
+    791,
+    196,
+    396,
+    735,
+    196,
+    402,
+    728,
+    196,
+    408,
+    744,
+    196,
+    414,
+    791,
+    196,
+    420,
+    735,
+    196,
+    5,
+    4,
+    19,
+    737,
+    196,
+    384,
+    746,
+    196,
+    390,
+    791,
+    196,
+    396,
+    755,
+    196,
+    402,
+    738,
+    196,
+    408,
+    759,
+    196,
+    414,
+    791,
+    196,
+    420,
+    752,
+    196,
+    5,
+    4,
+    19,
+    735,
+    196,
+    384,
+    726,
+    196,
+    390,
+    791,
+    196,
+    396,
+    735,
+    196,
+    402,
+    728,
+    196,
+    408,
+    744,
+    196,
+    414,
+    791,
+    196,
+    420,
+    735,
+    196,
+    5,
+    44,
+    43,
+    45,
+    830,
+    4,
+    19,
+    390,
+    762,
+    192,
+    414,
+    192,
+    5,
+    4,
+    19,
+    390,
+    759,
+    192,
+    414,
+    762,
+    192,
+    5,
+    4,
+    19,
+    390,
+    762,
+    192,
+    414,
+    192,
+    5,
+    4,
+    19,
+    390,
+    759,
+    192,
+    414,
+    762,
+    192,
+    5,
+    44,
+    42,
+    72,
+    810,
+    820,
+    799,
+    807,
+    4,
+    19,
+    765,
+    193,
+    293,
+    396,
+    193,
+    284,
+    402,
+    191,
+    293,
+    420,
+    191,
+    284,
+    5,
+    4,
+    19,
+    765,
+    184,
+    293,
+    396,
+    184,
+    284,
+    402,
+    184,
+    293,
+    5,
+    4,
+    19,
+    765,
+    184,
+    293,
+    396,
+    184,
+    284,
+    402,
+    188,
+    290,
+    414,
+    191,
+    290,
+    5,
+    4,
+    19,
+    765,
+    193,
+    293,
+    396,
+    193,
+    284,
+    402,
+    193,
+    293,
+    5,
+    44,
+    42,
+    58,
+    812,
+    822,
+    798,
+    804,
+    4,
+    19,
+    384,
+    740,
+    232,
+    283,
+    236,
+    283,
+    241,
+    283,
+    387,
+    232,
+    283,
+    236,
+    283,
+    241,
+    283,
+    396,
+    232,
+    283,
+    236,
+    283,
+    241,
+    283,
+    399,
+    232,
+    283,
+    236,
+    283,
+    241,
+    283,
+    408,
+    231,
+    283,
+    234,
+    283,
+    239,
+    283,
+    411,
+    231,
+    283,
+    234,
+    283,
+    239,
+    283,
+    420,
+    231,
+    283,
+    234,
+    283,
+    239,
+    283,
+    423,
+    231,
+    283,
+    234,
+    283,
+    239,
+    283,
+    5,
+    4,
+    19,
+    384,
+    740,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    387,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    396,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    399,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    408,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    411,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    420,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    423,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    5,
+    4,
+    19,
+    384,
+    740,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    387,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    396,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    399,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    408,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    411,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    420,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    423,
+    232,
+    283,
+    236,
+    283,
+    239,
+    283,
+    5,
+    4,
+    19,
+    384,
+    740,
+    232,
+    283,
+    236,
+    283,
+    241,
+    283,
+    387,
+    232,
+    283,
+    236,
+    283,
+    241,
+    283,
+    396,
+    232,
+    283,
+    236,
+    283,
+    241,
+    283,
+    399,
+    232,
+    283,
+    236,
+    283,
+    241,
+    283,
+    408,
+    232,
+    283,
+    236,
+    283,
+    241,
+    283,
+    411,
+    232,
+    283,
+    241,
+    283,
+    420,
+    232,
+    283,
+    236,
+    283,
+    241,
+    283,
+    423,
+    232,
+    283,
+    236,
+    283,
+    241,
+    283,
+    5,
+    44,
+    43,
+    58,
+    830,
+    4,
+    19,
+    774,
+    190,
+    396,
+    777,
+    190,
+    402,
+    190,
+    5,
+    4,
+    19,
+    774,
+    190,
+    396,
+    190,
+    402,
+    190,
+    5,
+    4,
+    19,
+    774,
+    190,
+    396,
+    777,
+    190,
+    402,
+    190,
+    5,
+    4,
+    19,
+    774,
+    190,
+    396,
+    190,
+    402,
+    190,
+    5,
+    44,
+    42,
+    67,
+    810,
+    820,
+    798,
+    804,
+    4,
+    19,
+    739,
+    205,
+    283,
+    381,
+    719,
+    205,
+    283,
+    387,
+    728,
+    205,
+    283,
+    393,
+    724,
+    205,
+    283,
+    396,
+    739,
+    205,
+    283,
+    402,
+    733,
+    203,
+    283,
+    420,
+    739,
+    203,
+    283,
+    423,
+    752,
+    205,
+    283,
+    5,
+    4,
+    19,
+    739,
+    208,
+    283,
+    381,
+    726,
+    208,
+    283,
+    387,
+    733,
+    208,
+    283,
+    393,
+    739,
+    208,
+    283,
+    396,
+    743,
+    208,
+    283,
+    402,
+    208,
+    283,
+    420,
+    752,
+    203,
+    283,
+    423,
+    768,
+    205,
+    283,
+    5,
+    4,
+    19,
+    743,
+    208,
+    283,
+    381,
+    728,
+    208,
+    283,
+    387,
+    208,
+    283,
+    393,
+    208,
+    283,
+    396,
+    208,
+    283,
+    402,
+    208,
+    283,
+    414,
+    752,
+    203,
+    283,
+    5,
+    4,
+    19,
+    757,
+    205,
+    283,
+    381,
+    726,
+    205,
+    283,
+    387,
+    746,
+    205,
+    283,
+    393,
+    743,
+    205,
+    283,
+    396,
+    736,
+    205,
+    283,
+    402,
+    730,
+    205,
+    283,
+    420,
+    757,
+    203,
+    283,
+    423,
+    752,
+    205,
+    283,
+    5,
+    44,
+    42,
+    65,
+    810,
+    820,
+    799,
+    806,
+    4,
+    19,
+    774,
+    236,
+    290,
+    390,
+    236,
+    290,
+    402,
+    234,
+    287,
+    408,
+    232,
+    287,
+    414,
+    231,
+    287,
+    5,
+    4,
+    19,
+    384,
+    774,
+    239,
+    284,
+    390,
+    239,
+    284,
+    396,
+    239,
+    284,
+    402,
+    239,
+    284,
+    408,
+    239,
+    284,
+    411,
+    239,
+    296,
+    5,
+    4,
+    19,
+    384,
+    774,
+    237,
+    284,
+    387,
+    236,
+    290,
+    396,
+    234,
+    284,
+    399,
+    232,
+    293,
+    411,
+    234,
+    284,
+    414,
+    236,
+    287,
+    5,
+    4,
+    19,
+    390,
+    774,
+    241,
+    287,
+    402,
+    239,
+    290,
+    411,
+    237,
+    284,
+    5,
+    44
+  ],
+  "train_config": {
+    "delta_resolution": 1920,
+    "max_tracks": 8,
+    "min_tracks": 1,
+    "num_bars": 4,
+    "resolution": 12,
+    "use_microtiming": true
+  }
+}

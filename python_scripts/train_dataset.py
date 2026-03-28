@@ -44,6 +44,11 @@ class CustomDataset:
     self.tc.use_microtiming = expressive
     self.tc.no_max_length = no_max_length
     self.tc.resolution = resolution
+    self.tc.do_mask_augmentation = kwargs.get("mask_augmentation", False)
+    self.tc.mask_apply_probability = kwargs.get("mask_apply_probability", 0.5)
+    self.tc.mask_type = kwargs.get("mask_type", 0)
+    self.tc.mask_bar_fraction = kwargs.get("mask_bar_fraction", 0.25)
+    self.tc.mask_max_lookahead = kwargs.get("mask_max_lookahead", 4)
 
     self.current = 0
   
@@ -83,8 +88,8 @@ class CustomDataset:
       while True:
         try:
           return self._get_batch()
-        except Exception as e:
-          print("ERROR IN BATCHER : ", e)
+        except Exception:
+          pass
     raise StopIteration
   
   def __len__(self):

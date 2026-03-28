@@ -359,12 +359,24 @@ public:
         ts->push_back( rep->encode(midi::TOKEN_TIME_SIGNATURE, std::make_tuple(bar.ts_numerator(), bar.ts_denominator())) );
       }
 
-      if ((config->do_multi_fill) && (config->multi_fill.find(std::make_pair(track_num,bar_num)) != config->multi_fill.end())) {
+      // Determine whether this bar should be masked.
+      // Priority: (1) explicit future flag on the proto Bar,
+      //           (2) training augmentation mask_bars set.
+      bool is_masked = (bar.has_future() && bar.future());
+      if (!is_masked && !config->mask_bars.empty()) {
+        is_masked = (config->mask_bars.count(std::make_tuple(track_num, bar_num)) > 0);
+      }
+
+      if (is_masked && rep->has_token_type(midi::TOKEN_MASK_BAR)) {
+        ts->push_back( rep->encode(midi::TOKEN_MASK_BAR, 0) );
+      }
+      else if ((config->do_multi_fill) && (config->multi_fill.find(std::make_pair(track_num,bar_num)) != config->multi_fill.end())) {
         ts->push_back( rep->encode(midi::TOKEN_FILL_IN_PLACEHOLDER, 0) );
       }
       else {
         encode_notes(bar_num, track_num, p, ts);
       }
+
       ts->push_back( rep->encode(midi::TOKEN_BAR_END, 0) );
     }
   }
@@ -387,11 +399,117 @@ public:
 
     append_track_tokens(ts, rep, f, is_drum);
 
-    for (int i=0; i<track.bars_size(); i++) {
+    // Partial encoding: for suffix-autoregressive prompt construction, encode
+    // only a prefix of the track's bars and omit TRACK_END so the model
+    // can continue generating the remaining bar(s) as a continuation.
+    bool is_partial = (track_num == config->partial_encode_track_index) &&
+                      (config->partial_encode_track_bars >= 0);
+    int num_bars = is_partial
+        ? std::min(config->partial_encode_track_bars, track.bars_size())
+        : track.bars_size();
+
+    for (int i=0; i<num_bars; i++) {
       encode_bar(i, track_num, p, ts, false);
     }
 
-    ts->push_back( rep->encode(midi::TOKEN_TRACK_END, 0) );
+    if (!is_partial) {
+      ts->push_back( rep->encode(midi::TOKEN_TRACK_END, 0) );
+    }
+  }
+
+  // Apply stochastic mask-bar augmentation for training.
+  // Populates config->mask_bars with (track, bar) pairs to be encoded as
+  // BAR MASK_BAR BAR_END.  Never masks bars that are infill targets (multi_fill).
+  // Should be called at the start of encode_piece when do_mask_augmentation is set.
+  //
+  // Gate: fires with probability mask_apply_probability (analogous to the 0.75
+  // gate used for bar infilling).  When the gate does not fire the function
+  // returns immediately and the sample is encoded without any mask tokens.
+  //
+  // Random mode (0): collects all eligible (non-infill) bar indices, shuffles
+  // them, and masks a count sampled uniformly from
+  // [1, max(1, floor(mask_bar_fraction * num_bars))].
+  //
+  // Structured-future mode (1): picks a current-time position t_cur and a
+  // lookahead k ~ Uniform[1, mask_max_lookahead], then masks bars
+  // [t_cur+1 .. t_cur+k] on conditioning tracks (mirrors inference-time use).
+  void apply_mask_augmentation(midi::Piece *p) {
+    config->mask_bars.clear();
+    if (!config->do_mask_augmentation) return;
+
+    int num_tracks = p->tracks_size();
+    int num_bars   = (num_tracks > 0) ? p->tracks(0).bars_size() : 0;
+    if (num_bars == 0) return;
+
+    std::mt19937 rng;
+    if (config->mask_seed >= 0) {
+      rng.seed(static_cast<unsigned int>(config->mask_seed));
+    } else {
+      rng.seed(std::random_device{}());
+    }
+    std::uniform_real_distribution<float> prob(0.0f, 1.0f);
+
+    // Gate: skip augmentation for this sample with probability (1 - mask_apply_probability).
+    if (prob(rng) >= config->mask_apply_probability) return;
+
+    std::uniform_int_distribution<int> lookahead_dist(1, std::max(1, config->mask_max_lookahead));
+    std::uniform_int_distribution<int> time_dist(0, std::max(0, num_bars - 2));
+
+    // Helper: is (t, b) an infill target (must never be masked)?
+    auto is_infill_target = [&](int t, int b) -> bool {
+      return config->multi_fill.count(std::make_tuple(t, b)) > 0;
+    };
+
+    // Randomly pick which mode to apply for this piece.
+    int effective_type = config->mask_type;
+    if (effective_type == 2) {
+      effective_type = (prob(rng) < 0.5f) ? 0 : 1;
+    }
+
+    if (effective_type == 0) {
+      // Random: collect all eligible bar indices across all tracks, shuffle,
+      // then mask a count sampled from [1, max(1, floor(fraction * total_eligible))].
+      std::vector<std::tuple<int,int>> eligible;
+      for (int t = 0; t < num_tracks; t++) {
+        for (int b = 0; b < p->tracks(t).bars_size(); b++) {
+          if (!is_infill_target(t, b)) {
+            eligible.push_back(std::make_tuple(t, b));
+          }
+        }
+      }
+      if (eligible.empty()) return;
+      std::shuffle(eligible.begin(), eligible.end(), rng);
+      int max_count = std::max(1, static_cast<int>(
+        std::floor(config->mask_bar_fraction * static_cast<float>(eligible.size()))));
+      std::uniform_int_distribution<int> count_dist(1, max_count);
+      int count = count_dist(rng);
+      for (int i = 0; i < count; i++) {
+        config->mask_bars.insert(eligible[i]);
+      }
+    } else {
+      // Structured-future: pick a "current time" t_cur and a lookahead k,
+      // then mask bars [t_cur+1 .. t_cur+k] on conditioning tracks.
+      // This mirrors the inference-time pattern: real bars 0..t_cur, unknown bars ahead.
+      if (num_bars < 2) return;
+      int t_cur = time_dist(rng);
+      int k     = lookahead_dist(rng);
+      int end   = std::min(t_cur + k, num_bars - 1);
+
+      for (int t = 0; t < num_tracks; t++) {
+        bool is_generation_track = false;
+        for (int b = 0; b < p->tracks(t).bars_size(); b++) {
+          if (is_infill_target(t, b)) { is_generation_track = true; break; }
+        }
+        if (is_generation_track) continue;
+        // Randomly skip some conditioning tracks (models partial conditioning).
+        if (prob(rng) < 0.25f) continue;
+        for (int b = t_cur + 1; b <= end; b++) {
+          if (!is_infill_target(t, b)) {
+            config->mask_bars.insert(std::make_tuple(t, b));
+          }
+        }
+      }
+    }
   }
 
   data_structures::TokenSequence encode_piece(midi::Piece *p) {
@@ -400,6 +518,9 @@ public:
     if ((!rep->has_token_type(midi::TOKEN_NOTE_DURATION)) || (!rep->has_token_type(midi::TOKEN_TIME_ABSOLUTE_POS))) {
       throw std::runtime_error("ERROR: ENCODING PIECE WITH DEPRECATED NOTE ENCODINGS");
     }
+
+    // Apply stochastic mask-bar augmentation for training (clears previous state first).
+    apply_mask_augmentation(p);
 
     data_structures::TokenSequence ts(rep);
 

@@ -14,6 +14,11 @@ namespace data_structures {
         resolution = 12;
         delta_resolution = 1920;
         decode_resolution = delta_resolution;
+        do_mask_augmentation = false;
+        mask_apply_probability = 0.0f;
+        mask_type = 0;
+        mask_bar_fraction = 0.0f;
+        mask_max_lookahead = 4;
     }
 
     std::map<std::string, std::string> TrainConfig::ToJson() {

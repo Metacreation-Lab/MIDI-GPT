@@ -19,6 +19,7 @@ libtorch/
 libtorch_cpu/
 #pybind11/
 build/
+build_symusic/
 python_lib/
 CMakeFiles/
 CMakeScripts/
@@ -85,6 +86,9 @@ CMakeLists_CPP.txt
 */midigpt.cpython-38-x86_64-linux-gnu.so
 
 notes/*
+
+# secrets
+.env
 
 # claude
 .claude

@@ -3,11 +3,13 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <unordered_map>
 #include <tuple>
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <variant>
+#include <functional>
 
 #include "token_domain.h"
 #include "../data_structures/verbosity.h"
@@ -15,6 +17,27 @@
 
 // START OF NAMESPACE
 namespace encoder {
+
+// Hash for TOKEN_TUPLE = tuple<TOKEN_TYPE, TOKEN_VARIANT>
+// TOKEN_VARIANT = variant<int, string, tuple<int,int>>
+struct TokenTupleHash {
+  size_t operator()(const TOKEN_TUPLE& key) const {
+    size_t h = std::hash<int>{}(static_cast<int>(std::get<0>(key)));
+    const auto& v = std::get<1>(key);
+    size_t vh = 0;
+    if (std::holds_alternative<int>(v)) {
+      vh = std::hash<int>{}(std::get<int>(v));
+    } else if (std::holds_alternative<std::string>(v)) {
+      vh = std::hash<std::string>{}(std::get<std::string>(v));
+    } else {
+      auto [a, b] = std::get<std::tuple<int,int>>(v);
+      vh = std::hash<int>{}(a) ^ (std::hash<int>{}(b) << 16);
+    }
+    // Combine hashes
+    h ^= vh + 0x9e3779b9 + (h << 6) + (h >> 2);
+    return h;
+  }
+};
 
 class REPRESENTATION {
 
@@ -324,7 +347,7 @@ public:
   }
 
   int vocab_size;
-  std::map<TOKEN_TUPLE,int> forward;
+  std::unordered_map<TOKEN_TUPLE,int,TokenTupleHash> forward;
   std::map<int,TOKEN_TUPLE> backward;
   std::map<int,TOKEN_INPUT_TYPE> backward_types;
 

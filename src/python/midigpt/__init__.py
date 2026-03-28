@@ -18,7 +18,7 @@ from __future__ import annotations
 try:
     import torch as _torch  # noqa: F401
     has_torch: bool = True
-except ImportError:
+except (ImportError, OSError):
     has_torch: bool = False
 
 from ._midigpt import *          # noqa: F401, F403 — re-export full public API

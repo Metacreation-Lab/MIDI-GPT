@@ -215,35 +215,32 @@ namespace util_protobuf {
 		midi_piece->clear_internal_valid_segments();
 		midi_piece->clear_internal_valid_tracks();
 
-		if (midi_piece->tracks_size() < min_tracks) { return; } // no valid tracks
+		if (midi_piece->tracks_size() < min_tracks) { return; }
 
 		int min_non_empty_bars = round(seglen * .75);
 		int num_bars = GetNumBars(midi_piece);
+		int num_tracks = midi_piece->tracks_size();
+
+		// Build prefix sums per track: prefix[t][b] = count of non-empty bars in [0, b)
+		std::vector<std::vector<int>> prefix(num_tracks, std::vector<int>(num_bars + 1, 0));
+		for (int t = 0; t < num_tracks; t++) {
+			for (int b = 0; b < num_bars; b++) {
+				prefix[t][b + 1] = prefix[t][b] +
+					(midi_piece->tracks(t).bars(b).internal_has_notes() ? 1 : 0);
+			}
+		}
 
 		for (int start = 0; start < num_bars - seglen + 1; start++) {
-
-			// check that all time sigs are supported
-			bool is_four_four = true;
-
-			// check which tracks are valid
 			midi::ValidTrack vtracks;
-			std::map<int, int> used_track_types;
-			for (int track_num = 0; track_num < midi_piece->tracks_size(); track_num++) {
-				int non_empty_bars = 0;
-				for (int k = 0; k < seglen; k++) {
-					if (midi_piece->tracks(track_num).bars(start + k).internal_has_notes()) {
-						non_empty_bars++;
-					}
-				}
-				if (non_empty_bars >= min_non_empty_bars) {
-					vtracks.add_tracks(track_num);
+			for (int t = 0; t < num_tracks; t++) {
+				// O(1) non-empty bar count via prefix sum
+				int non_empty = prefix[t][start + seglen] - prefix[t][start];
+				if (non_empty >= min_non_empty_bars) {
+					vtracks.add_tracks(t);
 				}
 			}
 
-			// check if there are enough tracks
-			bool enough_tracks = vtracks.tracks_size() >= min_tracks;
-
-			if (enough_tracks && is_four_four) {
+			if (vtracks.tracks_size() >= min_tracks) {
 				midi::ValidTrack* v = midi_piece->add_internal_valid_tracks_v2();
 				v->CopyFrom(vtracks);
 				midi_piece->add_internal_valid_segments(start);
@@ -479,6 +476,181 @@ namespace util_protobuf {
 			f->set_min_note_duration_hard(min_value(durations));
 			f->set_max_note_duration_hard(max_value(durations));
 
+		}
+	}
+
+	// ================================================================
+	// Optimized single-pass preprocessing
+	// ================================================================
+
+	// Sweep-line polyphony: O(n log n) instead of O(notes * avg_duration)
+	std::tuple<double, double, double, double, double, double> av_polyphony_sweep(
+			std::vector<midi::Note>& notes, int max_tick, midi::TrackFeatures* f) {
+		if (notes.empty() || max_tick <= 0) {
+			return std::make_tuple(0.0, 1.0, 0.0, 0.0, 0.0, 0.0);
+		}
+
+		// Build sweep events: (time, delta) where delta=+1 for start, -1 for end
+		std::vector<std::pair<int, int>> events;
+		events.reserve(notes.size() * 2);
+		for (const auto &note : notes) {
+			int end = std::min(note.end(), max_tick - 1);
+			if (note.start() < end) {
+				events.emplace_back(note.start(), +1);
+				events.emplace_back(end, -1);
+			}
+		}
+		std::sort(events.begin(), events.end());
+
+		// Sweep through, tracking polyphony at each distinct time point
+		int current_poly = 0;
+		double count = 0;          // total note-ticks
+		int nonzero_count = 0;     // ticks with at least one note
+		std::vector<int> nz;       // polyphony values at each tick (for quantiles)
+		nz.reserve(max_tick);
+
+		int prev_time = 0;
+		for (size_t i = 0; i < events.size(); ) {
+			int t = events[i].first;
+
+			// Account for ticks between prev_time and t
+			if (current_poly > 0 && t > prev_time) {
+				int span = t - prev_time;
+				count += (double)current_poly * span;
+				nonzero_count += span;
+				for (int s = 0; s < span; s++) {
+					nz.push_back(current_poly);
+					if (f) {
+						f->add_polyphony_distribution(current_poly);
+					}
+				}
+			}
+
+			// Process all events at time t
+			while (i < events.size() && events[i].first == t) {
+				current_poly += events[i].second;
+				i++;
+			}
+			prev_time = t;
+		}
+
+		// Handle trailing polyphony (shouldn't happen if events are paired, but be safe)
+		if (current_poly > 0 && max_tick > prev_time) {
+			int span = max_tick - prev_time;
+			count += (double)current_poly * span;
+			nonzero_count += span;
+			for (int s = 0; s < span; s++) {
+				nz.push_back(current_poly);
+				if (f) {
+					f->add_polyphony_distribution(current_poly);
+				}
+			}
+		}
+
+		double silence = max_tick - nonzero_count;
+		std::vector<int> poly_qs = quantile<int>(nz, { .15, .85 });
+		double min_polyphony = min_value(nz);
+		double max_polyphony = max_value(nz);
+		double av_polyphony = count / std::max(nonzero_count, 1);
+		double av_silence = silence / std::max(max_tick, 1);
+
+		return std::make_tuple(av_polyphony, av_silence, poly_qs[0], poly_qs[1], min_polyphony, max_polyphony);
+	}
+
+	// Unified preprocessing: single pass per track computes durations,
+	// polyphony stats, and note density in one traversal of events.
+	// Replaces: calculate_note_durations + update_av_polyphony_and_note_duration + update_note_density
+	void preprocess_tracks(midi::Piece* p) {
+		// Step 1: Set all event durations to 0
+		for (int i = 0; i < p->events_size(); i++) {
+			p->mutable_events(i)->set_internal_duration(0);
+		}
+
+		for (int track_num = 0; track_num < p->tracks_size(); track_num++) {
+			const auto &track = p->tracks(track_num);
+			bool is_drum = data_structures::is_drum_track(track.track_type());
+
+			// Single pass: compute durations + build notes + count onsets + track valid bars
+			std::map<int, std::tuple<int, int>> onset_map;  // pitch → (abs_time, event_id)
+			std::vector<midi::Note> notes;
+			int bar_start = 0;
+			int max_tick = 0;
+			int num_note_onsets = 0;
+			std::set<int> valid_bars;
+
+			for (int bar_num = 0; bar_num < track.bars_size(); bar_num++) {
+				const midi::Bar &bar = track.bars(bar_num);
+				for (auto event_id : bar.events()) {
+					const midi::Event &e = p->events(event_id);
+					int abs_time = bar_start + e.time();
+					max_tick = std::max(max_tick, abs_time);
+
+					if (e.velocity() > 0) {
+						num_note_onsets++;
+						valid_bars.insert(bar_num);
+
+						if (is_drum) {
+							// Drums: duration = 1, note is immediate
+							p->mutable_events(event_id)->set_internal_duration(1);
+							notes.push_back(CreateNote(abs_time, abs_time + 1, e.pitch()));
+						} else {
+							onset_map[e.pitch()] = std::make_tuple(abs_time, event_id);
+						}
+					} else {
+						auto it = onset_map.find(e.pitch());
+						if (it != onset_map.end()) {
+							int onset_time = std::get<0>(it->second);
+							int onset_event_id = std::get<1>(it->second);
+							int duration = abs_time - onset_time;
+							int end_time = is_drum ? onset_time + 1 : abs_time;
+
+							// Set duration on the onset event
+							p->mutable_events(onset_event_id)->set_internal_duration(duration);
+
+							// Build note
+							notes.push_back(CreateNote(onset_time, end_time, e.pitch()));
+							onset_map.erase(it);
+						}
+					}
+				}
+				bar_start += p->resolution() * bar.internal_beat_length();
+			}
+
+			// Compute polyphony stats using sweep-line (Optimization 2)
+			midi::TrackFeatures* f = GetTrackFeatures(p, track_num);
+			auto stat = av_polyphony_sweep(notes, max_tick, f);
+			f->set_av_polyphony(std::get<0>(stat));
+			f->set_min_polyphony_q(
+				std::max(std::min((int)std::get<2>(stat), 10), 1) - 1);
+			f->set_max_polyphony_q(
+				std::max(std::min((int)std::get<3>(stat), 10), 1) - 1);
+			f->set_min_polyphony_hard(std::get<4>(stat));
+			f->set_max_polyphony_hard(std::get<5>(stat));
+
+			// Compute note duration stats
+			f->set_note_duration(note_duration_inner(notes));
+			std::vector<int> durations = get_note_durations(notes);
+			std::vector<int> dur_qs = quantile(durations, { .15, .85 });
+			f->set_min_note_duration_q(dur_qs[0]);
+			f->set_max_note_duration_q(dur_qs[1]);
+			f->set_min_note_duration_hard(min_value(durations));
+			f->set_max_note_duration_hard(max_value(durations));
+
+			// Compute note density (replaces update_note_density)
+			int num_bars = std::max((int)valid_bars.size(), 1);
+			double av_notes_fp = (double)num_note_onsets / num_bars;
+
+			int qindex = track.instrument();
+			if (is_drum) {
+				qindex = 128;
+			}
+			int bin = 0;
+			int av_notes = round(av_notes_fp);
+			while (av_notes > enums::DENSITY_QUANTILES[qindex][bin]) {
+				bin++;
+			}
+			f->set_note_density_v2(bin);
+			f->set_note_density_value(av_notes_fp);
 		}
 	}
 

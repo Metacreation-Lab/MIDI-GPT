@@ -429,7 +429,7 @@ int sample_multi_attempts(midi::Piece* piece, midi::Status* status, midi::HyperP
   midi::Piece input;
   input.CopyFrom(*piece);
   while (attempts < max_attempts) {
-    std::cout << "ATTEMPT " << attempts << std::endl;
+    //std::cout << "ATTEMPT " << attempts << std::endl;
     midi::Piece current;
     current.CopyFrom(*piece);
     sample(&current, status, param, callbacks);
