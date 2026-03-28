@@ -20,7 +20,6 @@ add_library(midigpt_core STATIC
 target_include_directories(midigpt_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/libraries/midifile/include
     ${CMAKE_CURRENT_SOURCE_DIR}/libraries/protobuf/include
 )
 
@@ -28,7 +27,24 @@ target_compile_definitions(midigpt_core
     PUBLIC $<$<BOOL:${MIDIGPT_NO_TORCH}>:NO_TORCH>
 )
 
-target_link_libraries(midigpt_core PUBLIC midigpt_proto midifile)
+if(MIDIGPT_MIDI_BACKEND STREQUAL "symusic")
+    target_compile_definitions(midigpt_core PUBLIC MIDIGPT_USE_SYMUSIC)
+    # symusic's CMakeLists.txt uses include_directories() (directory-scoped)
+    # rather than target_include_directories(symusic PUBLIC ...), so we must
+    # replicate the same paths for our own targets.
+    target_include_directories(midigpt_core PUBLIC
+        "${symusic_SOURCE_DIR}/include"
+        "${symusic_SOURCE_DIR}/3rdparty/pdqsort"
+        "${symusic_SOURCE_DIR}/3rdparty/zpp_bits"
+        "${symusic_SOURCE_DIR}/3rdparty"
+    )
+    target_link_libraries(midigpt_core PUBLIC midigpt_proto symusic)
+else()
+    target_include_directories(midigpt_core PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/libraries/midifile/include
+    )
+    target_link_libraries(midigpt_core PUBLIC midigpt_proto midifile)
+endif()
 
 if(NOT MIDIGPT_NO_TORCH)
     target_include_directories(midigpt_core PUBLIC ${TORCH_INCLUDE_DIRS})

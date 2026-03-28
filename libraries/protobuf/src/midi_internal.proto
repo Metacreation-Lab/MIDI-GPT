@@ -14,6 +14,7 @@ extend google.protobuf.FieldOptions {
 
 message ContinuousFeature {
   optional float av_polyphony = 1;
+  optional float av_silence = 2;
   optional float note_duration = 3;
   optional float note_duration_norm = 4;
 }
@@ -22,6 +23,8 @@ message BarFeatures {
   optional int32 onset_density = 1;
   optional int32 onset_polyphony_min = 2;
   optional int32 onset_polyphony_max = 3;
+  repeated int32 pitch_class_set = 4;
+  optional int32 tension = 5;
 }
 
 message TrackLevelAttributeControlDistributions {
@@ -31,6 +34,8 @@ message TrackLevelAttributeControlDistributions {
   repeated int32 onset_polyphony = 4;
   repeated int32 onset_density = 5;
   repeated int32 note_duration = 8;
+  repeated float key_signature_distribution = 6;
+  repeated float silence_proportion = 7;
 }
 
 message TrackFeatures {
@@ -73,12 +78,26 @@ message TrackFeatures {
   optional int32 contains_note_duration_half = 44;
   optional int32 contains_note_duration_whole = 45;
 
+  repeated bool pitch_classes = 17;
+  optional float rest_percentage = 22;
+  optional int32 pitch_class_count = 23;
+  optional int32 key_signature = 31;
+  optional int32 silence_proportion_min = 33;
+  optional int32 silence_proportion_max = 34;
+  optional int32 valence_spotify = 36;
+  optional int32 energy_spotify = 37;
+  optional int32 danceability_spotify = 38;
+  optional int32 danceability = 39;
+  optional int32 wnbd_syncopation = 46;
+  optional int32 repetition = 47;
+
   optional TrackLevelAttributeControlDistributions attribute_control_distributions = 30; // store them all here
-  
+
 }
 
 message PieceFeatures {
   optional string genre = 1;
+  optional int32 danceability = 2;
 }
 
 message Note {
@@ -111,6 +130,7 @@ message ModelMetadata {
   optional int32 num_hidden = 4;
   optional int32 model_dim = 5;
   optional bool new_state = 6;
+  optional string traced_device = 7;  // "cpu" or "cuda"
 }
 
 message GenreData {
@@ -121,5 +141,9 @@ message GenreData {
 
 message MetadataLabels {
   optional GenreMusicmap genre = 1;
+  optional float valence_spotify = 2;
+  optional float energy_spotify = 3;
+  optional float danceability_spotify = 4;
+  repeated float tension = 5;
   optional int32 nomml = 6;
 }

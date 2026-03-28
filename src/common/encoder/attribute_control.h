@@ -1035,6 +1035,532 @@ public:
 
 
 // ================================================
+// NEW ATTRIBUTE CONTROLS
+// ================================================
+
+class TrackLevelSilenceProportion : public ATTRIBUTE_CONTROL {
+public:
+    TrackLevelSilenceProportion() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_TRACK;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT_AND_DRUM;
+        token_types = {
+            {midi::TOKEN_TRACK_LEVEL_SILENCE_PROPORTION_MIN, 10},
+            {midi::TOKEN_TRACK_LEVEL_SILENCE_PROPORTION_MAX, 10}
+        };
+        token_types_v2 = {
+            {midi::TOKEN_TRACK_LEVEL_SILENCE_PROPORTION_MIN, 10, "silence_proportion_min"},
+            {midi::TOKEN_TRACK_LEVEL_SILENCE_PROPORTION_MAX, 10, "silence_proportion_max"}
+        };
+    }
+    ~TrackLevelSilenceProportion() {}
+
+    void compute_track_features(midi::Piece *x, int track_num, midi::TrackFeatures *tf) {
+        const auto track = x->tracks(track_num);
+        tf->mutable_attribute_control_distributions()->clear_silence_proportion();
+
+        int max_tick = 0;
+        std::vector<midi::Note> notes = util_protobuf::TrackEventsToNotes(x, track_num, &max_tick);
+
+        if (max_tick > 100000) {
+            throw std::runtime_error("MAX TICK TO LARGE!");
+        }
+        int nonzero_count = 0;
+        double count = 0;
+        std::vector<int> flat_roll(max_tick, 0);
+        for (const auto &note : notes) {
+            for (int t = note.start(); t < std::min(note.end(), max_tick - 1); t++) {
+                if (flat_roll[t] == 0) {
+                    nonzero_count += 1;
+                }
+                flat_roll[t]++;
+                count++;
+            }
+        }
+
+        int bar_start = 0;
+        int bar_end = 0;
+        double min_silence_proportion = 1.;
+        double max_silence_proportion = 0.;
+        for (const auto &bar : track.bars()) {
+            double silence_count = 0;
+            bar_end = bar_start + x->resolution() * bar.internal_beat_length();
+            for (int i=bar_start; i<bar_end; i++) {
+                silence_count += (double)((i >= (int)flat_roll.size()) || (flat_roll[i] == 0));
+            }
+            double silence_proportion = silence_count / (bar_end - bar_start);
+            tf->mutable_attribute_control_distributions()->add_silence_proportion(silence_proportion);
+            min_silence_proportion = std::min(min_silence_proportion, silence_proportion);
+            max_silence_proportion = std::max(max_silence_proportion, silence_proportion);
+            bar_start = bar_end;
+        }
+        min_silence_proportion = std::clamp(min_silence_proportion, 0., 1. - 1e-6);
+        max_silence_proportion = std::clamp(max_silence_proportion, 0., 1. - 1e-6);
+
+        tf->set_silence_proportion_min(
+            floor(min_silence_proportion * get_token_domain_size(midi::TOKEN_TRACK_LEVEL_SILENCE_PROPORTION_MIN)));
+        tf->set_silence_proportion_max(
+            floor(max_silence_proportion * get_token_domain_size(midi::TOKEN_TRACK_LEVEL_SILENCE_PROPORTION_MAX)));
+    }
+};
+
+class BarLevelPitchClassSet : public ATTRIBUTE_CONTROL {
+public:
+    BarLevelPitchClassSet() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_BAR;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT;
+        token_types = {
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2}
+        };
+        token_types_v3 = {
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 0, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 1, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 2, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 3, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 4, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 5, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 6, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 7, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 8, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 9, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 10, 2},
+            {midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, 11, 2}
+        };
+    }
+    ~BarLevelPitchClassSet() {}
+
+    void compute_bar_features(midi::Piece *x, int track_num, int bar_num, midi::BarFeatures *bf) {
+        const auto track = x->tracks(track_num);
+        const auto bar = track.bars(bar_num);
+
+        std::set<int> pitch_classes;
+        for (const auto &event_index : bar.events()) {
+            if (x->events(event_index).velocity()) {
+                pitch_classes.insert(x->events(event_index).pitch() % 12);
+            }
+        }
+
+        bf->clear_pitch_class_set();
+        for (int i=0; i<12; i++) {
+            bf->add_pitch_class_set(pitch_classes.find(i) != pitch_classes.end());
+        }
+    }
+
+    void override_bar_feature(midi::BarFeatures *bf, midi::StatusBar *bar) {
+        if (bar->pitch_class_set_size() == 12) {
+            bf->clear_pitch_class_set();
+            for (int i=0; i<12; i++) {
+                bf->add_pitch_class_set(bar->pitch_class_set(i));
+            }
+        }
+    }
+
+    void append_bar_tokens(data_structures::TokenSequence *tokens, const std::shared_ptr<REPRESENTATION> &rep, midi::BarFeatures *bf) {
+        for (int i=0; i<12; i++) {
+            tokens->push_back( rep->encode(midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, bf->pitch_class_set(i)) );
+        }
+    }
+
+    void set_bar_mask(const std::shared_ptr<REPRESENTATION> &rep, std::vector<int> &mask, midi::StatusBar *bar) {
+        if (bar->pitch_class_set_size() < 12) {
+            data_structures::LOGGER("WARNING :: PITCH CLASS SIZE < 12");
+        }
+        for (int i=0; i<12; i++) {
+            rep->set_mask(midi::TOKEN_BAR_LEVEL_PITCH_CLASS_SET, {bar->pitch_class_set_size() > i ? bar->pitch_class_set(i) : 0}, mask, 1);
+        }
+    }
+};
+
+class WNBDSyncopation : public ATTRIBUTE_CONTROL {
+public:
+    WNBDSyncopation() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_TRACK;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT_AND_DRUM;
+        token_types = {
+            {midi::TOKEN_WNBD_SYNCOPATION, 10}
+        };
+        token_types_v2 = {
+            {midi::TOKEN_WNBD_SYNCOPATION, 10, "wnbd_syncopation"}
+        };
+    }
+    ~WNBDSyncopation() {}
+
+    void compute_track_features(midi::Piece *x, int track_num, midi::TrackFeatures *tf) {
+        const auto track = x->tracks(track_num);
+        double syncopation = 0.;
+        int num_onsets = 0;
+        for (const auto &bar : x->tracks(track_num).bars()){
+            for (const auto &event_index : bar.events()) {
+                auto event = x->events(event_index);
+                if (event.velocity()) {
+                    double u = (double)(event.time() % x->resolution()) / x->resolution();
+                    double min_dist = std::min(u, 1. - u);
+                    syncopation += (min_dist < 1e-6) ? 0 : 1. / min_dist;
+                    num_onsets++;
+                }
+            }
+        }
+        if (num_onsets == 0) {
+            throw std::runtime_error("NO ONSETS IN TRACK");
+        }
+        syncopation /= num_onsets;
+
+        std::vector<double> deciles = {0., 0.01, 0.36, 0.79, 1., 1.33, 2., 2.7, 4.95, 7., 1e6};
+        for (int i=0; i<(int)deciles.size()-1; i++) {
+            if ((syncopation >= deciles[i]) && (syncopation < deciles[i+1])) {
+                tf->set_wnbd_syncopation(i);
+                return;
+            }
+        }
+        throw std::runtime_error("SYNCOPATION OUT OF RANGE");
+    }
+};
+
+double bit_repetition(midi::Piece *x, int track_num, midi::TrackFeatures *tf) {
+    int bar_start_time = 0;
+    const auto track = x->tracks(track_num);
+
+    std::vector<std::map<int,std::vector<uint64_t>>> bar_rolls;
+    std::vector<int> pop_counts;
+    std::vector<midi::Note> notes = util_protobuf::getNotes(x, track_num, track_num + 1, 0, track.bars_size(), true);
+
+    for (const auto &bar : track.bars()) {
+        int pop_count = 0;
+        int timesteps_in_bar = x->resolution() * bar.internal_beat_length();
+        std::map<int,std::vector<uint64_t>> bar_roll;
+        for (const auto &note : notes) {
+            for (int t=note.start(); t<note.end(); t++) {
+                if ((t >= bar_start_time) && (t < bar_start_time + timesteps_in_bar)) {
+                    if (bar_roll.find(note.pitch()) == bar_roll.end()) {
+                        bar_roll[note.pitch()] = std::vector<uint64_t>(timesteps_in_bar / 64 + 1, 0);
+                    }
+                    bar_roll[note.pitch()][(t - bar_start_time) / 64] |= (1ULL << ((t - bar_start_time) % 64));
+                    pop_count++;
+                }
+            }
+        }
+        pop_counts.push_back(pop_count);
+        bar_rolls.push_back(bar_roll);
+        bar_start_time += timesteps_in_bar;
+    }
+
+    int divisor = 0.;
+    double overlap_sum = 0.;
+    int num_bars = (int)bar_rolls.size();
+    for (int i=0; i<num_bars; i++) {
+        for (int j=i+1; j<num_bars; j++) {
+            double overlap = 0;
+            for (auto const &kv : bar_rolls[i]) {
+                for (auto const &kv2 : bar_rolls[j]) {
+                    if (kv.first == kv2.first) {
+                        for (int k=0; k<std::min((int)kv.second.size(), (int)kv2.second.size()); k++) {
+                            overlap += std::popcount(kv.second[k] & kv2.second[k]);
+                        }
+                    }
+                }
+            }
+            if (pop_counts[i] + pop_counts[j] > 0) {
+                overlap_sum += ((overlap * 2) / (pop_counts[i] + pop_counts[j]));
+            }
+            divisor++;
+        }
+    }
+
+    return overlap_sum / divisor;
+}
+
+class Repetition : public ATTRIBUTE_CONTROL {
+public:
+    Repetition() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_TRACK;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT_AND_DRUM;
+        token_types = {
+            {midi::TOKEN_REPETITION, 10}
+        };
+        token_types_v2 = {
+            {midi::TOKEN_REPETITION, 10, "repetition"}
+        };
+    }
+    ~Repetition() {}
+
+    void compute_track_features(midi::Piece *x, int track_num, midi::TrackFeatures *tf) {
+        double actual = bit_repetition(x, track_num, tf);
+        int limit = std::get<1>(token_types_v2[0]);
+        int value = std::min(limit - 1, (int)std::floor(map(actual, 0.0, 1.0, 0.0, limit)));
+        tf->set_repetition(value);
+    }
+
+    double evaluate_track_feature(midi::Piece *x, int track_num, midi::TrackFeatures *tf, midi::StatusTrack *st) {
+        compute_track_features(x, track_num, tf);
+        return abs(tf->repetition() - (static_cast<int>(st->repetition()) - 1));
+    }
+};
+
+class Danceability : public ATTRIBUTE_CONTROL {
+public:
+    Danceability() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_TRACK;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT_AND_DRUM;
+        token_types = {
+            {midi::TOKEN_DANCEABILITY, 10}
+        };
+        token_types_v2 = {
+            {midi::TOKEN_DANCEABILITY, 10, "danceability"}
+        };
+    }
+    ~Danceability() {}
+
+    void compute_track_features(midi::Piece *x, int track_num, midi::TrackFeatures *tf) {
+        int max_beat_num = 0;
+        std::map<int,double> beat_total_weights;
+        std::map<std::tuple<int,int>,int> onset_weights;
+        int total_beat_num = 0;
+        for (const auto &bar : x->tracks(track_num).bars()){
+            for (const auto &event_index : bar.events()) {
+                auto event = x->events(event_index);
+                int beat_num = total_beat_num + event.time() / 12;
+                if (event.velocity()) {
+                    onset_weights[std::make_tuple(beat_num,event.time() % 12)] += event.velocity();
+                    beat_total_weights[beat_num] += event.velocity();
+                }
+            }
+            if (abs(bar.internal_beat_length() - std::round(bar.internal_beat_length())) > 1e-4) {
+                throw std::runtime_error("BEAT LENGTH IS NOT AN INTEGER");
+            }
+            total_beat_num += bar.internal_beat_length();
+        }
+        max_beat_num = std::max(max_beat_num, total_beat_num);
+
+        double max_weight = 0;
+        for (auto &kv : beat_total_weights) {
+            max_weight = std::max(max_weight, kv.second);
+        }
+
+        std::vector<double> bar_weights;
+        for (int i=0; i<max_beat_num; i++) {
+            auto key = std::make_tuple(i,0);
+            bar_weights.push_back((onset_weights.find(key) != onset_weights.end()) ? onset_weights[key] / beat_total_weights[i] : 0);
+        }
+
+        if (bar_weights.size() == 0) {
+            throw std::runtime_error("NO ONSETS IN PIECE");
+        }
+
+        int limit = std::get<1>(token_types_v2[0]) - 1;
+        int value = std::min(limit - 1, (int)std::floor(map(median(bar_weights), 0.0, 1.0, 0.0, limit)));
+        tf->set_danceability(value);
+    }
+
+    double evaluate_track_feature(midi::Piece *x, int track_num, midi::TrackFeatures *tf, midi::StatusTrack *st) {
+        compute_track_features(x, track_num, tf);
+        return abs(tf->danceability() - (static_cast<int>(st->danceability()) - 1));
+    }
+};
+
+class PitchClassCount : public ATTRIBUTE_CONTROL {
+public:
+    PitchClassCount() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_TRACK;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT;
+        token_types = {
+            {midi::TOKEN_PITCH_CLASS_COUNT, 13}
+        };
+        token_types_v2 = {
+            {midi::TOKEN_PITCH_CLASS_COUNT, 13, "pitch_class_count"}
+        };
+    }
+    ~PitchClassCount() {}
+
+    void compute_track_features(midi::Piece *x, int track_num, midi::TrackFeatures *tf) {
+        std::set<int> used_pitch_classes;
+        const auto track = x->tracks(track_num);
+        for (const auto &bar : track.bars()) {
+            for (const auto &event_index : bar.events()) {
+                if (x->events(event_index).velocity()) {
+                    used_pitch_classes.insert(x->events(event_index).pitch() % 12);
+                }
+            }
+        }
+        tf->set_pitch_class_count(used_pitch_classes.size());
+    }
+};
+
+class KeySignature : public ATTRIBUTE_CONTROL {
+public:
+    KeySignature() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_TRACK;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT;
+        token_types = {
+            {midi::TOKEN_KEY_SIGNATURE, 25}
+        };
+        token_types_v2 = {
+            {midi::TOKEN_KEY_SIGNATURE, 25, "key_signature"}
+        };
+    }
+    ~KeySignature() {}
+
+    void compute_track_features(midi::Piece *x, int track_num, midi::TrackFeatures *tf) {
+        int note_weight = 0;
+        int track_count = 0;
+        std::vector<double> pitch_class_counts(12, 0);
+        for (int i=0; i<x->tracks_size(); i++) {
+            int max_tick = 0;
+            std::vector<midi::Note> notes = util_protobuf::TrackEventsToNotes(x, track_count, &max_tick);
+            for (const auto &note : notes) {
+                pitch_class_counts[note.pitch() % 12] += (note.end() - note.start());
+                note_weight += (note.end() - note.start());
+            }
+            track_count++;
+        }
+
+        int max_index = 24;
+        if (note_weight > 0) {
+            std::vector<double> weights = {
+                6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88,
+                6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17
+            };
+
+            std::vector<int> solution(24, 0);
+            for (int i=0; i<12; i++) {
+                for (int j=0; j<12; j++) {
+                    solution[i] += weights[(j-i+12)%12] * pitch_class_counts[j];
+                    solution[i+12] += weights[(j-i+12)%12 + 12] * pitch_class_counts[j];
+                }
+            }
+            max_index = std::distance(solution.begin(), std::max_element(solution.begin(), solution.end()));
+        }
+        tf->set_key_signature(max_index);
+    }
+};
+
+class Tension : public ATTRIBUTE_CONTROL {
+public:
+    Tension() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_BAR;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT_AND_DRUM;
+        token_types = {
+            {midi::TOKEN_BAR_LEVEL_TENSION, 10}
+        };
+        token_types_v2 = {
+            {midi::TOKEN_BAR_LEVEL_TENSION, 10, "tension"}
+        };
+    }
+    ~Tension() {}
+
+    void compute_bar_features(midi::Piece *x, int track_num, int bar_num, midi::BarFeatures *bf) {
+        auto labels = x->internal_metadata_labels();
+        if (labels.tension_size() <= bar_num) {
+            return;
+        }
+        double value = labels.tension(bar_num);
+        value = std::clamp(value, 0.0, 1.0);
+        bf->set_tension(map(value, 0.0, 1.0, 0.0, get_token_domain_size(midi::TOKEN_BAR_LEVEL_TENSION)-1));
+    }
+};
+
+class ValenceSpotify : public ATTRIBUTE_CONTROL {
+public:
+    ValenceSpotify() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_TRACK_PRE_INSTRUMENT;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT_AND_DRUM;
+        token_types = {
+            {midi::TOKEN_VALENCE_SPOTIFY, static_cast<int>(midi::DECILE_LEVEL_NONE)}
+        };
+        token_types_v2 = {
+            {midi::TOKEN_VALENCE_SPOTIFY, static_cast<int>(midi::DECILE_LEVEL_NONE), "valence_spotify"}
+        };
+    }
+    ~ValenceSpotify() {}
+
+    void compute_track_features(midi::Piece *x, int track_num, midi::TrackFeatures *tf) {
+        float metadata_label = protobuf_get_field<float>(&x->internal_metadata_labels(), std::get<2>(token_types_v2[0]));
+        if (metadata_label < 0) {
+            protobuf_set_field(tf, std::get<2>(token_types_v2[0]), static_cast<int>(midi::DECILE_LEVEL_NONE)-1);
+        }
+        else {
+            int limit = std::get<1>(token_types_v2[0]) - 1;
+            int value = std::min(limit - 1, (int)std::floor(map(metadata_label, 0.0, 1.0, 0.0, limit)));
+            protobuf_set_field(tf, std::get<2>(token_types_v2[0]), value);
+        }
+    }
+};
+
+class EnergySpotify : public ATTRIBUTE_CONTROL {
+public:
+    EnergySpotify() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_TRACK_PRE_INSTRUMENT;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT_AND_DRUM;
+        token_types = {
+            {midi::TOKEN_ENERGY_SPOTIFY, static_cast<int>(midi::DECILE_LEVEL_NONE)}
+        };
+        token_types_v2 = {
+            {midi::TOKEN_ENERGY_SPOTIFY, static_cast<int>(midi::DECILE_LEVEL_NONE), "energy_spotify"}
+        };
+    }
+    ~EnergySpotify() {}
+
+    void compute_track_features(midi::Piece *x, int track_num, midi::TrackFeatures *tf) {
+        float metadata_label = protobuf_get_field<float>(&x->internal_metadata_labels(), std::get<2>(token_types_v2[0]));
+        if (metadata_label < 0) {
+            protobuf_set_field(tf, std::get<2>(token_types_v2[0]), static_cast<int>(midi::DECILE_LEVEL_NONE)-1);
+        }
+        else {
+            int limit = std::get<1>(token_types_v2[0]) - 1;
+            int value = std::min(limit - 1, (int)std::floor(map(metadata_label, 0.0, 1.0, 0.0, limit)));
+            protobuf_set_field(tf, std::get<2>(token_types_v2[0]), value);
+        }
+    }
+};
+
+class DanceabilitySpotify : public ATTRIBUTE_CONTROL {
+public:
+    DanceabilitySpotify() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_TRACK_PRE_INSTRUMENT;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT_AND_DRUM;
+        token_types = {
+            {midi::TOKEN_DANCEABILITY_SPOTIFY, static_cast<int>(midi::DECILE_LEVEL_NONE)}
+        };
+        token_types_v2 = {
+            {midi::TOKEN_DANCEABILITY_SPOTIFY, static_cast<int>(midi::DECILE_LEVEL_NONE), "danceability_spotify"}
+        };
+    }
+    ~DanceabilitySpotify() {}
+
+    void compute_track_features(midi::Piece *x, int track_num, midi::TrackFeatures *tf) {
+        float metadata_label = protobuf_get_field<float>(&x->internal_metadata_labels(), std::get<2>(token_types_v2[0]));
+        if (metadata_label < 0) {
+            protobuf_set_field(tf, std::get<2>(token_types_v2[0]), static_cast<int>(midi::DECILE_LEVEL_NONE)-1);
+        }
+        else {
+            int limit = std::get<1>(token_types_v2[0]) - 1;
+            int value = std::min(limit - 1, (int)std::floor(map(metadata_label, 0.0, 1.0, 0.0, limit)));
+            protobuf_set_field(tf, std::get<2>(token_types_v2[0]), value);
+        }
+    }
+};
+
+// ================================================
 // ================================================
 // ATTRIBUTE CONTROL HELPERS
 // ================================================
@@ -1043,20 +1569,28 @@ public:
 std::unique_ptr<ATTRIBUTE_CONTROL> getAttributeControl(midi::ATTRIBUTE_CONTROL_TYPE ac_type) {
     switch(ac_type) {
         case midi::ATTRIBUTE_CONTROL_NOTE_DENSITY: return std::make_unique<NoteDensity>();
+        case midi::ATTRIBUTE_CONTROL_PITCH_CLASS_COUNT: return std::make_unique<PitchClassCount>();
         case midi::ATTRIBUTE_CONTROL_TRACK_LEVEL_ONSET_POLYPHONY: return std::make_unique<TrackLevelOnsetPolyphony>();
         case midi::ATTRIBUTE_CONTROL_TRACK_LEVEL_ONSET_DENSITY: return std::make_unique<TrackLevelOnsetDensity>();
         case midi::ATTRIBUTE_CONTROL_PITCH_RANGE: return std::make_unique<PitchRange>();
+        case midi::ATTRIBUTE_CONTROL_KEY_SIGNATURE: return std::make_unique<KeySignature>();
+        case midi::ATTRIBUTE_CONTROL_BAR_LEVEL_PITCH_CLASS_SET: return std::make_unique<BarLevelPitchClassSet>();
         case midi::ATTRIBUTE_CONTROL_GENRE: return std::make_unique<Genre>();
-
-        case midi::ATTRIBUTE_CONTROL_TRACK_LEVEL_NOTE_DURATION: return std::make_unique<TrackLevelNoteDuration>();
-
+        case midi::ATTRIBUTE_CONTROL_TRACK_LEVEL_SILENCE_PROPORTION: return std::make_unique<TrackLevelSilenceProportion>();
         case midi::ATTRIBUTE_CONTROL_POLYPHONY_QUANTILE: return std::make_unique<PolyphonyQuantile>();
         case midi::ATTRIBUTE_CONTROL_NOTE_DURATION_QUANTILE: return std::make_unique<NoteDurationQuantile>();
-
         case midi::ATTRIBUTE_CONTROL_BAR_LEVEL_ONSET_DENSITY: return std::make_unique<BarLevelOnsetDensity>();
         case midi::ATTRIBUTE_CONTROL_BAR_LEVEL_ONSET_POLYPHONY: return std::make_unique<BarLevelOnsetPolyphony>();
+        case midi::ATTRIBUTE_CONTROL_VALENCE_SPOTIFY: return std::make_unique<ValenceSpotify>();
+        case midi::ATTRIBUTE_CONTROL_ENERGY_SPOTIFY: return std::make_unique<EnergySpotify>();
+        case midi::ATTRIBUTE_CONTROL_DANCEABILITY_SPOTIFY: return std::make_unique<DanceabilitySpotify>();
+        case midi::ATTRIBUTE_CONTROL_DANCEABILITY: return std::make_unique<Danceability>();
+        case midi::ATTRIBUTE_CONTROL_TENSION: return std::make_unique<Tension>();
+        case midi::ATTRIBUTE_CONTROL_TRACK_LEVEL_NOTE_DURATION: return std::make_unique<TrackLevelNoteDuration>();
+        case midi::ATTRIBUTE_CONTROL_WNBD_SYNCOPATION: return std::make_unique<WNBDSyncopation>();
+        case midi::ATTRIBUTE_CONTROL_REPETITION: return std::make_unique<Repetition>();
         case midi::ATTRIBUTE_CONTROL_END:
-            throw std::runtime_error("encoder::getAttributeControl() midi::ATTRIBUTE_CONTROL_END is an invalid argument."); 
+            throw std::runtime_error("encoder::getAttributeControl() midi::ATTRIBUTE_CONTROL_END is an invalid argument.");
     }
     throw std::runtime_error("encoder::getAttributeControl() switch statement missing case.");
 }

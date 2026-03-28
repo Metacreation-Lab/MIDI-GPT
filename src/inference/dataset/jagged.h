@@ -237,6 +237,13 @@ public:
       enc->config->multi_fill = util_protobuf::make_bar_mask(
         p, tc->max_mask_percentage, &engine);
     }
+
+    // Forward mask-bar augmentation settings from TrainConfig.
+    enc->config->do_mask_augmentation  = tc->do_mask_augmentation;
+    enc->config->mask_apply_probability = tc->mask_apply_probability;
+    enc->config->mask_type             = tc->mask_type;
+    enc->config->mask_bar_fraction     = tc->mask_bar_fraction;
+    enc->config->mask_max_lookahead    = tc->mask_max_lookahead;
   }
 
   std::string load_random_piece_py(size_t split_id) {
@@ -299,7 +306,7 @@ public:
       }
       catch (const std::exception &exc)
       {
-        std::cerr << exc.what() << std::endl;
+        //std::cerr << exc.what() << std::endl;
       }
     }
     batch.pad(0);

@@ -29,15 +29,36 @@ if(NOT protobuf_FOUND AND NOT Protobuf_FOUND)
 endif()
 add_subdirectory(libraries/protobuf)   # → target: midigpt_proto
 
-# ── midifile (git submodule) ──────────────────────────────────────────────────
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libraries/midifile/CMakeLists.txt")
-    message(FATAL_ERROR
-        "midifile submodule is missing.\n"
-        "Run: git submodule update --init --recursive")
+# ── MIDI backend ─────────────────────────────────────────────────────────────
+# MIDIGPT_MIDI_BACKEND selects the low-level MIDI parser at compile time.
+#   "midifile" (default) — existing smf::MidiFile backend
+#   "symusic"            — Yikai-Liao/symusic (faster, note-level)
+set(MIDIGPT_MIDI_BACKEND "midifile" CACHE STRING
+    "MIDI parsing backend: midifile or symusic")
+set_property(CACHE MIDIGPT_MIDI_BACKEND PROPERTY STRINGS midifile symusic)
+
+if(MIDIGPT_MIDI_BACKEND STREQUAL "symusic")
+    include(FetchContent)
+    set(BUILD_SYMUSIC_PY OFF CACHE BOOL "" FORCE)
+    set(BUILD_SYMUSIC_TEST OFF CACHE BOOL "" FORCE)
+    set(BUILD_SYMUSIC_EXAMPLE OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(symusic
+        GIT_REPOSITORY https://github.com/Yikai-Liao/symusic.git
+        GIT_TAG        v0.5.9
+        GIT_SHALLOW    ON
+    )
+    FetchContent_MakeAvailable(symusic)
+else()
+    # ── midifile (git submodule) ──────────────────────────────────────────
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libraries/midifile/CMakeLists.txt")
+        message(FATAL_ERROR
+            "midifile submodule is missing.\n"
+            "Run: git submodule update --init --recursive")
+    endif()
+    # EXCLUDE_FROM_ALL prevents the 27 CLI tool executables in tools/ from
+    # being compiled as part of the default build.
+    add_subdirectory(libraries/midifile EXCLUDE_FROM_ALL)   # → target: midifile
 endif()
-# EXCLUDE_FROM_ALL prevents the 27 CLI tool executables in tools/ from being
-# compiled as part of the default build.  Only the `midifile` static lib is needed.
-add_subdirectory(libraries/midifile EXCLUDE_FROM_ALL)   # → target: midifile
 
 # ── pybind11 ──────────────────────────────────────────────────────────────────
 # Prefer pip-installed pybind11 (present when using scikit-build-core or after

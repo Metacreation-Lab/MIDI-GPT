@@ -1,0 +1,2933 @@
+{
+  "config": {
+    "both_in_one": true,
+    "decode_final": false,
+    "decode_resolution": 1920,
+    "delta_resolution": 1920,
+    "do_multi_fill": false,
+    "resolution": 12,
+    "transpose": 0,
+    "unquantized": false,
+    "use_microtiming": true,
+    "use_velocity_levels": true
+  },
+  "segment": {
+    "events": [
+      {
+        "delta": -5,
+        "pitch": 49,
+        "time": 4,
+        "velocity": 52
+      },
+      {
+        "delta": 0,
+        "pitch": 77,
+        "time": 4,
+        "velocity": 75
+      },
+      {
+        "delta": 10,
+        "pitch": 49,
+        "time": 5,
+        "velocity": 0
+      },
+      {
+        "delta": -20,
+        "pitch": 77,
+        "time": 5,
+        "velocity": 0
+      },
+      {
+        "delta": 75,
+        "pitch": 61,
+        "time": 9,
+        "velocity": 63
+      },
+      {
+        "delta": 70,
+        "pitch": 61,
+        "time": 10,
+        "velocity": 0
+      },
+      {
+        "delta": 40,
+        "pitch": 65,
+        "time": 10,
+        "velocity": 0
+      },
+      {
+        "delta": -75,
+        "pitch": 65,
+        "time": 10,
+        "velocity": 54
+      },
+      {
+        "delta": -5,
+        "pitch": 49,
+        "time": 15,
+        "velocity": 53
+      },
+      {
+        "delta": 0,
+        "pitch": 49,
+        "time": 16,
+        "velocity": 0
+      },
+      {
+        "delta": 35,
+        "pitch": 49,
+        "time": 20,
+        "velocity": 55
+      },
+      {
+        "delta": 70,
+        "pitch": 49,
+        "time": 21,
+        "velocity": 0
+      },
+      {
+        "delta": 25,
+        "pitch": 61,
+        "time": 26,
+        "velocity": 57
+      },
+      {
+        "delta": 15,
+        "pitch": 65,
+        "time": 26,
+        "velocity": 49
+      },
+      {
+        "delta": -5,
+        "pitch": 61,
+        "time": 27,
+        "velocity": 0
+      },
+      {
+        "delta": -20,
+        "pitch": 65,
+        "time": 27,
+        "velocity": 0
+      },
+      {
+        "delta": 20,
+        "pitch": 49,
+        "time": 32,
+        "velocity": 34
+      },
+      {
+        "delta": 50,
+        "pitch": 49,
+        "time": 33,
+        "velocity": 0
+      },
+      {
+        "delta": -40,
+        "pitch": 49,
+        "time": 37,
+        "velocity": 47
+      },
+      {
+        "delta": 40,
+        "pitch": 49,
+        "time": 38,
+        "velocity": 0
+      },
+      {
+        "delta": -30,
+        "pitch": 73,
+        "time": 40,
+        "velocity": 58
+      },
+      {
+        "delta": -70,
+        "pitch": 77,
+        "time": 42,
+        "velocity": 58
+      },
+      {
+        "delta": -75,
+        "pitch": 73,
+        "time": 43,
+        "velocity": 0
+      },
+      {
+        "delta": 75,
+        "pitch": 77,
+        "time": 43,
+        "velocity": 0
+      },
+      {
+        "delta": 70,
+        "pitch": 61,
+        "time": 43,
+        "velocity": 49
+      },
+      {
+        "delta": 30,
+        "pitch": 80,
+        "time": 43,
+        "velocity": 65
+      },
+      {
+        "delta": -35,
+        "pitch": 65,
+        "time": 44,
+        "velocity": 33
+      },
+      {
+        "delta": -75,
+        "pitch": 61,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": -30,
+        "pitch": 65,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": -60,
+        "pitch": 80,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": 35,
+        "pitch": 78,
+        "time": 1,
+        "velocity": 74
+      },
+      {
+        "delta": 15,
+        "pitch": 78,
+        "time": 2,
+        "velocity": 0
+      },
+      {
+        "delta": -50,
+        "pitch": 49,
+        "time": 2,
+        "velocity": 48
+      },
+      {
+        "delta": -55,
+        "pitch": 49,
+        "time": 3,
+        "velocity": 0
+      },
+      {
+        "delta": 45,
+        "pitch": 77,
+        "time": 4,
+        "velocity": 0
+      },
+      {
+        "delta": -55,
+        "pitch": 77,
+        "time": 4,
+        "velocity": 74
+      },
+      {
+        "delta": -35,
+        "pitch": 49,
+        "time": 6,
+        "velocity": 54
+      },
+      {
+        "delta": -10,
+        "pitch": 75,
+        "time": 6,
+        "velocity": 79
+      },
+      {
+        "delta": -25,
+        "pitch": 49,
+        "time": 7,
+        "velocity": 0
+      },
+      {
+        "delta": 10,
+        "pitch": 75,
+        "time": 7,
+        "velocity": 0
+      },
+      {
+        "delta": 70,
+        "pitch": 73,
+        "time": 9,
+        "velocity": 0
+      },
+      {
+        "delta": -50,
+        "pitch": 73,
+        "time": 9,
+        "velocity": 47
+      },
+      {
+        "delta": 35,
+        "pitch": 68,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 25,
+        "pitch": 61,
+        "time": 11,
+        "velocity": 61
+      },
+      {
+        "delta": 40,
+        "pitch": 66,
+        "time": 11,
+        "velocity": 55
+      },
+      {
+        "delta": -75,
+        "pitch": 68,
+        "time": 11,
+        "velocity": 82
+      },
+      {
+        "delta": -70,
+        "pitch": 75,
+        "time": 11,
+        "velocity": 71
+      },
+      {
+        "delta": -30,
+        "pitch": 61,
+        "time": 12,
+        "velocity": 0
+      },
+      {
+        "delta": -15,
+        "pitch": 66,
+        "time": 12,
+        "velocity": 0
+      },
+      {
+        "delta": -50,
+        "pitch": 75,
+        "time": 12,
+        "velocity": 0
+      },
+      {
+        "delta": -35,
+        "pitch": 49,
+        "time": 17,
+        "velocity": 58
+      },
+      {
+        "delta": -35,
+        "pitch": 73,
+        "time": 17,
+        "velocity": 75
+      },
+      {
+        "delta": -35,
+        "pitch": 49,
+        "time": 18,
+        "velocity": 0
+      },
+      {
+        "delta": -55,
+        "pitch": 73,
+        "time": 18,
+        "velocity": 0
+      },
+      {
+        "delta": -80,
+        "pitch": 72,
+        "time": 19,
+        "velocity": 78
+      },
+      {
+        "delta": -70,
+        "pitch": 72,
+        "time": 20,
+        "velocity": 0
+      },
+      {
+        "delta": 30,
+        "pitch": 70,
+        "time": 21,
+        "velocity": 65
+      },
+      {
+        "delta": -5,
+        "pitch": 70,
+        "time": 22,
+        "velocity": 0
+      },
+      {
+        "delta": -70,
+        "pitch": 49,
+        "time": 22,
+        "velocity": 49
+      },
+      {
+        "delta": -70,
+        "pitch": 49,
+        "time": 23,
+        "velocity": 0
+      },
+      {
+        "delta": 60,
+        "pitch": 68,
+        "time": 23,
+        "velocity": 72
+      },
+      {
+        "delta": 35,
+        "pitch": 68,
+        "time": 25,
+        "velocity": 0
+      },
+      {
+        "delta": -10,
+        "pitch": 73,
+        "time": 25,
+        "velocity": 74
+      },
+      {
+        "delta": 70,
+        "pitch": 77,
+        "time": 26,
+        "velocity": 69
+      },
+      {
+        "delta": -30,
+        "pitch": 73,
+        "time": 27,
+        "velocity": 0
+      },
+      {
+        "delta": 15,
+        "pitch": 61,
+        "time": 27,
+        "velocity": 51
+      },
+      {
+        "delta": -15,
+        "pitch": 65,
+        "time": 27,
+        "velocity": 52
+      },
+      {
+        "delta": -80,
+        "pitch": 76,
+        "time": 27,
+        "velocity": 58
+      },
+      {
+        "delta": 55,
+        "pitch": 80,
+        "time": 27,
+        "velocity": 74
+      },
+      {
+        "delta": 45,
+        "pitch": 61,
+        "time": 28,
+        "velocity": 0
+      },
+      {
+        "delta": 5,
+        "pitch": 65,
+        "time": 28,
+        "velocity": 0
+      },
+      {
+        "delta": -65,
+        "pitch": 76,
+        "time": 28,
+        "velocity": 0
+      },
+      {
+        "delta": -35,
+        "pitch": 77,
+        "time": 28,
+        "velocity": 0
+      },
+      {
+        "delta": 10,
+        "pitch": 80,
+        "time": 28,
+        "velocity": 0
+      },
+      {
+        "delta": -45,
+        "pitch": 49,
+        "time": 33,
+        "velocity": 60
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 33,
+        "velocity": 77
+      },
+      {
+        "delta": -40,
+        "pitch": 49,
+        "time": 34,
+        "velocity": 0
+      },
+      {
+        "delta": 25,
+        "pitch": 77,
+        "time": 35,
+        "velocity": 76
+      },
+      {
+        "delta": 5,
+        "pitch": 78,
+        "time": 37,
+        "velocity": 0
+      },
+      {
+        "delta": 20,
+        "pitch": 49,
+        "time": 37,
+        "velocity": 49
+      },
+      {
+        "delta": 50,
+        "pitch": 75,
+        "time": 37,
+        "velocity": 80
+      },
+      {
+        "delta": 15,
+        "pitch": 49,
+        "time": 38,
+        "velocity": 0
+      },
+      {
+        "delta": 30,
+        "pitch": 77,
+        "time": 38,
+        "velocity": 0
+      },
+      {
+        "delta": 55,
+        "pitch": 75,
+        "time": 39,
+        "velocity": 0
+      },
+      {
+        "delta": 50,
+        "pitch": 73,
+        "time": 40,
+        "velocity": 0
+      },
+      {
+        "delta": -80,
+        "pitch": 73,
+        "time": 40,
+        "velocity": 76
+      },
+      {
+        "delta": 70,
+        "pitch": 57,
+        "time": 43,
+        "velocity": 58
+      },
+      {
+        "delta": 50,
+        "pitch": 61,
+        "time": 44,
+        "velocity": 53
+      },
+      {
+        "delta": -10,
+        "pitch": 66,
+        "time": 44,
+        "velocity": 56
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 44,
+        "velocity": 73
+      },
+      {
+        "delta": 35,
+        "pitch": 81,
+        "time": 44,
+        "velocity": 63
+      },
+      {
+        "delta": 50,
+        "pitch": 84,
+        "time": 44,
+        "velocity": 58
+      },
+      {
+        "delta": -70,
+        "pitch": 57,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": 25,
+        "pitch": 61,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": -35,
+        "pitch": 66,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": -70,
+        "pitch": 78,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": -35,
+        "pitch": 81,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": -5,
+        "pitch": 84,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": 5,
+        "pitch": 49,
+        "time": 4,
+        "velocity": 58
+      },
+      {
+        "delta": 5,
+        "pitch": 78,
+        "time": 4,
+        "velocity": 58
+      },
+      {
+        "delta": -25,
+        "pitch": 81,
+        "time": 4,
+        "velocity": 68
+      },
+      {
+        "delta": -40,
+        "pitch": 85,
+        "time": 4,
+        "velocity": 69
+      },
+      {
+        "delta": 20,
+        "pitch": 49,
+        "time": 5,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 78,
+        "time": 5,
+        "velocity": 0
+      },
+      {
+        "delta": -20,
+        "pitch": 81,
+        "time": 5,
+        "velocity": 0
+      },
+      {
+        "delta": 60,
+        "pitch": 85,
+        "time": 5,
+        "velocity": 0
+      },
+      {
+        "delta": 45,
+        "pitch": 49,
+        "time": 9,
+        "velocity": 43
+      },
+      {
+        "delta": 30,
+        "pitch": 85,
+        "time": 9,
+        "velocity": 74
+      },
+      {
+        "delta": 60,
+        "pitch": 49,
+        "time": 10,
+        "velocity": 0
+      },
+      {
+        "delta": -50,
+        "pitch": 78,
+        "time": 10,
+        "velocity": 65
+      },
+      {
+        "delta": 10,
+        "pitch": 81,
+        "time": 10,
+        "velocity": 39
+      },
+      {
+        "delta": -65,
+        "pitch": 78,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": -15,
+        "pitch": 81,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 5,
+        "pitch": 85,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 40,
+        "pitch": 61,
+        "time": 15,
+        "velocity": 48
+      },
+      {
+        "delta": 45,
+        "pitch": 66,
+        "time": 15,
+        "velocity": 46
+      },
+      {
+        "delta": -80,
+        "pitch": 57,
+        "time": 16,
+        "velocity": 41
+      },
+      {
+        "delta": -25,
+        "pitch": 57,
+        "time": 17,
+        "velocity": 0
+      },
+      {
+        "delta": -55,
+        "pitch": 61,
+        "time": 17,
+        "velocity": 0
+      },
+      {
+        "delta": -55,
+        "pitch": 66,
+        "time": 17,
+        "velocity": 0
+      },
+      {
+        "delta": -65,
+        "pitch": 54,
+        "time": 21,
+        "velocity": 48
+      },
+      {
+        "delta": -45,
+        "pitch": 54,
+        "time": 22,
+        "velocity": 0
+      },
+      {
+        "delta": -40,
+        "pitch": 54,
+        "time": 26,
+        "velocity": 39
+      },
+      {
+        "delta": 0,
+        "pitch": 54,
+        "time": 28,
+        "velocity": 0
+      },
+      {
+        "delta": -50,
+        "pitch": 57,
+        "time": 32,
+        "velocity": 36
+      },
+      {
+        "delta": -5,
+        "pitch": 61,
+        "time": 32,
+        "velocity": 40
+      },
+      {
+        "delta": -25,
+        "pitch": 66,
+        "time": 32,
+        "velocity": 37
+      },
+      {
+        "delta": -60,
+        "pitch": 57,
+        "time": 34,
+        "velocity": 0
+      },
+      {
+        "delta": -35,
+        "pitch": 61,
+        "time": 34,
+        "velocity": 0
+      },
+      {
+        "delta": 15,
+        "pitch": 66,
+        "time": 34,
+        "velocity": 0
+      },
+      {
+        "delta": -65,
+        "pitch": 54,
+        "time": 38,
+        "velocity": 44
+      },
+      {
+        "delta": -5,
+        "pitch": 54,
+        "time": 39,
+        "velocity": 0
+      },
+      {
+        "delta": 35,
+        "pitch": 54,
+        "time": 43,
+        "velocity": 37
+      },
+      {
+        "delta": -30,
+        "pitch": 54,
+        "time": 3,
+        "velocity": 0
+      },
+      {
+        "delta": 70,
+        "pitch": 57,
+        "time": 4,
+        "velocity": 24
+      },
+      {
+        "delta": 75,
+        "pitch": 61,
+        "time": 4,
+        "velocity": 33
+      },
+      {
+        "delta": -80,
+        "pitch": 66,
+        "time": 5,
+        "velocity": 25
+      },
+      {
+        "delta": -30,
+        "pitch": 73,
+        "time": 7,
+        "velocity": 49
+      },
+      {
+        "delta": -30,
+        "pitch": 57,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": -45,
+        "pitch": 61,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": -80,
+        "pitch": 66,
+        "time": 11,
+        "velocity": 0
+      },
+      {
+        "delta": 65,
+        "pitch": 73,
+        "time": 13,
+        "velocity": 0
+      },
+      {
+        "delta": -65,
+        "pitch": 76,
+        "time": 14,
+        "velocity": 56
+      },
+      {
+        "delta": 15,
+        "pitch": 54,
+        "time": 15,
+        "velocity": 37
+      },
+      {
+        "delta": 50,
+        "pitch": 74,
+        "time": 15,
+        "velocity": 66
+      },
+      {
+        "delta": -60,
+        "pitch": 54,
+        "time": 17,
+        "velocity": 0
+      },
+      {
+        "delta": -35,
+        "pitch": 76,
+        "time": 17,
+        "velocity": 0
+      },
+      {
+        "delta": 30,
+        "pitch": 54,
+        "time": 21,
+        "velocity": 40
+      },
+      {
+        "delta": 0,
+        "pitch": 74,
+        "time": 22,
+        "velocity": 0
+      },
+      {
+        "delta": -45,
+        "pitch": 73,
+        "time": 22,
+        "velocity": 67
+      },
+      {
+        "delta": -10,
+        "pitch": 54,
+        "time": 24,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 73,
+        "time": 26,
+        "velocity": 0
+      },
+      {
+        "delta": 55,
+        "pitch": 66,
+        "time": 28,
+        "velocity": 49
+      },
+      {
+        "delta": 50,
+        "pitch": 71,
+        "time": 28,
+        "velocity": 65
+      },
+      {
+        "delta": 70,
+        "pitch": 62,
+        "time": 29,
+        "velocity": 0
+      },
+      {
+        "delta": -80,
+        "pitch": 62,
+        "time": 29,
+        "velocity": 38
+      },
+      {
+        "delta": -50,
+        "pitch": 66,
+        "time": 30,
+        "velocity": 0
+      },
+      {
+        "delta": 0,
+        "pitch": 71,
+        "time": 30,
+        "velocity": 0
+      },
+      {
+        "delta": 20,
+        "pitch": 73,
+        "time": 34,
+        "velocity": 68
+      },
+      {
+        "delta": 70,
+        "pitch": 73,
+        "time": 35,
+        "velocity": 0
+      },
+      {
+        "delta": -70,
+        "pitch": 50,
+        "time": 35,
+        "velocity": 60
+      },
+      {
+        "delta": -45,
+        "pitch": 50,
+        "time": 36,
+        "velocity": 0
+      },
+      {
+        "delta": -70,
+        "pitch": 74,
+        "time": 37,
+        "velocity": 83
+      },
+      {
+        "delta": -70,
+        "pitch": 74,
+        "time": 39,
+        "velocity": 0
+      },
+      {
+        "delta": -15,
+        "pitch": 50,
+        "time": 39,
+        "velocity": 54
+      },
+      {
+        "delta": 20,
+        "pitch": 76,
+        "time": 39,
+        "velocity": 71
+      },
+      {
+        "delta": -10,
+        "pitch": 50,
+        "time": 40,
+        "velocity": 0
+      },
+      {
+        "delta": 55,
+        "pitch": 78,
+        "time": 41,
+        "velocity": 88
+      },
+      {
+        "delta": -10,
+        "pitch": 76,
+        "time": 42,
+        "velocity": 0
+      },
+      {
+        "delta": 20,
+        "pitch": 78,
+        "time": 44,
+        "velocity": 0
+      },
+      {
+        "delta": -15,
+        "pitch": 80,
+        "time": 44,
+        "velocity": 79
+      },
+      {
+        "delta": 30,
+        "pitch": 80,
+        "time": 45,
+        "velocity": 0
+      },
+      {
+        "delta": -45,
+        "pitch": 62,
+        "time": 45,
+        "velocity": 58
+      },
+      {
+        "delta": -75,
+        "pitch": 64,
+        "time": 45,
+        "velocity": 60
+      },
+      {
+        "delta": -60,
+        "pitch": 62,
+        "time": 46,
+        "velocity": 0
+      },
+      {
+        "delta": -20,
+        "pitch": 64,
+        "time": 46,
+        "velocity": 0
+      }
+    ],
+    "internalHasTimeSignatures": true,
+    "internalMetadataLabels": {},
+    "internalTicksPerQuarter": 384,
+    "internalValidSegments": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107
+    ],
+    "internalValidTracksV2": [
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      },
+      {
+        "tracks": [
+          0
+        ]
+      }
+    ],
+    "resolution": 12,
+    "tempo": 120,
+    "tracks": [
+      {
+        "bars": [
+          {
+            "events": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              30,
+              31,
+              32,
+              33,
+              34,
+              35,
+              36,
+              37,
+              38,
+              39,
+              40,
+              41,
+              42,
+              43,
+              44,
+              45,
+              46,
+              47,
+              48,
+              49,
+              50,
+              51,
+              52,
+              53,
+              54,
+              55,
+              56,
+              57,
+              58,
+              59,
+              60,
+              61,
+              62,
+              63,
+              64,
+              65,
+              66,
+              67,
+              68,
+              69,
+              70,
+              71,
+              72,
+              73,
+              74,
+              75,
+              76,
+              77,
+              78,
+              79,
+              80,
+              81,
+              82,
+              83,
+              84,
+              85,
+              86,
+              87,
+              88,
+              89,
+              90,
+              91,
+              92,
+              93,
+              94,
+              95,
+              96,
+              97
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              98,
+              99,
+              100,
+              101,
+              102,
+              103,
+              104,
+              105,
+              106,
+              107,
+              108,
+              109,
+              110,
+              111,
+              112,
+              113,
+              114,
+              115,
+              116,
+              117,
+              118,
+              119,
+              120,
+              121,
+              122,
+              123,
+              124,
+              125,
+              126,
+              127,
+              128,
+              129,
+              130,
+              131,
+              132
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          },
+          {
+            "events": [
+              133,
+              134,
+              135,
+              136,
+              137,
+              138,
+              139,
+              140,
+              141,
+              142,
+              143,
+              144,
+              145,
+              146,
+              147,
+              148,
+              149,
+              150,
+              151,
+              152,
+              153,
+              154,
+              155,
+              156,
+              157,
+              158,
+              159,
+              160,
+              161,
+              162,
+              163,
+              164,
+              165,
+              166,
+              167,
+              168,
+              169,
+              170,
+              171,
+              172,
+              173,
+              174,
+              175
+            ],
+            "internalBeatLength": 4,
+            "internalHasNotes": true,
+            "tsDenominator": 4,
+            "tsNumerator": 4
+          }
+        ],
+        "instrument": 0,
+        "trackType": "STANDARD_TRACK"
+      }
+    ]
+  },
+  "tokens": [
+    0,
+    2,
+    42,
+    45,
+    810,
+    822,
+    798,
+    805,
+    4,
+    19,
+    382,
+    722,
+    669,
+    578,
+    203,
+    282,
+    745,
+    231,
+    282,
+    387,
+    733,
+    648,
+    215,
+    282,
+    393,
+    723,
+    669,
+    578,
+    203,
+    282,
+    398,
+    725,
+    608,
+    203,
+    282,
+    404,
+    727,
+    598,
+    215,
+    282,
+    719,
+    588,
+    219,
+    282,
+    410,
+    704,
+    593,
+    203,
+    282,
+    415,
+    717,
+    669,
+    613,
+    203,
+    282,
+    418,
+    728,
+    669,
+    603,
+    227,
+    284,
+    420,
+    669,
+    643,
+    231,
+    282,
+    421,
+    719,
+    643,
+    215,
+    283,
+    735,
+    603,
+    234,
+    283,
+    422,
+    703,
+    669,
+    608,
+    219,
+    282,
+    5,
+    4,
+    19,
+    379,
+    744,
+    608,
+    232,
+    282,
+    380,
+    718,
+    669,
+    623,
+    203,
+    282,
+    384,
+    724,
+    669,
+    608,
+    203,
+    282,
+    749,
+    669,
+    583,
+    229,
+    282,
+    389,
+    731,
+    598,
+    215,
+    282,
+    725,
+    613,
+    220,
+    282,
+    741,
+    669,
+    643,
+    229,
+    282,
+    395,
+    728,
+    669,
+    608,
+    203,
+    282,
+    745,
+    669,
+    608,
+    227,
+    282,
+    397,
+    748,
+    669,
+    653,
+    226,
+    282,
+    399,
+    735,
+    603,
+    224,
+    282,
+    400,
+    719,
+    669,
+    643,
+    203,
+    282,
+    401,
+    742,
+    633,
+    222,
+    283,
+    403,
+    744,
+    669,
+    583,
+    227,
+    283,
+    404,
+    739,
+    643,
+    231,
+    283,
+    405,
+    721,
+    588,
+    215,
+    282,
+    722,
+    669,
+    588,
+    219,
+    282,
+    728,
+    669,
+    653,
+    230,
+    282,
+    744,
+    628,
+    234,
+    282,
+    411,
+    730,
+    669,
+    618,
+    203,
+    282,
+    747,
+    232,
+    285,
+    413,
+    746,
+    598,
+    231,
+    284,
+    415,
+    719,
+    593,
+    203,
+    282,
+    750,
+    623,
+    229,
+    283,
+    421,
+    728,
+    643,
+    211,
+    283,
+    422,
+    723,
+    623,
+    215,
+    282,
+    726,
+    669,
+    583,
+    220,
+    282,
+    743,
+    232,
+    282,
+    733,
+    608,
+    235,
+    282,
+    728,
+    623,
+    238,
+    282,
+    5,
+    4,
+    19,
+    382,
+    728,
+    578,
+    203,
+    282,
+    578,
+    232,
+    282,
+    738,
+    669,
+    598,
+    235,
+    282,
+    739,
+    669,
+    613,
+    239,
+    282,
+    387,
+    713,
+    618,
+    203,
+    282,
+    744,
+    603,
+    239,
+    283,
+    388,
+    735,
+    669,
+    623,
+    232,
+    282,
+    709,
+    583,
+    235,
+    282,
+    393,
+    718,
+    613,
+    215,
+    283,
+    716,
+    618,
+    220,
+    283,
+    394,
+    711,
+    669,
+    653,
+    211,
+    282,
+    399,
+    718,
+    669,
+    638,
+    208,
+    282,
+    404,
+    709,
+    669,
+    613,
+    208,
+    283,
+    410,
+    706,
+    669,
+    623,
+    211,
+    283,
+    710,
+    669,
+    578,
+    215,
+    283,
+    707,
+    669,
+    598,
+    220,
+    283,
+    416,
+    714,
+    669,
+    638,
+    208,
+    282,
+    421,
+    707,
+    608,
+    208,
+    289,
+    5,
+    4,
+    19,
+    382,
+    694,
+    643,
+    211,
+    288,
+    703,
+    648,
+    215,
+    288,
+    383,
+    695,
+    669,
+    653,
+    220,
+    287,
+    385,
+    719,
+    669,
+    603,
+    227,
+    287,
+    392,
+    726,
+    669,
+    638,
+    230,
+    284,
+    393,
+    707,
+    588,
+    208,
+    283,
+    736,
+    623,
+    228,
+    288,
+    399,
+    710,
+    603,
+    208,
+    284,
+    400,
+    737,
+    669,
+    618,
+    227,
+    285,
+    406,
+    719,
+    628,
+    220,
+    283,
+    735,
+    623,
+    225,
+    283,
+    412,
+    738,
+    593,
+    227,
+    282,
+    413,
+    730,
+    669,
+    643,
+    204,
+    282,
+    415,
+    753,
+    669,
+    643,
+    228,
+    283,
+    417,
+    724,
+    669,
+    588,
+    204,
+    282,
+    741,
+    593,
+    230,
+    284,
+    419,
+    758,
+    628,
+    232,
+    284,
+    422,
+    749,
+    669,
+    588,
+    234,
+    282,
+    423,
+    728,
+    669,
+    618,
+    216,
+    282,
+    730,
+    669,
+    648,
+    218,
+    282,
+    5,
+    44
+  ],
+  "train_config": {
+    "delta_resolution": 1920,
+    "max_tracks": 8,
+    "min_tracks": 1,
+    "num_bars": 4,
+    "resolution": 12,
+    "use_microtiming": true
+  }
+}

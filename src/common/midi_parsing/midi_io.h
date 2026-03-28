@@ -1,5 +1,14 @@
 #pragma once
 
+#ifdef MIDIGPT_USE_SYMUSIC
+// ── symusic backend ─────────────────────────────────────────────────────────
+// When compiled with -DMIDIGPT_USE_SYMUSIC the entire implementation is
+// provided by midi_io_symusic.h.  The public API (ParseSong / write_midi)
+// is identical.
+#include "midi_io_symusic.h"
+#else
+// ── midifile backend (default) ──────────────────────────────────────────────
+
 #include <iostream>
 #include <vector>
 #include <tuple>
@@ -406,3 +415,5 @@ void write_midi(midi::Piece* p, std::string& path, int single_track = -1) {
 }
 }
 // END OF NAMESPACE
+
+#endif // !MIDIGPT_USE_SYMUSIC
