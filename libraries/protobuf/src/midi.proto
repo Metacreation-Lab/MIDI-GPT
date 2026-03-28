@@ -268,6 +268,12 @@ message Bar {
   optional bool internal_has_notes = 3;
   repeated ContinuousFeature internal_feature = 10;
   repeated BarFeatures internal_features = 11; // why isn't this just called bar features
+  /*
+  When true, this bar's content is unknown (future bar not yet played).
+  The encoder will emit BAR MASK_BAR BAR_END instead of actual note content.
+  Set by the server during lookahead inference; also used as augmentation during training.
+  */
+  optional bool future = 12;
 }
 
 /*
@@ -401,6 +407,13 @@ message StatusTrack {
   optional DecileLevel danceability = 35;
   optional DecileLevel wnbd_syncopation = 42;
   optional DecileLevel repetition = 43;
+  /*
+  When true, the track uses suffix-autoregressive generation: bars up to (but not including)
+  the first selected bar are encoded as a prompt prefix, and the selected bar(s) at the end
+  are generated autoregressively as a continuation. The selected bars must form a contiguous
+  suffix (all True bars follow all False bars).
+  */
+  optional bool suffix_autoregressive = 44;
 
   /*
   Sets a hard limit on the polyphony on this track. This is implemented by keeping a record of all the currently sounding notes, and preventing the model from generating note-onset tokens when the limit is reached.
