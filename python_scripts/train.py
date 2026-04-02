@@ -49,6 +49,7 @@ if __name__ == "__main__":
   parser.add_argument("--accum_steps", type=int, default=1)
   parser.add_argument("--batch_size", type=int, default=32)
   parser.add_argument("--batches_per_epoch", type=int, default=1000)
+  parser.add_argument("--eval_batches", type=int, default=100)
   parser.add_argument("--lr", type=float, default=1e-3)
   parser.add_argument("--total_steps", type=int, default=100000)
 
@@ -130,7 +131,7 @@ if __name__ == "__main__":
   # the default DataLoader wrapping. compute_loss is also overridden to use
   # our custom loss function.
   train_dataset = dataset_cls(split_id=0, is_training=True, **vars(args))
-  eval_dataset = dataset_cls(split_id=2, is_training=False, overload_batches_per_epoch=1, **vars(args))
+  eval_dataset = dataset_cls(split_id=2, is_training=False, overload_batches_per_epoch=args.eval_batches, **vars(args))
   Trainer.get_train_dataloader = lambda *_args, **_kwargs: train_dataset
   Trainer.get_eval_dataloader = lambda *_args, **_kwargs: eval_dataset
   #Trainer.compute_loss = loss_fn

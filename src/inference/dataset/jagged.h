@@ -301,6 +301,17 @@ public:
         load_random_segment(&p, split_id, enc.get(), tc);
         std::vector<int> tokens = enc->encode(&p);
         std::vector<int> mask(tokens.size(),1);
+        // Context-only tokens are never generated at inference; exclude from loss
+        for (midi::TOKEN_TYPE ctx_tt : {midi::TOKEN_MASK_BAR, midi::TOKEN_FILL_IN_PLACEHOLDER}) {
+          if (enc->rep->has_token_type(ctx_tt)) {
+            int ctx_id = enc->rep->encode(ctx_tt, 0);
+            for (int i = 0; i < (int)tokens.size(); i++) {
+              if (tokens[i] == ctx_id) {
+                mask[i] = 0;
+              }
+            }
+          }
+        }
         batch.add( tokens );
         att_mask.add( mask );
       }
