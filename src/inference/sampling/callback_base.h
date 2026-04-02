@@ -74,7 +74,7 @@ namespace sampling {
     }
     float update_temperature(float temp) {
       current_temperature = temp + increase;
-      std::cout << "CURRENT TEMPERATURE : " << current_temperature << std::endl;
+      // std::cout << "CURRENT TEMPERATURE : " << current_temperature << std::endl;
       return current_temperature;
     }
     float increase;
