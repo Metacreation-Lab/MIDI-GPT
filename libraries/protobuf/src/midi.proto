@@ -343,6 +343,14 @@ message StatusBar {
   optional BarLevelOnsetPolyphonyLevel onset_polyphony_max = 5;
   repeated bool pitch_class_set = 6;
   optional DecileLevel tension = 7;
+  /*
+  When true, this bar is treated as an unknown future bar: the encoder will emit
+  BAR MASK_BAR BAR_END instead of actual note content. This is the preferred way
+  to set masking at inference time. The preprocessing step in sample() copies this
+  flag into Bar.future before encoding, so the piece content is never mutated by
+  the caller. Bar.future in the piece remains valid for training augmentation.
+  */
+  optional bool future = 8;
 }
 
 /*
