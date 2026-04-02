@@ -111,6 +111,8 @@ void validate_protobuf_inner(const T &x, bool ignore_internal) {
               value = reflection->GetRepeatedFloat(x,fd,index);
             }
             else {
+              // Skip validation for optional fields that were not set
+              if (!reflection->HasField(x, fd)) continue;
               value = reflection->GetFloat(x,fd);
             }
             if ((value < minval) || (value > maxval)) {
@@ -132,6 +134,8 @@ void validate_protobuf_inner(const T &x, bool ignore_internal) {
               value = reflection->GetRepeatedInt32(x,fd,index);
             }
             else {
+              // Skip validation for optional fields that were not set
+              if (!reflection->HasField(x, fd)) continue;
               value = reflection->GetInt32(x,fd);
             }
             if ((value < minval) || (value > maxval)) {
@@ -384,6 +388,21 @@ enum STATUS_TRACK_TYPE {
 };
 
 STATUS_TRACK_TYPE infer_track_type(const midi::StatusTrack &track) {
+  if (track.suffix_autoregressive()) {
+    // Validate that selected bars form a contiguous block (trailing Falses allowed).
+    // The framework passes only [t, t+j) as True; status_rehighlight expands within each step window.
+    bool in_selection = false;
+    bool finished_selection = false;
+    for (const auto &b : track.selected_bars()) {
+      if (b) {
+        if (finished_selection) throw std::invalid_argument("SUFFIX AUTOREGRESSIVE REQUIRES CONTIGUOUS SELECTED BARS");
+        in_selection = true;
+      } else if (in_selection) {
+        finished_selection = true;
+      }
+    }
+    return RESAMPLE;
+  }
   int num_bars = track.selected_bars_size();
   int bar_count = count_selected_bars(track);
   if (bar_count == 0) {
