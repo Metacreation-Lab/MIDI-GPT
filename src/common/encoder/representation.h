@@ -315,15 +315,46 @@ public:
   }
 
   std::string pretty_type(int token) {
+    if (token < 0 || token >= backward.size()) return "UNKNOWN";
     auto token_value = backward[token];
     return util_protobuf::enum_to_string(std::get<0>(token_value));
   }
 
-  void show(std::vector<int> &tokens) {
-    for (const auto &token : tokens) {
-      data_structures::LOGGER(pretty(token));
-    }
+  void pretty_log(int token, data_structures::VERBOSITY_LEVEL vl = data_structures::VERBOSITY_LEVEL_SEQUENCES) {
+    if (vl > data_structures::GLOBAL_VERBOSITY_LEVEL) return;
+    if (token == 0) return;
+
+    midi::TOKEN_TYPE tt = std::get<0>(backward[token]);
+    bool is_end = (tt == midi::TOKEN_TRACK_END || tt == midi::TOKEN_BAR_END || tt == midi::TOKEN_FILL_IN_END || tt == midi::TOKEN_FILL_IN_START); 
+    // Wait, FILL_IN_START is a start token. TRACK/BAR/FILL_IN_START are start tokens.
+    // FILL_IN_START starts an indented block.
+    
+    is_end = (tt == midi::TOKEN_TRACK_END || tt == midi::TOKEN_BAR_END || tt == midi::TOKEN_FILL_IN_END);
+    bool is_start = (tt == midi::TOKEN_TRACK || tt == midi::TOKEN_BAR || tt == midi::TOKEN_FILL_IN_START);
+
+    if (is_end) data_structures::GLOBAL_LOGGER_INDENT = std::max(0, data_structures::GLOBAL_LOGGER_INDENT - 1);
+
+    for (int i=0; i<data_structures::GLOBAL_LOGGER_INDENT; i++) std::cout << "  ";
+    std::cout << pretty(token) << std::endl;
+
+    if (is_start) data_structures::GLOBAL_LOGGER_INDENT += 1;
   }
+
+  void show(const std::vector<int> &tokens, data_structures::VERBOSITY_LEVEL vl, const std::string &header) {
+    if (vl > data_structures::GLOBAL_VERBOSITY_LEVEL) return;
+    data_structures::LOGGER(vl, "=======================");
+    data_structures::LOGGER(vl, header);
+    
+    int old_indent = data_structures::GLOBAL_LOGGER_INDENT;
+    data_structures::GLOBAL_LOGGER_INDENT = 0; // Reset for the batch show
+    for (const auto &token : tokens) {
+      pretty_log(token, vl);
+    }
+    data_structures::GLOBAL_LOGGER_INDENT = old_indent; // Restore
+    
+    data_structures::LOGGER(vl, "=======================");
+  }
+
 
   void show_token_types() {
     for (const auto &token : domains) {
