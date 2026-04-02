@@ -483,12 +483,16 @@ void find_steps_inner(std::vector<STEP> &steps, cmatrix<bool> &selection_matrix,
 
         int t = 0;
         if (autoregressive) {
-            // for the first step we have no generated material to 
-            // condition on so we use entire model window
-            // after the first step (j>0) we only generate bars_per_step bars
-            int right_offset = std::max((j + model_dim) - nb,0);
-            t = std::min(j, nb - model_dim);
-            setrange(kernel, true, 0, num_tracks, (j>0)*(num_context+right_offset), model_dim);
+            // Alignment Optimization: 
+            // Position the window so it ends at the last bar we want to generate.
+            // This maximizes "Past" context for the model.
+            int target_end_bar = j + bars_per_step - 1;
+            t = clamp(target_end_bar - model_dim + 1, 0, nb - model_dim);
+            
+            // The kernel specifies which bars are generated in this step (local to window)
+            int local_start = j - t;
+            int local_end = std::min(model_dim, local_start + bars_per_step);
+            setrange(kernel, true, 0, num_tracks, local_start, local_end);
         }
         else {
             // we want to have the generated bars at the center

@@ -59,9 +59,23 @@ void status_rehighlight(midi::Status *status, const std::set<std::tuple<int,int>
   for (int track_num=0; track_num<num_tracks; track_num++) {
     midi::StatusTrack *track = status->mutable_tracks(track_num);
     int num_bars = track->selected_bars_size();
+    
+    // Find the first bar to be highlighted in this track
+    int first_selected = -1;
+    for (int bar_num=0; bar_num<num_bars; bar_num++) {
+      if (bar_list.count(std::make_tuple(track_num, bar_num))) {
+        first_selected = bar_num;
+        break;
+      }
+    }
+
     track->clear_selected_bars();
     for (int bar_num=0; bar_num<num_bars; bar_num++) {
       bool x = bar_list.find(std::make_tuple(track_num,bar_num)) != bar_list.end();
+      // If suffix-autoregressive is enabled, all bars from the first selected onwards must be TRUE
+      if (track->suffix_autoregressive() && first_selected != -1 && bar_num >= first_selected) {
+        x = true;
+      }
       track->add_selected_bars(x);
       if ((track->autoregressive()) && (!x)) {
         track->set_autoregressive( false );
@@ -106,6 +120,9 @@ midi::Piece piece_subset(midi::Piece* piece, int start_bar, int end_bar, const s
     t->CopyFrom(track);
     t->clear_bars();
     for (int i=start_bar; i<end_bar; i++) {
+        if (i >= track.bars_size()) {
+            continue;
+        }
       midi::Bar *b = t->add_bars();
       b->CopyFrom( track.bars(i) );
       b->clear_events();
@@ -119,6 +136,28 @@ midi::Piece piece_subset(midi::Piece* piece, int start_bar, int end_bar, const s
     track_count++;
   }
   return subset;
+}
+
+// Copy StatusBar.future flags from the status into Bar.future in the piece.
+// Called during preprocessing so the encoder sees the correct masking without
+// requiring callers to mutate the piece JSON.  Only overwrites Bar.future when
+// the corresponding StatusBar has the future field explicitly set (has_future()).
+// Bars whose StatusBar does not set future are left unchanged, preserving any
+// Bar.future values already present (e.g. from training augmentation).
+void apply_future_flags_from_status(midi::Piece *piece, midi::Status *status) {
+  for (int ti = 0; ti < status->tracks_size(); ti++) {
+    const midi::StatusTrack &st = status->tracks(ti);
+    int track_id = st.track_id();
+    if (track_id < 0 || track_id >= piece->tracks_size()) continue;
+    midi::Track *track = piece->mutable_tracks(track_id);
+    int num_bars = std::min(st.bars_size(), track->bars_size());
+    for (int bi = 0; bi < num_bars; bi++) {
+      const midi::StatusBar &sb = st.bars(bi);
+      if (sb.has_future()) {
+        track->mutable_bars(bi)->set_future(sb.future());
+      }
+    }
+  }
 }
 
 void add_timesigs_to_status(midi::Piece *piece, midi::Status *status) {
@@ -319,6 +358,7 @@ void sample(midi::Piece* piece, midi::Status* raw_status, midi::HyperParam* para
     util_protobuf::pad_piece_with_status(piece, status_pointer, param->model_dim());
     // add time-signatures from piece into the status
     add_timesigs_to_status(piece, status_pointer);
+    apply_future_flags_from_status(piece, status_pointer);
     // add features to piece when we are sampling auto-regressively
     // as these are perhaps not yet in the piece
     override_piece_features(piece, status_pointer, enc->rep);
@@ -470,6 +510,37 @@ std::tuple<std::string,int> sample_multi_step_py(std::string &piece_json, std::s
 
   int attempts = sample_multi_attempts(&piece, &status, &hyperParam, callbacks, max_attempts);
   return std::make_tuple(util_protobuf::protobuf_to_string(&piece), attempts);
+}
+
+std::vector<std::vector<std::vector<int>>> get_step_grids(midi::Status* status, midi::HyperParam* param) {
+    std::vector<std::vector<bool>> sel = status_to_selection_mask(status);
+    std::vector<bool> resample_mask = status_to_resample_mask(status);
+    std::vector<bool> ignore_mask = status_to_ignore_mask(status);
+    std::vector<STEP> steps = find_steps(sel, resample_mask, ignore_mask, param);
+
+    int nt = status->tracks_size();
+    if (nt == 0) return {};
+    int nb = status->tracks(0).selected_bars_size();
+
+    std::vector<std::vector<std::vector<int>>> grids;
+    for (const auto &s : steps) {
+        std::vector<std::vector<int>> grid(nt, std::vector<int>(nb, 0));
+        for (int i=0; i<nt; i++) {
+            for (int j=0; j<nb; j++) {
+                if (i < (int)s.step.size() && j < (int)s.step[0].size() && s.step[i][j]) {
+                    grid[i][j] = 2; // GENERATION
+                } else if (i < (int)s.context.size() && j < (int)s.context[0].size() && s.context[i][j]) {
+                    grid[i][j] = 1; // CONTEXT
+                } else if (j >= s.start && j < s.end) {
+                    grid[i][j] = 3; // MASKED (In window but not context/gen)
+                } else {
+                    grid[i][j] = 0; // NONE
+                }
+            }
+        }
+        grids.push_back(grid);
+    }
+    return grids;
 }
 
 }
