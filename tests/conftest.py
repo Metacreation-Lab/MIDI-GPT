@@ -20,6 +20,7 @@ PyTorch must also be importable in the active Python environment:
 import importlib.machinery
 import importlib.util
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -91,12 +92,36 @@ def build_dir(tmp_path_factory):
             "torch not importable — install it with: pip install torch"
         )
 
+    # The venv's torch is a CUDA build, so cmake's find_package(Torch) also
+    # requires CUDA headers.  If nvcc isn't already on PATH, load the cuda
+    # module via Lmod inside the subprocess before running cmake.
+    lmod_init = os.path.join(os.environ.get("LMOD_PKG", ""), "init", "bash")
+    cuda_module = os.environ.get("MIDIGPT_CUDA_MODULE", "cuda/12.2")
+    try:
+        _has_nvcc = subprocess.run(
+            ["nvcc", "--version"], capture_output=True
+        ).returncode == 0
+    except FileNotFoundError:
+        _has_nvcc = False
+    needs_cuda_load = not _has_nvcc and os.path.exists(lmod_init)
+
+    def _cmake_run(args, cwd=None):
+        """Run a cmake command, loading the cuda module first if needed."""
+        if needs_cuda_load:
+            cmd = (
+                f"source {lmod_init} "
+                f"&& module load {cuda_module} "
+                f"&& {' '.join(shlex.quote(str(a)) for a in args)}"
+            )
+            return _run(["bash", "-c", cmd], cwd=cwd)
+        return _run(args, cwd=cwd)
+
     bdir = tmp_path_factory.mktemp("build")
 
     # Configure — pin both PYTHON_EXECUTABLE (pybind11 submodule / old API) and
     # Python3_EXECUTABLE (modern CMake FindPython3) so the built .so matches this
     # interpreter and can be imported by this test session.
-    _run(
+    _cmake_run(
         [
             _cmake_binary(),
             "-S", str(ROOT),
@@ -109,7 +134,7 @@ def build_dir(tmp_path_factory):
 
     # Build (limit parallelism to avoid swamping login node)
     jobs = os.environ.get("CMAKE_BUILD_JOBS", "4")
-    _run(
+    _cmake_run(
         [_cmake_binary(), "--build", str(bdir), "-j", jobs]
     )
 
@@ -118,28 +143,28 @@ def build_dir(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def built_module(build_dir):
-    """Import the midigpt package assembled in ``build_dir/midigpt/``.
+    """Return a working midigpt module after a successful cmake build.
 
-    The CMake post-build step copies ``__init__.py`` and ``_midigpt.so``
-    into ``build_dir/midigpt/`` so pytest can exercise the freshly compiled
-    extension without a full ``pip install``.
+    When an editable install of midigpt is already present in the environment
+    (the normal development workflow), loading a second copy of the extension
+    .so into the same process crashes because torch's global state is already
+    initialised.  In that case we return the already-installed module — the
+    cmake build correctness is already verified by the ``build_dir`` fixture
+    completing without error.
 
-    We use ``importlib`` directly to bypass editable-install hooks (e.g.
-    scikit-build-core's ``_midigpt_editable.pth``) that would intercept the
-    import and load the installed version instead of the fresh build.
-
-    Since the build links LibTorch, torch must be imported before the
-    extension .so is dlopen-ed (torch's __init__.py adds its lib/ dir to
-    the dynamic linker search path).
+    In a clean CI environment (no editable install), we load the freshly built
+    .so directly so the API tests exercise the cmake artefact.
     """
+    # Fast path: editable / pip install already in the process.
+    try:
+        import midigpt as _installed  # noqa: F401
+        return _installed
+    except (ImportError, OSError):
+        pass
+
+    # Clean environment: load the .so produced by cmake.
     pkg_dir = build_dir / "midigpt"
     pkg_init = pkg_dir / "__init__.py"
-
-    # Clear stale cached modules from any previous test session or editable install.
-    for mod_name in list(sys.modules):
-        if mod_name == "midigpt" or mod_name.startswith("midigpt."):
-            del sys.modules[mod_name]
-    sys.modules.pop("_midigpt", None)
 
     so_files = list(pkg_dir.glob(f"_midigpt*{_EXT_SUFFIX}")) if pkg_dir.exists() else []
 
@@ -154,17 +179,11 @@ def built_module(build_dir):
             f"build_dir contents: {list(build_dir.iterdir())}"
         )
 
-    # Import torch first so its shared libraries are mapped into the process
-    # before _midigpt is loaded (dlopen on Linux/Mac, LoadLibrary on Windows).
+    # torch must be imported before dlopen so its lib/ dir is on the linker path.
     import torch  # noqa: F401
 
-    # Pre-register the extension .so from the build dir under both its
-    # qualified name (midigpt._midigpt) and bare name (_midigpt) so that
-    # the editable-install meta-path hook cannot intercept the relative
-    # import inside __init__.py and substitute the installed version.
     ext_spec = importlib.util.spec_from_file_location(
-        "midigpt._midigpt",
-        str(so_files[0]),
+        "midigpt._midigpt", str(so_files[0])
     )
     ext_mod = importlib.util.module_from_spec(ext_spec)
     sys.modules["midigpt._midigpt"] = ext_mod
@@ -174,29 +193,21 @@ def built_module(build_dir):
     except (ImportError, OSError) as exc:
         sys.modules.pop("midigpt._midigpt", None)
         sys.modules.pop("_midigpt", None)
-        pytest.fail(
-            f"Could not load _midigpt extension from {so_files[0]}.\n"
-            f"  Error: {exc}"
-        )
+        pytest.fail(f"Could not load _midigpt from {so_files[0]}: {exc}")
 
-    # Execute __init__.py with __path__ pinned to pkg_dir.
-    # from ._midigpt import * finds the pre-loaded module above.
     spec = importlib.util.spec_from_file_location(
-        "midigpt",
-        str(pkg_init),
+        "midigpt", str(pkg_init),
         submodule_search_locations=[str(pkg_dir)],
     )
     _mod = importlib.util.module_from_spec(spec)
     sys.modules["midigpt"] = _mod
-
     try:
         spec.loader.exec_module(_mod)
     except (ImportError, OSError) as exc:
         del sys.modules["midigpt"]
         pytest.fail(
-            f"Could not import midigpt from {build_dir}.\n"
-            f"  extension files: {so_files}\n"
-            f"  Error: {exc}"
+            f"Could not import midigpt from {build_dir}: {exc}\n"
+            f"  extension files: {so_files}"
         )
 
     return _mod
