@@ -21,7 +21,6 @@ namespace py = pybind11;
 #ifndef NO_TORCH
 #include "inference/sampling/sample_internal.h"
 #include "inference/sampling/multi_step_sample.h"
-#include "inference/realtime/realtime_session.h"
 #endif
 
 #include <iostream>
@@ -133,32 +132,14 @@ PYBIND11_MODULE(_midigpt,handle) {
     return sampling::sample_multi_step_py(piece_json, status_json, param_json, max_attempts, callbacks);
   });
   handle.def("get_notes", &sampling::get_notes_py);
+  handle.def("get_step_grids", [](std::string &status_json, std::string &param_json) {
+    midi::Status status;
+    midi::HyperParam param;
+    (void)google::protobuf::util::JsonStringToMessage(status_json.c_str(), &status);
+    (void)google::protobuf::util::JsonStringToMessage(param_json.c_str(), &param);
+    return sampling::get_step_grids(&status, &param);
+  });
 
-  // ── Real-time inference ──────────────────────────────────────────────────
-  py::class_<sampling::RealtimeConfig>(handle, "RealtimeConfig")
-    .def(py::init<>())
-    .def_readwrite("encoder_type",               &sampling::RealtimeConfig::encoder_type)
-    .def_readwrite("model_path",                 &sampling::RealtimeConfig::model_path)
-    .def_readwrite("temperature",                &sampling::RealtimeConfig::temperature)
-    .def_readwrite("max_gen_tokens_per_advance", &sampling::RealtimeConfig::max_gen_tokens_per_advance)
-    .def_readwrite("use_lookahead",              &sampling::RealtimeConfig::use_lookahead)
-    .def_readwrite("lookahead_bars",             &sampling::RealtimeConfig::lookahead_bars)
-    .def_readwrite("max_seq_len",                &sampling::RealtimeConfig::max_seq_len)
-    .def_readwrite("total_bars",                 &sampling::RealtimeConfig::total_bars);
-
-  py::class_<sampling::RealtimeSession>(handle, "RealtimeSession")
-    .def(py::init<const sampling::RealtimeConfig&>())
-    .def("init_input_track",  &sampling::RealtimeSession::init_input_track)
-    .def("init_output_track", &sampling::RealtimeSession::init_output_track)
-    .def("start",             &sampling::RealtimeSession::start)
-    .def("push_note",         &sampling::RealtimeSession::push_note)
-    .def("complete_bar",      &sampling::RealtimeSession::complete_bar)
-    .def("advance",           &sampling::RealtimeSession::advance)
-    .def("seek",              &sampling::RealtimeSession::seek)
-    .def("reset",             &sampling::RealtimeSession::reset)
-    .def("rebuild_cache",     &sampling::RealtimeSession::rebuild_cache)
-    .def("current_bar",       &sampling::RealtimeSession::current_bar)
-    .def("cache_length",      &sampling::RealtimeSession::cache_length);
 #endif
 
   handle.def("compute_all_attribute_controls", &encoder::compute_all_attribute_controls_py);
@@ -166,6 +147,11 @@ PYBIND11_MODULE(_midigpt,handle) {
   handle.def("get_instrument_and_track_type_from_gm_inst", &enums::get_instrument_and_track_type_from_gm_inst);
   handle.def("midi_to_json_bytes", &midi_to_json_bytes);
   handle.def("json_bytes_to_string", &json_bytes_to_string);
+  handle.def("write_midi", [](std::string piece_json, std::string path, int single_track) {
+      midi::Piece piece;
+      google::protobuf::util::JsonStringToMessage(piece_json.c_str(), &piece);
+      midi_io::write_midi(&piece, path, single_track);
+  }, py::arg("piece_json"), py::arg("path"), py::arg("single_track") = -1);
 
   py::enum_<enums::MODEL_TYPE>(handle, "MODEL_TYPE", py::arithmetic())
     .value("TRACK_MODEL", enums::MODEL_TYPE::TRACK_MODEL)
