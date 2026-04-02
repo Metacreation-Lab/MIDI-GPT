@@ -67,16 +67,18 @@ public:
 
         if (std::get<0>(target_node) != midi::TOKEN_NONE) {
           auto msg = data_structures::to_str("CONDITIONAL_REP_GRAPH::possibly_skip() : skip ", util_protobuf::enum_to_string(std::get<0>(target_node)), std::get<1>(target_node));
-          std::cout << msg << std::endl;
           data_structures::LOGGER(msg);
           rg->graph.skip(rg->graph.get_previous_nodes(target_node)[0]);
           rg->set_mask(rep->encode(std::get<0>(target_node), 0), mask);
-
         }
 
       }
     }
     return std::get<0>(target_node);
+  }
+
+  void update(int token) {
+    graph->update(token);
   }
 
   std::unique_ptr<REP_GRAPH> graph;
@@ -135,9 +137,12 @@ public:
     else {
       data_structures::LOGGER( "REP GRAPH CONSTRUCTOR SUCCESS" );
     }
-
-    parse_status(status);
     initialize_members();
+    bars_per_step = param->bars_per_step();
+    generation_start_bar_count = -1; // Not yet set
+    is_suffix_ar_session = false;
+    
+    parse_status(status);
 
   }
 
@@ -173,11 +178,7 @@ public:
         prompt = enc->encode(p);
       }
       
-      data_structures::LOGGER( "FULL PROMPT " );
-      for (int i=0; i<(int)prompt.size(); i++) {
-        data_structures::LOGGER( enc->rep->pretty(prompt[i]) );
-      }
-      data_structures::LOGGER( "FULL PROMPT " );
+      enc->rep->show(prompt, data_structures::VERBOSITY_LEVEL_TRACE, "FULL PROMPT");
       
       int fill_start = enc->rep->encode(midi::TOKEN_FILL_IN_START,0);
       for (int index=0; index<(int)prompt.size(); index++) {
@@ -217,12 +218,19 @@ public:
     int num_resample_tracks = 0;
     int num_infill_tracks = 0;
     std::vector<util_protobuf::STATUS_TRACK_TYPE> track_types;
+    // select the correct model
+    // select the correct model
+    int nb = status->tracks(0).selected_bars_size();
     std::vector<int> order;
     std::vector<int> cond_tracks;
+    int agent_track_id = -1;
 
-    int track_num = 0;
-    for (const auto &track : status->tracks()) {
+    for (int track_num=0; track_num<(int)status->tracks_size(); track_num++) {
+      const auto &track = status->tracks(track_num);
       util_protobuf::STATUS_TRACK_TYPE tt = util_protobuf::infer_track_type(track);
+      if (track.suffix_autoregressive()) {
+          agent_track_id = track.track_id();
+      }
       data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, data_structures::to_str("STATUS TRACK TYPE FOR ",track.track_id()," : ", tt));
       switch( tt ) {
         case util_protobuf::CONDITION:
@@ -234,31 +242,17 @@ public:
           order.push_back( num_resample_tracks );
           tracks.push_back( track );
           num_resample_tracks++;
+          // Suffix-AR: Keep this track in the prompt piece so its prefix is encoded
+          if (track.suffix_autoregressive()) {
+            cond_tracks.push_back( track.track_id() );
+          }
           break;
         case util_protobuf::INFILL :     
           num_infill_tracks++;
           break;
       }
       track_types.push_back( tt );
-      int bar_num = 0;
-      for (const auto &selected : track.selected_bars()) {
-        if (selected) {
-          bars.push_back( std::make_pair(track_num, bar_num) );
-        }
-        bar_num++;
-      }
-      track_num++;
     }
-
-    // provide overview of tracks for sampling
-    int verbose_track_num = 0;
-    for (const auto &track_type : track_types) {
-      data_structures::LOGGER(data_structures::to_str("TRACK ", verbose_track_num, " -> ", track_type));
-      verbose_track_num++;
-    }
-
-    // select the correct model
-    int nb = status->tracks(0).selected_bars_size();
 
     enc = enums::getEncoderFromString(meta->encoder());
 
@@ -284,7 +278,7 @@ public:
 
       // fix the order
       // order is the output position for each track
-      for (track_num=0; track_num<status->tracks_size(); track_num++) {
+      for (int track_num=0; track_num<(int)status->tracks_size(); track_num++) {
         if (track_types[track_num] == util_protobuf::RESAMPLE) {
           order[track_num] = order[track_num] + num_cond_tracks;
         }
@@ -294,17 +288,88 @@ public:
         inverse_order[order[i]] = i;
       }
 
+      // Suffix-AR Optimization: Identify last selected bar and check for contiguity
+      last_selected_bar_index = -1;
+      if (agent_track_id != -1) {
+          bool in_selection = false;
+          bool finished_selection = false;
+          const auto &track = status->tracks(agent_track_id);
+          for (int i=0; i<(int)track.selected_bars_size(); i++) {
+              if (track.selected_bars(i)) {
+                  if (finished_selection) {
+                      throw std::runtime_error("NON-CONTIGUOUS SELECTION IN SUFFIX-AR TRACK " + std::to_string(agent_track_id));
+                  }
+                  in_selection = true;
+                  last_selected_bar_index = i;
+              } else {
+                  if (in_selection) {
+                      finished_selection = true;
+                  }
+              }
+          }
+      }
 
-      // prune unneeded tracks
+      // Suffix-AR: Find the first gen bar and the index of the generation track in the piece
+      int first_gen_bar = nb;
+      int gen_track_idx_in_piece = -1;
+      int piece_track_counter = 0;
+      for (int i=0; i<(int)status->tracks_size(); i++) {
+        const auto &t = status->tracks(i);
+        bool is_cond = (util_protobuf::infer_track_type(t) == util_protobuf::CONDITION);
+        bool is_suffix_ar = t.suffix_autoregressive();
+        
+        if (is_cond || is_suffix_ar) {
+            if (is_suffix_ar) {
+                gen_track_idx_in_piece = piece_track_counter;
+                for (int b=0; b<nb; b++) {
+                    if (t.selected_bars(b)) {
+                        first_gen_bar = std::min(first_gen_bar, b);
+                    }
+                }
+            }
+            piece_track_counter++;
+        }
+      }
+
+      // Prune tracks
       util_protobuf::prune_tracks(piece, cond_tracks, arange(0,nb,1));
       
-      data_structures::LOGGER( "AFTER PRUNE TRACKS ...." );
+      data_structures::LOGGER( "AFTER STABLE PRUNE TRACKS ...." );
       util_protobuf::print_piece_summary(piece);
       data_structures::LOGGER( "============================" );
 
       set_autoregressive_prompt(tracks, piece, status, param);
 
+      // Truncate Agent track to starting bar
+      if (gen_track_idx_in_piece != -1 && first_gen_bar < nb) {
+          data_structures::LOGGER(data_structures::to_str("STABLE TRUNCATION AT TRACK ", gen_track_idx_in_piece, " BAR ", first_gen_bar));
+          int current_track_idx = -1;
+          int current_bar_idx = -1;
+          int truncate_at = -1;
+
+          for (int i=0; i<(int)prompt.size(); i++) {
+              midi::TOKEN_TYPE tt = enc->rep->get_token_type(prompt[i]);
+              if (tt == midi::TOKEN_TRACK) {
+                  current_track_idx++;
+                  current_bar_idx = -1;
+              } else if (tt == midi::TOKEN_BAR) {
+                  current_bar_idx++;
+                  if (current_track_idx == gen_track_idx_in_piece && current_bar_idx == first_gen_bar) {
+                      truncate_at = i;
+                      break;
+                  }
+              }
+          }
+          if (truncate_at != -1) {
+              prompt.resize(truncate_at);
+              is_suffix_ar_session = true;
+              data_structures::LOGGER(data_structures::to_str("PROMPT TRUNCATED. NEW SIZE: ", prompt.size()));
+          } else {
+              data_structures::LOGGER("WARNING: TRUNCATION POINT NOT FOUND IN PROMPT");
+          }
+      }
     }
+    num_tracks = piece->tracks_size();
   }
 
   void finalize(midi::Piece *piece) {
@@ -339,7 +404,6 @@ public:
     //    for this we can use a static mask for each track
     //    as there should be no overlap
     num_bars = status->tracks(0).selected_bars_size();
-    num_tracks = status->tracks_size();
     
     for (int i=0; i<status->tracks_size(); i++) {
       midi::StatusTrack track = status->tracks(inverse_order[i]);
@@ -563,7 +627,8 @@ public:
       data_structures::LOGGER(data_structures::to_str("ONSETS : ", onsets.size()));
     }
     
-
+    
+    // rg->update(token); // REMOVED: Redundant with set_mask and causes double-advance errors
   }
 
   void set_mask(int last_token, std::vector<int> &mask) {
@@ -685,11 +750,28 @@ public:
     }
     
     if (model_type == enums::TRACK_MODEL) {
-      // limit number of bars
-      if (bar_count != num_bars) {
+      // Limit number of bars: Either piece end or bars_per_step limit
+      bool reached_piece_end = (bar_count >= num_bars);
+      bool reached_step_limit = (generation_start_bar_count >= 0 && 
+                                 (bar_count - generation_start_bar_count) >= bars_per_step);
+      
+      // Suffix-AR Optimization: Stop early after last selected bar
+      if (is_suffix_ar_session && last_selected_bar_index != -1) {
+          if (bar_count > last_selected_bar_index) {
+              reached_step_limit = true; // Signals termination
+              finished = true;
+          }
+      } else if (is_suffix_ar_session) {
+        reached_step_limit = false;
+      }
+      
+      if (!reached_piece_end && !reached_step_limit) {
+        // If we haven't reached the end of the piece (and haven't reached the step limit),
+        // we keep going. We only mask TRACK_END to prevent premature termination.
         rep->set_mask(midi::TOKEN_TRACK_END, {-1}, mask, 0);
       }
       else {
+        // Force track end by masking TOKEN_BAR (preventing next bar)
         rep->set_mask(midi::TOKEN_BAR, {-1}, mask, 0);
       }
       // limit the track count
@@ -730,12 +812,29 @@ public:
       if (verbose) {
         data_structures::LOGGER(data_structures::to_str("UPDATING [", token_position, "] :: ", enc->rep->pretty(tokens[t])));
       }
-      update( tokens[t] );
+      
+      // Advance ALL sub-graphs for full synchronization.
+      // We skip the very last token because it will be advanced by set_mask later.
+      if (t < (int)tokens.size() - 1) {
+        rg->update(tokens[t]);
+        instrument_rg->update(tokens[t]);
+        drum_rg->update(tokens[t]);
+      }
+      
+      // Update session state (timestep, onsets, etc.)
+      this->update( tokens[t] );
       history.push_back( tokens[t] );
       token_position++;
     }
 
     set_mask(tokens.back(), mask);
+    
+    // If this is the first time we call get_mask (with the prompt),
+    // record the starting bar count for generation.
+    if (generation_start_bar_count == -1) {
+        generation_start_bar_count = bar_count;
+    }
+    
     return mask;
   }
 
@@ -758,6 +857,8 @@ public:
   int num_bars;
   int num_tracks;
   int num_infill_bars;
+  int bars_per_step;
+  int generation_start_bar_count;
   std::vector<std::vector<int>> attribute_masks;
   std::vector<std::vector<std::vector<int>>> attribute_bar_masks;
 
@@ -766,7 +867,9 @@ public:
   std::string ckpt_path;
 
   int token_position;
+  int last_selected_bar_index;
   bool finished;
+  bool is_suffix_ar_session;
   enums::MODEL_TYPE model_type;
   std::vector<int> history;
 

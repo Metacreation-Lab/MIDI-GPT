@@ -5,15 +5,16 @@
 #include <vector>
 #include <tuple>
 #include <sstream>
+#include "../../common/data_structures/verbosity.h"
 
 namespace sampling {
 
 // define printing methods
-std::ostream& operator<<(std::ostream& os, const std::tuple<midi::TOKEN_TYPE,int> &obj) {
+inline std::ostream& operator<<(std::ostream& os, const std::tuple<midi::TOKEN_TYPE,int> &obj) {
     return os << "(" << util_protobuf::enum_to_string(std::get<0>(obj)) << "," << std::get<1>(obj) << ")";
 }
 
-std::string toString(const std::tuple<midi::TOKEN_TYPE,int> &obj) {
+inline std::string toString(const std::tuple<midi::TOKEN_TYPE,int> &obj) {
 	return std::string("(") + util_protobuf::enum_to_string(std::get<0>(obj)) + "," + std::to_string(std::get<1>(obj)) + ")";
 }
 
@@ -143,6 +144,17 @@ public:
 		}
 		return next_tokens;
 	}
+	T get_node_by_type(midi::TOKEN_TYPE tt) {
+		for (const auto &kv : nodes) {
+			if (std::get<0>(kv.first) == tt) {
+				return kv.first;
+			}
+		}
+		return std::make_tuple(midi::TOKEN_NONE, 0);
+	}
+	bool contains_type(midi::TOKEN_TYPE tt) {
+		return std::get<0>(get_node_by_type(tt)) != midi::TOKEN_NONE;
+	}
 	T infer_node(const int &last_token, encoder::ENCODER *enc) {
 		data_structures::LOGGER(data_structures::to_str("INFERRING NODE FROM TOKEN ", (enc->rep->pretty(last_token))));
 		data_structures::LOGGER(data_structures::to_str("CURRENT NODE ", toString(current_node)));
@@ -151,20 +163,22 @@ public:
 		if (tt == midi::TOKEN_PIECE_START) {
 			return std::make_tuple(midi::TOKEN_PIECE_START,0); // special case at the start of the token sequence
 		}
-		if (next_nodes.size() == 0) {
-			std::ostringstream buffer;
-			buffer << "ERROR : NO NEXT TOKENS IN DIGRAPH (" << current_node << ")";
-			throw std::runtime_error(buffer.str());
-		}
-		if (next_nodes.size() == 1) {
-			return next_nodes[0];
-		}
+		
 		for (const auto &e : next_nodes) {
 			if (std::get<0>(e) == tt) {
 				return e;
 			}
 		}
-		throw std::runtime_error("ERROR : CANNOT INFER NODE");
+		
+		// RELAXATION: If we can't find a direct transition, and the token exists in the graph,
+		// "jump" to it. This handles pruned intermediate control tokens.
+		T target = get_node_by_type(tt);
+		if (std::get<0>(target) != midi::TOKEN_NONE) {
+			return target;
+		}
+
+		// If the token is NOT in our domain at all, we stay at the current node (no-op).
+		return current_node;
 	}
 
 	/// some code to visualize a graph in graphviz format
@@ -183,8 +197,8 @@ public:
 		if (traversal_started) {
 			if (!check_path(current_node, node, 0, 1)) {
 				std::ostringstream buffer;
-				buffer << "ERROR : INVALID PATH IN DIGRAPH (" << current_node << " --> " << node << ")";
-				throw std::runtime_error(buffer.str());
+				buffer << "WARNING : INVALID PATH IN DIGRAPH (JUMPING) (" << current_node << " --> " << node << ")";
+				data_structures::LOGGER(buffer.str());
 			}
 		}
 		current_node = node;
@@ -246,6 +260,9 @@ std::vector<std::vector<midi::TOKEN_TYPE>> DEF_GRAPH = {
   {midi::TOKEN_FILL_IN_START, midi::TOKEN_TIME_ABSOLUTE_POS},
   {midi::TOKEN_FILL_IN_START, midi::TOKEN_VELOCITY_LEVEL},
   {midi::TOKEN_FILL_IN_END, midi::TOKEN_FILL_IN_START},
+  {midi::TOKEN_TIME_SIGNATURE, midi::TOKEN_MASK_BAR},
+  {midi::TOKEN_BAR, midi::TOKEN_MASK_BAR},
+  {midi::TOKEN_MASK_BAR, midi::TOKEN_BAR_END},
 };
 
 template<typename T, typename... Us>
@@ -347,6 +364,14 @@ public:
 		for (const auto &e : graph.get_next_nodes(tt)) {
 			enc->rep->set_mask(std::get<0>(e), {-1}, mask, 1);
 		}
+	}
+
+	void update(int last_token) {
+		midi::TOKEN_TYPE tt_type = enc->rep->get_token_type(last_token);
+		if (!graph.contains_type(tt_type)) return;
+
+		auto tt = graph.infer_node(last_token, enc);
+		graph.traverse(tt);
 	}
 
 	// helpers

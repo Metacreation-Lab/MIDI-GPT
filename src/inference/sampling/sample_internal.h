@@ -123,6 +123,13 @@ namespace sampling {
           }
         }
       }
+      // Context-only tokens are never generated at inference; always suppress them
+      for (midi::TOKEN_TYPE ctx_tt : {midi::TOKEN_MASK_BAR, midi::TOKEN_FILL_IN_PLACEHOLDER}) {
+        if (scon[i]->rep->has_token_type(ctx_tt)) {
+          int ctx_id = scon[i]->rep->encode(ctx_tt, 0);
+          logits[i][ctx_id] = -1 * std::numeric_limits<float>::max();
+        }
+      }
       std::set<std::string> s( unmasked_types.begin(), unmasked_types.end() );
       unmasked_types.assign( s.begin(), s.end() );
 
@@ -172,8 +179,9 @@ namespace sampling {
     for (int i=0; i<(int)seqs.size(); i++) {
       if (!scon[i]->finished) {      
         int next_token = next_tokens[i][0].item<int64_t>();
-        data_structures::LOGGER(data_structures::to_str("SAMPLED :: ", scon[i]->enc->rep->pretty(next_token)));
         seqs[i].push_back( next_token );
+        scon[i]->update( next_token );
+        scon[i]->rep->pretty_log( next_token );
 
 
         if (callbacks) {
@@ -209,7 +217,7 @@ namespace sampling {
     std::vector<int> prompt = scon[0]->prompt;
     std::vector<torch::jit::IValue> inputs;
     std::vector<std::vector<int>> seqs = std::vector<std::vector<int>>(param->batch_size(), prompt);
-    scon[0]->rep->show(prompt);
+    scon[0]->rep->show(prompt, data_structures::VERBOSITY_LEVEL_SEQUENCES, "INPUT SEQUENCE");
 
     auto opts = torch::TensorOptions().dtype(torch::kInt64).device(mm->device);
     torch::Tensor x = torch::zeros({param->batch_size(), (int)prompt.size()}, opts);
@@ -241,7 +249,7 @@ namespace sampling {
       }
     }
     scon[0]->enc->config->decode_final = status->decode_final();
-    scon[0]->rep->show(seqs[0]);
+    scon[0]->enc->rep->show(seqs[0], data_structures::VERBOSITY_LEVEL_SEQUENCES, "OUTPUT SEQUENCE");
     std::vector<midi::Piece> output(param->batch_size());
     if (!terminated) {
       scon[0]->enc->tokens_to_json_array(seqs, output);
