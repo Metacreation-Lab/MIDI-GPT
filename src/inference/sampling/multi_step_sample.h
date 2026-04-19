@@ -97,8 +97,12 @@ midi::Status status_subset(midi::Status *status, int start_bar, int end_bar, con
     t->clear_bars();
     for (int i=start_bar; i<end_bar; i++) {
       midi::StatusBar *b = t->add_bars();
-      b->CopyFrom(track.bars(i));
-      t->add_selected_bars( track.selected_bars(i) );
+      if (i < track.bars_size()) {
+          b->CopyFrom(track.bars(i));
+          t->add_selected_bars( track.selected_bars(i) );
+      } else {
+          t->add_selected_bars(false);
+      }
     }
     track_count++;
   }
@@ -120,18 +124,19 @@ midi::Piece piece_subset(midi::Piece* piece, int start_bar, int end_bar, const s
     t->CopyFrom(track);
     t->clear_bars();
     for (int i=start_bar; i<end_bar; i++) {
-        if (i >= track.bars_size()) {
-            continue;
-        }
       midi::Bar *b = t->add_bars();
-      b->CopyFrom( track.bars(i) );
-      b->clear_events();
+      if (i < track.bars_size()) {
+          b->CopyFrom( track.bars(i) );
+          b->clear_events();
 
-      for (const auto &event : track.bars(i).events()) {
-        b->add_events( subset.events_size() );
-        midi::Event *e = subset.add_events();
-        e->CopyFrom( piece->events(event) );
+          for (const auto &event : track.bars(i).events()) {
+            b->add_events( subset.events_size() );
+            midi::Event *e = subset.add_events();
+            e->CopyFrom( piece->events(event) );
+          }
       }
+      // If i >= track.bars_size(), we still added an empty bar above (t->add_bars())
+      // to maintain index consistency with the generation window.
     }
     track_count++;
   }
@@ -223,8 +228,16 @@ void piece_insert(midi::Piece *piece, midi::Piece *x, const std::vector<std::tup
       throw std::runtime_error("PIECE INSERT :: INVALID TRACK INDEX FOR PIECE");
     }
     const midi::Track src_track = x->tracks(std::get<0>(ii));
+    if (std::get<1>(ii) >= src_track.bars_size()) {
+      data_structures::LOGGER(data_structures::to_str("PIECE INSERT :: INVALID BAR INDEX ", std::get<1>(ii), " FOR SRC TRACK (size: ", src_track.bars_size(), ")"));
+      throw std::runtime_error("PIECE INSERT :: INVALID BAR INDEX FOR X");
+    }
     const midi::Bar src = src_track.bars(std::get<1>(ii));
     midi::Track *dst_track = piece->mutable_tracks(std::get<2>(ii));
+    if (std::get<3>(ii) >= dst_track->bars_size()) {
+      data_structures::LOGGER(data_structures::to_str("PIECE INSERT :: INVALID BAR INDEX ", std::get<3>(ii), " FOR DST TRACK (size: ", dst_track->bars_size(), ")"));
+      throw std::runtime_error("PIECE INSERT :: INVALID BAR INDEX FOR DST");
+    }
     midi::Bar *dst = dst_track->mutable_bars(std::get<3>(ii));
 
     if (verbose) {
@@ -454,8 +467,8 @@ std::vector<std::tuple<int,int>> find_identical_bars(midi::Piece *input, midi::P
     midi::StatusTrack track = status->tracks(track_num);
     for (int bar_num=0; bar_num<track.bars_size(); bar_num++) {
       if (track.selected_bars(bar_num)) {
-        if (bars_are_equivalent(input, output, track_num, bar_num)) {
-          identical_bars.push_back(std::make_tuple(track_num, bar_num));
+        if (bars_are_equivalent(input, output, track.track_id(), bar_num)) {
+          identical_bars.push_back(std::make_tuple(track.track_id(), bar_num));
         }
       }
     }
@@ -463,25 +476,62 @@ std::vector<std::tuple<int,int>> find_identical_bars(midi::Piece *input, midi::P
   return identical_bars;
 }
 
+// Count notes in selected bars across all resampled tracks.
+int count_notes_in_selected_bars(midi::Piece* piece, midi::Status* status) {
+  int total = 0;
+  for (int track_num = 0; track_num < status->tracks_size(); track_num++) {
+    const midi::StatusTrack& st = status->tracks(track_num);
+    int tid = st.track_id();
+    if (tid >= piece->tracks_size()) continue;
+    const midi::Track& track = piece->tracks(tid);
+    for (int bar_num = 0; bar_num < st.selected_bars_size(); bar_num++) {
+      if (st.selected_bars(bar_num) && bar_num < track.bars_size()) {
+        total += track.bars(bar_num).events_size();
+      }
+    }
+  }
+  return total;
+}
+
 // wrapper function that ensures novelty and non-silence
 int sample_multi_attempts(midi::Piece* piece, midi::Status* status, midi::HyperParam* param, CallbackManager *callbacks, int max_attempts) {
+  // Seed RNG once here so retries evolve from a deterministic but diverging state.
+  // Seeding inside generate() would reset per-attempt, making every retry identical.
+  if (param->sampling_seed() >= 0) {
+    torch::manual_seed(param->sampling_seed());
+  }
   int attempts = 0;
   midi::Piece input;
   input.CopyFrom(*piece);
+  midi::Piece best;  // best non-empty result seen so far
+  bool have_best = false;
   while (attempts < max_attempts) {
-    //std::cout << "ATTEMPT " << attempts << std::endl;
     midi::Piece current;
     current.CopyFrom(*piece);
     sample(&current, status, param, callbacks);
     std::vector<std::tuple<int,int>> identical_bars = find_identical_bars(&input, &current, status);
+    int note_count = count_notes_in_selected_bars(&current, status);
     attempts++;
-    if (identical_bars.size() == 0) {
+    if (identical_bars.size() == 0 && note_count > 0) {
+      // Novel and non-silent — accept immediately
       piece->CopyFrom(current);
       return attempts;
+    }
+    if (note_count > 0 && !have_best) {
+      best.CopyFrom(current);
+      have_best = true;
+    }
+    // Escalate temperature on silent output to escape silence mode
+    if (note_count == 0) {
+      param->set_temperature( param->temperature() * 1.2f );
     }
     if (callbacks) {
       param->set_temperature( callbacks->update_temperature(param->temperature()) );
     }
+  }
+  // All attempts exhausted: prefer the best non-silent result, otherwise keep input
+  if (have_best) {
+    piece->CopyFrom(best);
   }
   return attempts;
 }

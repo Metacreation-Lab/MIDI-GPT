@@ -9,6 +9,8 @@ void init_encoders(py::module &handle) {
     .value("STEINBERG_WPCS_ENCODER", enums::ENCODER_TYPE::STEINBERG_WPCS_ENCODER)
     .value("STEINBERG_W_P_C_S_ENCODER", enums::ENCODER_TYPE::STEINBERG_WPCS_ENCODER)
     .value("GHOST_ENCODER", enums::ENCODER_TYPE::GHOST_ENCODER)
+    .value("SPECTER_ENCODER", enums::ENCODER_TYPE::SPECTER_ENCODER)
+    .value("ORACLE_ENCODER", enums::ENCODER_TYPE::ORACLE_ENCODER)
 		.value("NO_ENCODER", enums::ENCODER_TYPE::NO_ENCODER)
 		.export_values();
 
@@ -28,6 +30,43 @@ void init_encoders(py::module &handle) {
     .def("get_attribute_control_types", &encoder::ElVelocityDurationPolyphonyYellowEncoder::get_attribute_control_types)
     .def_readonly("config", &encoder::ElVelocityDurationPolyphonyYellowEncoder::config)
     .def_readonly("rep", &encoder::ElVelocityDurationPolyphonyYellowEncoder::rep);
+
+  py::class_<encoder::SpecterEncoder>(handle, "SpecterEncoder")
+    .def(py::init<>())  
+    .def("encode", &encoder::SpecterEncoder::encode)
+    .def("decode", &encoder::SpecterEncoder::decode)
+    .def("midi_to_json", &encoder::SpecterEncoder::midi_to_json)
+    .def("midi_to_tokens", &encoder::SpecterEncoder::midi_to_tokens)
+    .def("json_to_midi", &encoder::SpecterEncoder::json_to_midi)
+    .def("json_track_to_midi", &encoder::SpecterEncoder::json_track_to_midi)
+    .def("json_to_tokens", &encoder::SpecterEncoder::json_to_tokens)
+    .def("tokens_to_json", &encoder::SpecterEncoder::tokens_to_json)
+    .def("tokens_to_midi", &encoder::SpecterEncoder::tokens_to_midi)
+    .def("pretty", &encoder::SpecterEncoder::pretty)
+    .def("vocab_size", &encoder::SpecterEncoder::vocab_size)
+    .def("get_attribute_control_types", &encoder::SpecterEncoder::get_attribute_control_types)
+    .def("set_use_tension", &encoder::SpecterEncoder::set_use_tension)
+    .def_readonly("config", &encoder::SpecterEncoder::config)
+    .def_readonly("rep", &encoder::SpecterEncoder::rep);
+
+  py::class_<encoder::OracleEncoder>(handle, "OracleEncoder")
+    .def(py::init<>())  
+    .def("encode", &encoder::OracleEncoder::encode)
+    .def("decode", &encoder::OracleEncoder::decode)
+    .def("midi_to_json", &encoder::OracleEncoder::midi_to_json)
+    .def("midi_to_tokens", &encoder::OracleEncoder::midi_to_tokens)
+    .def("json_to_midi", &encoder::OracleEncoder::json_to_midi)
+    .def("json_track_to_midi", &encoder::OracleEncoder::json_track_to_midi)
+    .def("json_to_tokens", &encoder::OracleEncoder::json_to_tokens)
+    .def("tokens_to_json", &encoder::OracleEncoder::tokens_to_json)
+    .def("tokens_to_midi", &encoder::OracleEncoder::tokens_to_midi)
+    .def("pretty", &encoder::OracleEncoder::pretty)
+    .def("vocab_size", &encoder::OracleEncoder::vocab_size)
+    .def("get_attribute_control_types", &encoder::OracleEncoder::get_attribute_control_types)
+    .def("set_use_tension", &encoder::OracleEncoder::set_use_tension)
+    .def("update_internal_features", &encoder::OracleEncoder::update_internal_features)
+    .def_readonly("config", &encoder::OracleEncoder::config)
+    .def_readonly("rep", &encoder::OracleEncoder::rep);
 
   py::class_<encoder::ExpressiveEncoder>(handle, "ExpressiveEncoder")
     .def(py::init<>())

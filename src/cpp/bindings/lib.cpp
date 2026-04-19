@@ -274,6 +274,8 @@ py::enum_<midi::TOKEN_TYPE>(handle, "TOKEN_TYPE", py::arithmetic())
   .value("MAX_NOTE_DURATION_HARD", midi::TOKEN_MAX_NOTE_DURATION_HARD)
   .value("NONE", midi::TOKEN_NONE)
   .value("MASK_BAR", midi::TOKEN_MASK_BAR)
+  .value("BAR_LEVEL_TENSION", midi::TOKEN_BAR_LEVEL_TENSION)
+  .value("BAR_LEVEL_TENSION_DRUM", midi::TOKEN_BAR_LEVEL_TENSION_DRUM)
   .export_values();
 
 

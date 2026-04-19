@@ -102,6 +102,7 @@ public:
   int current_track;
   int max_tick;
   int tempo;
+  std::map<int,double> tempo_changes_tpq; // absolute TPQ tick -> BPM
   smf::MidiEvent *mevent;
   std::map<TRACK_IDENTIFIER,int> track_map;
   std::map<int,TRACK_IDENTIFIER> rev_track_map; // transposed of track_map
@@ -124,6 +125,7 @@ public:
       piece->set_internal_ticks_per_quarter(TPQ);
       max_tick = 0;
       current_track = 0;
+      tempo_changes_tpq.clear();
 
       for (int track = 0; track < parsed_file->track_count; track++) {
           current_track = track;
@@ -139,6 +141,7 @@ public:
               else if (mevent->isTempo()) {
                   tempo = mevent->getTempoBPM();
                   piece->set_tempo(tempo);
+                  tempo_changes_tpq[mevent->tick] = mevent->getTempoBPM();
               }
               else if (mevent->isNoteOn() || mevent->isNoteOff()) {
                   handle_note_message(mevent);
@@ -148,6 +151,21 @@ public:
 
       if (max_tick <= 0) {
           throw std::runtime_error("MIDI FILE HAS NO NOTES");
+      }
+
+      // Store full tempo map in piece (ticks converted from TPQ to SPQ units)
+      if (tempo_changes_tpq.empty()) {
+          // No explicit tempo event: default 120 BPM at tick 0
+          auto* tc = piece->add_tempo_changes();
+          tc->set_tick(0);
+          tc->set_qpm(120.0f);
+      } else {
+          for (const auto& kv : tempo_changes_tpq) {
+              int spq_tick = (int)std::round((double)kv.first * SPQ / TPQ);
+              auto* tc = piece->add_tempo_changes();
+              tc->set_tick(spq_tick);
+              tc->set_qpm((float)kv.second);
+          }
       }
 
       piece->set_internal_has_time_signatures(timesigs.size() > 0);

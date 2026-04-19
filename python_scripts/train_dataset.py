@@ -57,8 +57,7 @@ class CustomDataset:
       self.batch_size, self.split_id, self.encoder_mode, self.tc)
     input_ids = np.array(input_ids)
     mask = np.array(mask)
-    labels = np.copy(input_ids)
-    labels += (1-mask) * self.pad_value # set masked tokens to pad_value
+    labels = np.where(mask == 1, input_ids, self.pad_value)
     batch = {
       "input_ids" : torch.from_numpy(input_ids), 
       "attention_mask" : torch.from_numpy(mask),

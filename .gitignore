@@ -92,3 +92,31 @@ notes/*
 
 # claude
 .claude
+
+# debug / profiling artifacts
+gdb_output*.txt
+gdb_pass*.txt
+gdb_segfault.txt
+gdb_output_clean.txt
+run_gdb.sh
+realtime.ut
+
+# generated audio / evaluation outputs
+*.wav
+eval_results.json
+output/
+hp_search.db
+tests/short_midi/generated_*.mid
+session_performance.mid
+simulation_v2.mp4
+
+# pip / scikit-build-core artifacts
+*.egg-info/
+_skbuild/
+dist/
+
+# pytest cache
+.pytest_cache/
+
+# wandb runs
+wandb/
