@@ -1,14 +1,20 @@
 #pragma once
 
 #include <bit>
+#include <cmath>
 #include <map>
+#include <numeric>
 #include <set>
 
 #include "representation.h"
+#include "tension_model.h"
 
 #include "../../common/data_structures/token_sequence.h"
 
 namespace encoder {
+
+using namespace spiral_array;
+using namespace farbood;
 
 enum ATTRIBUTE_CONTROL_LEVEL {
     ATTRIBUTE_CONTROL_LEVEL_PIECE,
@@ -1450,12 +1456,17 @@ public:
     }
 };
 
-class Tension : public ATTRIBUTE_CONTROL {
+// BarLevelInstrumentTension: Farbood Trend-Salience tension for non-drum tracks.
+// Implements the 6-feature model matching tensionModel.py.
+// Configurable fields are public so SpecterEncoder can override defaults.
+class BarLevelInstrumentTension : public ATTRIBUTE_CONTROL {
 public:
-    Tension() {
+    int n_bins = 10;  // must match TOKEN_BAR_LEVEL_TENSION domain size
+
+    BarLevelInstrumentTension() {
         precompute_on_piece = false;
         control_level = ATTRIBUTE_CONTROL_LEVEL_BAR;
-        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT_AND_DRUM;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_INSTRUMENT;
         token_types = {
             {midi::TOKEN_BAR_LEVEL_TENSION, 10}
         };
@@ -1463,16 +1474,64 @@ public:
             {midi::TOKEN_BAR_LEVEL_TENSION, 10, "tension"}
         };
     }
-    ~Tension() {}
+    ~BarLevelInstrumentTension() {}
 
-    void compute_bar_features(midi::Piece *x, int track_num, int bar_num, midi::BarFeatures *bf) {
-        auto labels = x->internal_metadata_labels();
-        if (labels.tension_size() <= bar_num) {
+    // Called for every track/bar by compute_bar_level_features().
+    // Skips drum tracks and bars that were already pre-computed.
+    void compute_bar_features(midi::Piece *x, int track_num, int bar_num,
+                              midi::BarFeatures *bf) {
+        if (data_structures::is_drum_track(x->tracks(track_num).track_type()))
             return;
-        }
-        double value = labels.tension(bar_num);
-        value = std::clamp(value, 0.0, 1.0);
-        bf->set_tension(map(value, 0.0, 1.0, 0.0, get_token_domain_size(midi::TOKEN_BAR_LEVEL_TENSION)-1));
+        if (bf->has_tension()) return;
+
+        // On-the-fly computation with default n_bins.
+        // Pre-computes all bars at once for correct normalization.
+        farbood::precompute_instrument_tension(x, n_bins);
+    }
+
+    // Override to guarantee the emitted bin is always in [0, n_bins-1],
+    // even if a stale or corrupt BarFeatures value somehow escaped clamping.
+    void append_bar_tokens(data_structures::TokenSequence *tokens,
+                           const std::shared_ptr<REPRESENTATION> &rep,
+                           midi::BarFeatures *bf) override {
+        int bin = std::clamp(bf->tension(), 0, n_bins - 1);
+        tokens->push_back(rep->encode(midi::TOKEN_BAR_LEVEL_TENSION, bin));
+    }
+};
+
+// BarLevelDrumTension: Farbood Trend-Salience tension for drum tracks.
+// Uses onset density, loudness, and tempo features via the Farbood integrator.
+class BarLevelDrumTension : public ATTRIBUTE_CONTROL {
+public:
+    int n_bins = 10;  // must match TOKEN_BAR_LEVEL_TENSION_DRUM domain size
+
+    BarLevelDrumTension() {
+        precompute_on_piece = false;
+        control_level = ATTRIBUTE_CONTROL_LEVEL_BAR;
+        track_type = ATTRIBUTE_CONTROL_TRACK_TYPE_DRUM;
+        token_types = {
+            {midi::TOKEN_BAR_LEVEL_TENSION_DRUM, 10}
+        };
+        token_types_v2 = {
+            {midi::TOKEN_BAR_LEVEL_TENSION_DRUM, 10, "tension_drum"}
+        };
+    }
+    ~BarLevelDrumTension() {}
+
+    void compute_bar_features(midi::Piece *x, int track_num, int bar_num,
+                              midi::BarFeatures *bf) {
+        if (!data_structures::is_drum_track(x->tracks(track_num).track_type()))
+            return;
+        if (bf->has_tension_drum()) return;
+
+        farbood::precompute_drum_tension(x, n_bins);
+    }
+
+    void append_bar_tokens(data_structures::TokenSequence *tokens,
+                           const std::shared_ptr<REPRESENTATION> &rep,
+                           midi::BarFeatures *bf) override {
+        int bin = std::clamp(bf->tension_drum(), 0, n_bins - 1);
+        tokens->push_back(rep->encode(midi::TOKEN_BAR_LEVEL_TENSION_DRUM, bin));
     }
 };
 
@@ -1585,7 +1644,8 @@ std::unique_ptr<ATTRIBUTE_CONTROL> getAttributeControl(midi::ATTRIBUTE_CONTROL_T
         case midi::ATTRIBUTE_CONTROL_ENERGY_SPOTIFY: return std::make_unique<EnergySpotify>();
         case midi::ATTRIBUTE_CONTROL_DANCEABILITY_SPOTIFY: return std::make_unique<DanceabilitySpotify>();
         case midi::ATTRIBUTE_CONTROL_DANCEABILITY: return std::make_unique<Danceability>();
-        case midi::ATTRIBUTE_CONTROL_TENSION: return std::make_unique<Tension>();
+        case midi::ATTRIBUTE_CONTROL_TENSION: return std::make_unique<BarLevelInstrumentTension>();
+        case midi::ATTRIBUTE_CONTROL_TENSION_DRUM: return std::make_unique<BarLevelDrumTension>();
         case midi::ATTRIBUTE_CONTROL_TRACK_LEVEL_NOTE_DURATION: return std::make_unique<TrackLevelNoteDuration>();
         case midi::ATTRIBUTE_CONTROL_WNBD_SYNCOPATION: return std::make_unique<WNBDSyncopation>();
         case midi::ATTRIBUTE_CONTROL_REPETITION: return std::make_unique<Repetition>();

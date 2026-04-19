@@ -330,6 +330,17 @@ message Piece {
 
   optional int32 internal_ticks_per_quarter = 5;
   optional bool internal_has_time_signatures = 6;
+
+  // Tempo map: all tempo change events parsed from the MIDI file.
+  // Ticks are absolute, in the piece's internal resolution (SPQ) units.
+  // If empty, fall back to the single `tempo` field (or 120 BPM).
+  repeated TempoChange tempo_changes = 17;
+}
+
+// One entry in the tempo map stored in Piece.tempo_changes.
+message TempoChange {
+  optional int32 tick = 1;  // absolute tick in SPQ (piece resolution) units
+  optional float qpm  = 2;  // quarter notes per minute
 }
 
 /*
@@ -351,6 +362,7 @@ message StatusBar {
   the caller. Bar.future in the piece remains valid for training augmentation.
   */
   optional bool future = 8;
+  optional DecileLevel tension_drum = 9;
 }
 
 /*

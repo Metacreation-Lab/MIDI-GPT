@@ -24,7 +24,10 @@ message BarFeatures {
   optional int32 onset_polyphony_min = 2;
   optional int32 onset_polyphony_max = 3;
   repeated int32 pitch_class_set = 4;
-  optional int32 tension = 5;
+  optional int32 tension = 5;          // bar-level tonal tension bin [0,9] (instrument tracks)
+  optional int32 tension_drum = 6;     // bar-level rhythm tension bin [0,9] (drum tracks)
+  optional float tension_raw = 7;      // raw tonal tension value
+  optional float tension_drum_raw = 8; // raw rhythm tension value
 }
 
 message TrackLevelAttributeControlDistributions {

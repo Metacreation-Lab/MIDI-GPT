@@ -221,23 +221,26 @@ void sort_piece_events(midi::Piece *p) {
 
 // 1. check that each event is within the bar
 void validate_events(midi::Piece *p) {
-  for (const auto &track : p->tracks()) {
-    for (const auto &bar : track.bars()) {
+  for (auto &track : *p->mutable_tracks()) {
+    for (auto &bar : *track.mutable_bars()) {
       int barlength = bar.internal_beat_length() * p->resolution();
       for (const auto &index : bar.events()) {
         if ((index < 0) || (index >= p->events_size())) {
           throw std::invalid_argument("EVENT INDEX IN BAR IS OUT OF RANGE!");
         }
-        int time = p->events(index).time();
-        bool is_onset = (p->events(index).velocity()>0);
-        if ((time < 0) || ((time >= barlength) && (is_onset)) || ((time > barlength) && (!is_onset))) {
-          std::string event_type = "ONSET";
-          if (!is_onset) {
-            event_type = "OFFSET";
-          }
+        midi::Event *event = p->mutable_events(index);
+        int time = event->time();
+        bool is_onset = (event->velocity() > 0);
+        if (time < 0 || ((time >= barlength) && is_onset)) {
+          std::string event_type = is_onset ? "ONSET" : "OFFSET";
           std::ostringstream buffer;
-          buffer << "NOTE " << event_type << " TIME (" << time << ") IS BEYOND EXTENTS OF BAR (" << barlength << ")"; 
+          buffer << "NOTE " << event_type << " TIME (" << time << ") IS BEYOND EXTENTS OF BAR (" << barlength << ")";
           throw std::invalid_argument(buffer.str());
+        }
+        // Clamp note offsets that extend past the bar boundary (notes sustaining
+        // into the next bar). This is musically valid; clip to bar end.
+        if (!is_onset && time > barlength) {
+          event->set_time(barlength);
         }
       }
     }

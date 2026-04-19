@@ -101,6 +101,17 @@ public:
     return json_string;
   }
 
+  // Re-run preprocess_piece on an already-loaded piece (e.g. after generation
+  // to populate internalFeatures such as tension for newly generated bars).
+  std::string update_internal_features(const std::string &piece_json) {
+    midi::Piece p;
+    google::protobuf::util::JsonStringToMessage(piece_json, &p);
+    preprocess_piece(&p);
+    std::string out;
+    google::protobuf::util::MessageToJsonString(p, &out);
+    return out;
+  }
+
   void midi_to_piece(const std::string& filepath, midi::Piece* p) {
     midi_io::ParseSong(filepath, p, config);
     preprocess_piece(p);

@@ -161,10 +161,6 @@ namespace sampling {
       }
     }
 
-    if (param->sampling_seed() != -1) {
-      torch::manual_seed(param->sampling_seed());
-    }
-
     // Move logits back to model device for softmax + sampling
     logits = logits.to(logits_device);
     float temperature = param->temperature();
@@ -177,10 +173,12 @@ namespace sampling {
     
     // add next token to the sequences
     for (int i=0; i<(int)seqs.size(); i++) {
-      if (!scon[i]->finished) {      
+      if (!scon[i]->finished) {
         int next_token = next_tokens[i][0].item<int64_t>();
         seqs[i].push_back( next_token );
-        scon[i]->update( next_token );
+        // NOTE: update() is NOT called here. get_mask() on the next iteration
+        // processes all new tokens via this->update(), so calling update() here
+        // too would double-count every token (causing bar_count to be 2x actual).
         scon[i]->rep->pretty_log( next_token );
 
 

@@ -208,6 +208,13 @@ void decode_track(std::vector<int> &tokens, midi::Piece *p, const std::shared_pt
 
     last_token = token;
   }
+  // Flush remaining offsets into the last bar
+  if (b) {
+    for (const auto &index : offset_remain) {
+      if (!rep->has_token_type(midi::TOKEN_NOTE_DURATION)) { continue; } // safe-guard
+      b->add_events(index);
+    }
+  }
   p->add_internal_valid_segments(0);
   p->add_internal_valid_tracks((1<<p->tracks_size())-1);
 }

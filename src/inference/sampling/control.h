@@ -200,7 +200,11 @@ public:
 
     if (p->tracks_size()) {
       data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, "SET AUTOREGRESSIVE PROMPT" );
-      prompt = enc->encode(p);
+      if (param->internal_skip_preprocess()) {
+        prompt = enc->encode_wo_preprocess(p);
+      } else {
+        prompt = enc->encode(p);
+      }
     }
     else {
       prompt.push_back( enc->rep->encode(midi::TOKEN_PIECE_START,0) );
@@ -752,8 +756,9 @@ public:
     if (model_type == enums::TRACK_MODEL) {
       // Limit number of bars: Either piece end or bars_per_step limit
       bool reached_piece_end = (bar_count >= num_bars);
-      bool reached_step_limit = (generation_start_bar_count >= 0 && 
+      bool reached_step_limit = (generation_start_bar_count >= 0 &&
                                  (bar_count - generation_start_bar_count) >= bars_per_step);
+
       
       // Suffix-AR Optimization: Stop early after last selected bar
       if (is_suffix_ar_session && last_selected_bar_index != -1) {
