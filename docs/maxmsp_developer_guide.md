@@ -160,12 +160,14 @@ send:  /midigpt/note  i:track_id  i:pitch  i:velocity  f:onset  f:duration  i:ba
 
 ### Computing onset and duration
 
-The server is **tempo-agnostic** — it only sees normalized values. Your patch must convert from ticks/ms to normalized beat position:
+The server is **tempo-agnostic** — it only sees normalized values in `[0.0, 1.0]` relative to the bar. Your patch must convert from ticks/ms to normalized beat position:
 
 ```
-onset    = (note_on_tick  - bar_start_tick) / ticks_per_bar
-duration = (note_off_tick - note_on_tick)   / ticks_per_bar
+onset    = (note_on_tick  - bar_start_tick) / this_bar_ticks
+duration = (note_off_tick - note_on_tick)   / this_bar_ticks
 ```
+
+where `this_bar_ticks` is the length of the bar the note belongs to (depends on *that bar's* time signature, not a global constant). Since Max drives the bar clock, it knows exactly when each bar started and how long it is.
 
 Cap `onset + duration` at 1.0 (notes cannot extend past the bar end in this message).
 
@@ -195,28 +197,31 @@ receive:  /midigpt/generated/features  i:track_id  i:bar_index  f:note_density  
 
 ### Scheduling playback
 
-You have the `bar_index` and normalized `onset`/`duration`. To schedule in Max:
+**Do not compute bar start time from `bar_index` alone.** Bar start ticks are not simply `bar_index * ticks_per_bar` — that formula only holds if the time signature never changes. Max drives the bar clock, so Max already knows when each bar started. Use that directly.
+
+**Recommended approach — flush-on-bar-end:**
+
+1. Store each received batch in a `dict` (or `coll`) keyed by `bar_index`.
+2. When your bar-end logic fires for bar `N` (i.e., bar `N` has just ended and bar `N+1` is starting *right now*):
+   - Look up the buffered notes for bar `N+1`.
+   - For each note, fire a `delay` of `onset * bar_duration_ms` milliseconds from *this moment*.
+   - `bar_duration_ms` = the duration of bar `N+1`, computed from *its* time signature and current BPM.
+
+This works because `lookahead_bars ≥ 1`, so the server always delivers notes for bar `N+1` before bar `N` ends.
 
 ```
-absolute_tick = bar_index * ticks_per_bar + onset * ticks_per_bar
+bar_duration_ms = (ts_num / ts_den) * 4.0 * (60000.0 / bpm)
 ```
 
-Use `transport`'s tick position and `delay` or `pipe` (in ticks mode) to fire notes at the right time. Or store notes in a `coll` keyed by bar_index and flush them at the `bar/end` of `bar_index - 1`.
-
-**Simplest approach** — flush-on-bar-end:
-
-- Store each received batch in a `dict` keyed by `bar_index`.
-- At `bar/end N`, schedule all notes for bar `N+1` to fire at their onset positions during the upcoming bar.
-
-This works because the server always generates `lookahead_bars` ahead — by the time you receive notes for bar `N+1`, bar `N` is ending.
+Note that `ts_num` and `ts_den` come from the `/bar/end` message Max sent for that bar, so Max already has them. BPM is whatever Max's `transport` is running at.
 
 **MIDI playback:**
 
 ```
-[note buffer] → [makenote pitch velocity duration_ms] → [noteout channel]
+[note buffer] → [delay onset_ms] → [makenote pitch velocity duration_ms] → [noteout channel]
 ```
 
-Convert normalized duration back to milliseconds: `duration_ms = duration * ms_per_bar`.
+`duration_ms = duration * bar_duration_ms`
 
 ---
 
