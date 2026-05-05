@@ -74,7 +74,7 @@ try:
 except ImportError:
     HAS_PYTHONOSC = False
 
-from osc_server import MidiGPTServer
+from midigpt.osc_server import MidiGPTServer
 
 # ── Timing helpers ────────────────────────────────────────────────────────────
 
