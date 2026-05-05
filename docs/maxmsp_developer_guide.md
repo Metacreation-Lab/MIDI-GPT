@@ -29,12 +29,12 @@ The server replies to **whatever source address Max sends from**. Max must bind 
 
 **Max objects:**
 - `udpsend 127.0.0.1 7400` — send to server
-- `udpreceive 7401` — receive from server (or use `OSCroute` on top of `udpreceive`)
+- `udpreceive 7401` — receive from server (or use `OSC-route` on top of `udpreceive`)
 
 If the server is on a different machine, replace `127.0.0.1` with its IP.
 
 **OSC libraries in Max:**
-- CNMAT `OpenSoundControl` externals (recommended — `OSCformat`, `OSCparse`, `OSCroute`)
+- CNMAT `OpenSoundControl` externals (recommended — `OSC-route`)
 - Or the built-in `udpsend`/`udpreceive` with manual byte packing (more work)
 
 ---
@@ -153,7 +153,7 @@ send:  /midigpt/note  i:track_id  i:pitch  i:velocity  f:onset  f:duration  i:ba
            [capture onset time vs. bar start]
            [capture note-off to compute duration]
                │
-           [OSCformat /midigpt/note track_id pitch velocity onset duration bar_index]
+           [prepend /midigpt/note]
                │
            [udpsend 127.0.0.1 7400]
 ```
