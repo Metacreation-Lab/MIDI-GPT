@@ -44,6 +44,7 @@ osc = [
 
 [project.scripts]
 midigpt-server = "midigpt.osc_server:main"
+midigpt-listen = "midigpt.osc_listen:main"
 
 [tool.scikit-build]
 cmake.build-type = "Release"
