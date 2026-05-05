@@ -15,6 +15,7 @@ dependencies = [
     "torch>=2.0",
     "torchvision",
     "torchaudio",
+    "numpy<2",
 ]
 
 [project.optional-dependencies]
@@ -48,7 +49,9 @@ midigpt-listen = "midigpt.osc_listen:main"
 
 [tool.scikit-build]
 cmake.build-type = "Release"
-# cmake.args can be overridden at install time:
+# midifile submodule uses cmake_minimum_required(2.8) which CMake 4.x rejects
+cmake.args = ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
+# cmake.args can be extended at install time via CMAKE_ARGS env var:
 #   CMAKE_ARGS="-DMIDIGPT_NO_TORCH=ON" pip install -e .
 #   CMAKE_ARGS="-DMIDIGPT_MIDI_BACKEND=symusic" pip install -e .
 wheel.packages = ["src/python/midigpt"]
