@@ -123,7 +123,22 @@ wandb/
 
 # virtual environments
 .venv/
-MaxMSP-MCP-Server/.venv/
+**/.venv/
 
 # local MCP config (contains machine-specific absolute paths)
 .mcp.json
+
+# MCP server lives separately, not part of MIDI-GPT release
+MaxMSP-MCP-Server/
+
+# Generated MIDI (anywhere)
+*.mid
+
+# Refactor build artifacts
+midigpt_refactor/build_cpp/
+midigpt_refactor/_skbuild/
+
+# tmp / scratch
+tmp_live_osc_out/
+ts.json
+test_weights.py

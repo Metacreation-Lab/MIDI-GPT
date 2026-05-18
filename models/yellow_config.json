@@ -1,0 +1,43 @@
+{
+  "resolution": 12,
+  "decode_resolution": 1920,
+  "model_dim": 4,
+
+  "pitch_range": [0, 127],
+  "velocity_levels": 32,
+  "note_duration_max_beats": 8,
+
+  "emit_delta_tokens": false,
+  "supports_infill": true,
+  "velocity_sticky": true,
+
+  "time_signatures": [
+    "1/2", "1/4", "1/8", "1/16", "2/1", "2/2", "2/4", "2/8",
+    "3/1", "3/2", "3/4", "3/8", "4/2", "4/4", "4/8", "5/4",
+    "5/8", "6/2", "6/4", "6/8", "7/4", "7/8", "8/4", "8/8",
+    "9/4", "9/8", "9/16", "10/4", "10/8", "11/8", "12/4",
+    "12/8", "13/16", "15/16", "16/4", "17/16"
+  ],
+  "instrument_merge_groups": [
+    [0, 1, 2],
+    [4, 5],
+    [16, 17, 18],
+    [19, 20],
+    [33, 34],
+    [36, 37],
+    [38, 39],
+    [48, 49],
+    [50, 51],
+    [62, 63],
+    [88, 89, 90, 91, 92, 93, 94, 95]
+  ],
+  "num_bars_map": [4, 8],
+
+  "attribute_controls": [
+    {"name": "note_density_quantile"},
+    {"name": "polyphony_quantile",     "params": {"mode": "min"}},
+    {"name": "polyphony_quantile",     "params": {"mode": "max"}},
+    {"name": "note_duration_quantile", "params": {"mode": "min"}},
+    {"name": "note_duration_quantile", "params": {"mode": "max"}}
+  ]
+}
