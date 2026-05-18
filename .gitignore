@@ -1,144 +1,59 @@
-# .gitignore
-
-build.sh
-
-# feature_extraction stuff
-python_experiment_scripts/**/*.json
-python_experiment_scripts/**/*.csv
-python_experiment_scripts/**/*.pdf
-python_experiment_scripts/**/*.numbers
-python_experiment_scripts/**/*.txt
-python_experiment_scripts/examples/**/*.mid
-
-python_scripts_for_testing/examples/*.mid
-python_scripts_for_testing/examples/
-
-# Ignore compilation folders / dependencies
-#midifile/
-libtorch/
-libtorch_cpu/
-#pybind11/
-build/
-build_symusic/
-python_lib/
-CMakeFiles/
-CMakeScripts/
-CMakeCache.txt
-cmake_install.cmake
-Debug/
-
-# Ignore the libtorch directory
-/libraries/libtorch
-/libraries/libtorch_cpu
-#/libraries/pybind11
-#/libraries/midifile
-
-/python_lib/
-/python_scripts/training_files
-
-# ignore dataset files
-*.arr
-*.arr.header
-
-# ignore dstore
+# macOS
 .DS_Store
 
-# Ignore the model.pt file
-**/*.pt
-*.pt
-
-#ignore visual studio metadata
-.vs/
-.vscode
-
-#ignore build directory
-/out/
-
-*.out
-
-#ignore random files
-2539bytes.txt
-CMakeLists_CPP.txt
-
-/libraries/protobuf/.vs/
-/libraries/protobuf/out/
-
-/libraries/torch/.vs/
-/libraries/torch/out/
-
-# exceptions
-!python_experiment_scripts/onset_density_test.pdf
-!python_experiment_scripts/onset_density_test.json
-!python_experiment_scripts/onset_polyphony_test.json
-!python_experiment_scripts/musicmap_genre_data.json
-
-!python_experiment_scripts/onset_polyphony_test_mono.json
-!python_experiment_scripts/onset_polyphony_test_poly.json
-!python_experiment_scripts/onset_polyphony_v_original_test_mono.json
-!python_experiment_scripts/onset_polyphony_v_original_test_poly.json
-
-# pycache folders
-**/__pycache__/**
-
-#training outputs
-*/checkpoints/*
-*/logs/*
-*/midigpt.cpython-38-x86_64-linux-gnu.so
-
-notes/*
-
-# secrets
-.env
-
-# claude
-.claude
-
-# debug / profiling artifacts
-gdb_output*.txt
-gdb_pass*.txt
-gdb_segfault.txt
-gdb_output_clean.txt
-run_gdb.sh
-realtime.ut
-
-# generated audio / evaluation outputs
-*.wav
-eval_results.json
-output/
-hp_search.db
-tests/short_midi/generated_*.mid
-session_performance.mid
-simulation_v2.mp4
-
-# pip / scikit-build-core artifacts
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
 *.egg-info/
-_skbuild/
-dist/
-
-# pytest cache
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# wandb runs
-wandb/
-
-# virtual environments
+# Virtual environments
 .venv/
 **/.venv/
+venv/
 
-# local MCP config (contains machine-specific absolute paths)
+# Build artifacts
+build/
+build_cpp/
+**/build_cpp/
+_skbuild/
+**/_skbuild/
+dist/
+*.so
+*.dylib
+*.dll
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# Model weights
+*.pt
+*.pth
+*.gguf
+*.onnx
+*.bin
+*.safetensors
+
+# Generated MIDI / audio
+*.mid
+*.midi
+*.wav
+*.mp3
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+
+# Secrets / local config
+.env
 .mcp.json
 
-# MCP server lives separately, not part of MIDI-GPT release
-MaxMSP-MCP-Server/
-
-# Generated MIDI (anywhere)
-*.mid
-
-# Refactor build artifacts
-midigpt_refactor/build_cpp/
-midigpt_refactor/_skbuild/
-
-# tmp / scratch
-tmp_live_osc_out/
-ts.json
-test_weights.py
+# Misc
+.claude/
+notes/
+output/
+wandb/
