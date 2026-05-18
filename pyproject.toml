@@ -1,46 +1,57 @@
 [build-system]
-requires = ["scikit-build-core>=0.9", "pybind11>=2.12"]
+requires      = ["scikit-build-core>=0.9", "pybind11"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "midigpt"
-version = "0.1.0"
-description = "MIDI music generation — C++/Python hybrid (GPT-2 Transformer)"
+name            = "midigpt"
+version         = "0.2.0"
+description     = "GPT-2 transformer for symbolic music generation"
+readme          = "README.md"
+license         = { text = "MIT" }
 requires-python = ">=3.10"
-# torch is required for inference (sample_multi_step / get_notes).
-# Dataset creation and encoding work without it (build with MIDIGPT_NO_TORCH=ON).
-dependencies = [
-    "torch>=2.5.1",
+dependencies    = []
+authors         = [{ name = "Metacreation Lab" }]
+classifiers     = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Metacreation-Lab/MIDI-GPT"
+Paper    = "https://arxiv.org/abs/2501.17011"
+
 [project.optional-dependencies]
-train = [
-    "transformers>=4.40.0",
-    "numpy>=1.26",
-    "tqdm>=4.66",
-    "tensorboard>=2.15",
-    "scipy>=1.11",
-    "matplotlib>=3.8",
-    "pretty_midi>=0.2.10",
-    "attrs>=23.1",
-    "jsonlines>=3.1",
-]
-dataset = [
-    "attrs>=23.1",
-    "jsonlines>=3.1",
-    "numpy>=1.26",
-    "tqdm>=4.66",
-    "pretty_midi>=0.2.10",
-]
+inference = ["torch>=2.0", "tqdm>=4.65"]
+train     = ["midigpt[inference]", "transformers>=4.40",
+             "datasets>=2.18", "pyarrow>=15.0", "accelerate>=0.29"]
+dev       = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.9"]
+all       = ["midigpt[inference,train]"]
 
 [tool.scikit-build]
 cmake.build-type = "Release"
-# src/python/midigpt/__init__.py re-exports the C++ extension (_midigpt.so).
-# The extension itself is installed into the midigpt/ package directory via
-# `install(TARGETS _midigpt DESTINATION midigpt)` in CMakeLists.txt.
-wheel.packages = ["src/python/midigpt"]
+cmake.args = ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
+wheel.packages   = ["src/python/midigpt"]
 
-# System libraries required before `pip install`:
-#   macOS:  brew install cmake abseil protobuf
-#   Debian: apt install cmake libprotobuf-dev protobuf-compiler libabsl-dev
-#   HPC:    module load cmake protobuf abseil (cuda optional for inference)
+[tool.cibuildwheel]
+build         = "cp310-* cp311-* cp312-*"
+skip          = "*-musllinux_* *-win32 *-manylinux_i686"
+build-verbosity = 1
+test-extras   = ["inference"]
+test-requires = "pytest"
+test-command  = "pytest {project}/tests/python -m 'not slow and not inference'"
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
+environment = { MACOSX_DEPLOYMENT_TARGET = "10.15" }
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
