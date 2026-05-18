@@ -383,11 +383,103 @@ class PieceState:
         """
         Build the status dict for sample_multi_step.
 
+        Every field of midi.StatusTrack / midi.StatusBar that has a meaningful
+        default is set explicitly — relying on protobuf defaults has bitten us
+        before (e.g. polyphony_hard_limit=0 → zero notes generated).
+
         playhead       — first unfinished bar (= bars_completed at trigger time)
         target_bar     — first bar to generate (None = no generation this step)
         num_anticipation — number of bars to generate (j)
         mask_gap       — hide agent gap bars [playhead, target_bar) with future=True
         """
+
+        def _track_type_enum(t: int) -> str:
+            return "STANDARD_DRUM_TRACK" if t == 11 else "STANDARD_TRACK"
+
+        def _bar_defaults(ts_n: int, ts_d: int, future: bool,
+                          drums: bool = False) -> dict:
+            # Reasonable mid-range controls. Using *_ANY causes the C++ side to
+            # recompute these from the (possibly empty) bar content, which
+            # collapses to zero and pushes the model toward emptiness.
+            if drums:
+                onset_density = "BAR_LEVEL_ONSET_DENSITY_EIGHT"
+                onset_poly_min = "BAR_LEVEL_ONSET_POLYPHONY_TWO"
+                onset_poly_max = "BAR_LEVEL_ONSET_POLYPHONY_FOUR"
+            else:
+                onset_density = "BAR_LEVEL_ONSET_DENSITY_FOUR"
+                onset_poly_min = "BAR_LEVEL_ONSET_POLYPHONY_ONE"
+                onset_poly_max = "BAR_LEVEL_ONSET_POLYPHONY_TWO"
+            return {
+                "ts_numerator":        ts_n,
+                "ts_denominator":      ts_d,
+                "future":              future,
+                "onset_density":       onset_density,
+                "onset_polyphony_min": onset_poly_min,
+                "onset_polyphony_max": onset_poly_max,
+                "tension":             "DECILE_LEVEL_ANY",
+                "tension_drum":        "DECILE_LEVEL_ANY",
+                "pitch_class_set":     [False] * 12,
+            }
+
+        def _track_defaults(track_id: int, track_type: int, instrument_gm: int,
+                            selected_bars: list, suffix_ar: bool, ignore: bool,
+                            params: dict, status_bars: list) -> dict:
+            drums = (track_type == 11)
+            # Reasonable mid-range track-level controls. *_ANY triggers C++
+            # recomputation from the (possibly empty) track, which collapses to
+            # zero and pushes the model toward generating nothing.
+            if drums:
+                density            = "DENSITY_SIX"
+                min_poly           = "POLYPHONY_ONE"
+                max_poly           = "POLYPHONY_FOUR"
+                min_dur            = "DURATION_THIRTY_SECOND"
+                max_dur            = "DURATION_SIXTEENTH"
+                onset_poly_min     = "BAR_LEVEL_ONSET_POLYPHONY_TWO"
+                onset_poly_max     = "BAR_LEVEL_ONSET_POLYPHONY_FOUR"
+                onset_density      = "BAR_LEVEL_ONSET_DENSITY_EIGHT"
+                pitch_class_count  = "PITCH_CLASS_COUNT_FOUR"
+            else:
+                density            = "DENSITY_FIVE"
+                min_poly           = "POLYPHONY_ONE"
+                max_poly           = "POLYPHONY_TWO"
+                min_dur            = "DURATION_SIXTEENTH"
+                max_dur            = "DURATION_QUARTER"
+                onset_poly_min     = "BAR_LEVEL_ONSET_POLYPHONY_ONE"
+                onset_poly_max     = "BAR_LEVEL_ONSET_POLYPHONY_TWO"
+                onset_density      = "BAR_LEVEL_ONSET_DENSITY_FOUR"
+                pitch_class_count  = "PITCH_CLASS_COUNT_SEVEN"
+            return {
+                # identity
+                "track_id":              track_id,
+                "track_type":            _track_type_enum(track_type),
+                "instrument":            instrument_gm_name(instrument_gm),
+                # selection / generation mode
+                "selected_bars":         selected_bars,
+                "autoregressive":        False,
+                "suffix_autoregressive": suffix_ar,
+                "ignore":                ignore,
+                # hard sampling constraints
+                "polyphony_hard_limit":  int(params.get("polyphony_hard_limit") or 10),
+                "temperature":           float(params.get("temperature", 1.0)),
+                # attribute controls — explicit values (not ANY) so the C++
+                # side doesn't recompute them from empty content.
+                "density":               density,
+                "min_polyphony_q":       min_poly,
+                "max_polyphony_q":       max_poly,
+                "min_note_duration_q":   min_dur,
+                "max_note_duration_q":   max_dur,
+                "onset_polyphony_min":   onset_poly_min,
+                "onset_polyphony_max":   onset_poly_max,
+                "onset_density":         onset_density,
+                "min_pitch":             int(params.get("min_pitch", 0)),
+                "max_pitch":             int(params.get("max_pitch", 127)),
+                "key_signature":         "KEY_SIGNATURE_ANY",
+                "note_density_level":    density,
+                "pitch_class_count":     pitch_class_count,
+                # per-bar status
+                "bars": status_bars,
+            }
+
         with self._lock:
             total_bars = max(
                 (len(t.bars) for t in self._tracks.values()), default=0
@@ -396,7 +488,9 @@ class PieceState:
 
             for info in self._sorted_tracks():
                 tb = total_bars
+                ts_n, ts_d = self._last_ts()
 
+                drums = (info.track_type == 11)
                 if info.is_agent:
                     sel = [False] * tb
                     status_bars: List[dict] = []
@@ -405,36 +499,44 @@ class PieceState:
                         for b in range(target_bar, min(target_bar + num_anticipation, tb)):
                             sel[b] = True
                         for b in range(tb):
-                            if b >= target_bar + num_anticipation:
-                                status_bars.append({"future": True})
-                            elif mask_gap and playhead <= b < target_bar:
-                                status_bars.append({"future": True})
-                            else:
-                                status_bars.append({"future": False})
+                            future = (
+                                b >= target_bar + num_anticipation
+                                or (mask_gap and playhead <= b < target_bar)
+                            )
+                            bts = self._ts.get(b, (ts_n, ts_d))
+                            status_bars.append(_bar_defaults(bts[0], bts[1], future, drums))
                     else:
-                        status_bars = [{"future": False}] * tb
+                        for b in range(tb):
+                            bts = self._ts.get(b, (ts_n, ts_d))
+                            status_bars.append(_bar_defaults(bts[0], bts[1], False, drums))
 
-                    st: dict = {
-                        "track_id": info.piece_idx,
-                        "track_type": info.track_type,
-                        "selected_bars": sel,
-                        "suffix_autoregressive": True,
-                        "instrument": instrument_gm_name(info.instrument),
-                        "bars": status_bars,
-                    }
+                    st = _track_defaults(
+                        track_id=info.piece_idx,
+                        track_type=info.track_type,
+                        instrument_gm=info.instrument,
+                        selected_bars=sel,
+                        suffix_ar=True,
+                        ignore=False,
+                        params=info.params,
+                        status_bars=status_bars,
+                    )
                     _apply_agent_params(st, info.params, info.track_type)
 
                 else:
-                    status_bars = [{"future": b >= playhead} for b in range(tb)]
-                    st = {
-                        "track_id": info.piece_idx,
-                        "track_type": info.track_type,
-                        "selected_bars": [False] * tb,
-                        "suffix_autoregressive": False,
-                        "bars": status_bars,
-                    }
-                    if info.params.get("ignore", 0):
-                        st["ignore"] = True
+                    status_bars = []
+                    for b in range(tb):
+                        bts = self._ts.get(b, (ts_n, ts_d))
+                        status_bars.append(_bar_defaults(bts[0], bts[1], b >= playhead, drums))
+                    st = _track_defaults(
+                        track_id=info.piece_idx,
+                        track_type=info.track_type,
+                        instrument_gm=info.instrument,
+                        selected_bars=[False] * tb,
+                        suffix_ar=False,
+                        ignore=bool(info.params.get("ignore", 0)),
+                        params=info.params,
+                        status_bars=status_bars,
+                    )
                     if info.params.get("temperature", 1.0) != 1.0:
                         st["temperature"] = info.params["temperature"]
 
@@ -462,9 +564,12 @@ class PieceState:
             res_events = res_piece.get("events", [])
             res_agent_bars = res_piece["tracks"][agent.piece_idx].get("bars", [])
 
+            window_size = len(res_agent_bars)
             for b_off in range(num_anticipation):
                 b_global = target_bar + b_off
-                if b_global >= len(res_agent_bars):
+                # C++ result is a model_dim-bar window; generated bars are at the end.
+                res_idx = window_size - num_anticipation + b_off
+                if res_idx < 0 or res_idx >= window_size:
                     break
                 # Extend agent track if needed (should already be long enough)
                 while len(agent.bars) <= b_global:
@@ -472,7 +577,7 @@ class PieceState:
                     agent.bars.append(
                         {"ts_numerator": ts_n, "ts_denominator": ts_d, "events": []}
                     )
-                res_bar = res_agent_bars[b_global]
+                res_bar = res_agent_bars[res_idx]
                 inline = [
                     {k: v for k, v in res_events[i].items()
                      if k in ("pitch", "velocity", "time", "internal_duration")}

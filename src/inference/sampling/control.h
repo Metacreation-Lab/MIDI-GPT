@@ -251,8 +251,13 @@ public:
             cond_tracks.push_back( track.track_id() );
           }
           break;
-        case util_protobuf::INFILL :     
+        case util_protobuf::INFILL :
           num_infill_tracks++;
+          for (int bn = 0; bn < track.selected_bars_size(); bn++) {
+            if (track.selected_bars(bn)) {
+              bars.push_back(std::make_tuple(track_num, bn));
+            }
+          }
           break;
       }
       track_types.push_back( tt );

@@ -311,33 +311,37 @@ std::vector<STEP> find_steps(const std::vector<std::vector<bool>> &sel, const st
   return steps;
 }
 
-void sample_step(midi::Piece *piece, midi::Status *status, midi::HyperParam *param, const std::unique_ptr<ModelMeta> &model, const STEP *s, CallbackManager *callbacks) {
+void sample_step(midi::Piece *piece, midi::Status *status, midi::HyperParam *param, const std::unique_ptr<ModelMeta> &model, const STEP *s, CallbackManager *callbacks, SamplingTimings *timings = nullptr) {
     data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, "sample_step" );
-    
+    if (timings) timings->steps++;
+
     // prepare the inputs for generation
+    auto _t_slice = _Clock::now();
     midi::Piece step_piece = piece_subset(piece, s->start, s->end, s->get_tracks());
     midi::Status step_status = status_subset(status, s->start, s->end, s->get_tracks());
-    status_rehighlight(&step_status, s->get_bars_to_generate());  
+    status_rehighlight(&step_status, s->get_bars_to_generate());
+    if (timings) timings->slice_ms += _ms(_t_slice);
 
     // do generation
-    midi::Piece gen_piece = generate(&step_status, &step_piece, param, model, callbacks)[0];
-    // NOTE : this inserts tracks that are just conditioned on as well
-    // insert generation into global piece
+    midi::Piece gen_piece = generate(&step_status, &step_piece, param, model, callbacks, timings)[0];
+
+    // insert generation into global piece + postprocess
+    auto _t_post = _Clock::now();
     piece_insert(piece, &gen_piece, s->get_bar_mapping(), param->verbose());
     std::unique_ptr<encoder::ENCODER> enc = enums::getEncoderFromString(model->meta.encoder());
     if (!enc.get()) {
         throw std::invalid_argument("INVALID ENCODER");
     }
     if (enc->config->use_microtiming && status->decode_final()) {
-      //resample_delta(piece, enc->config);
       enc->resample_delta(piece);
     }
     override_piece_features(piece, status, enc->rep);
+    if (timings) timings->postprocess_ms += _ms(_t_post);
 }
 
 // ==============================
 // MAIN INFERENCE ENTRYPOINT
-void sample(midi::Piece* piece, midi::Status* raw_status, midi::HyperParam* param, CallbackManager *callbacks) {
+void sample(midi::Piece* piece, midi::Status* raw_status, midi::HyperParam* param, CallbackManager *callbacks, SamplingTimings *timings = nullptr) {
     data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, "sample" );
 
     //CheckIfDataExists
@@ -349,12 +353,16 @@ void sample(midi::Piece* piece, midi::Status* raw_status, midi::HyperParam* para
       return;
     }
 
+    auto _t_total = _Clock::now();
+
     // We create a new status with raw_status info, and then a pointer to access it indirectly.
     midi::Status status_object(*raw_status);
     midi::Status* status_pointer = &status_object;
 
     // try to load model
+    auto _t_load = _Clock::now();
     std::unique_ptr<ModelMeta> model = load_model(param);
+    if (timings) timings->model_load_ms += _ms(_t_load);
 
     // Check if encoder exists
     std::unique_ptr<encoder::ENCODER> enc = enums::getEncoderFromString(model->meta.encoder());
@@ -365,34 +373,29 @@ void sample(midi::Piece* piece, midi::Status* raw_status, midi::HyperParam* para
     param->set_internal_skip_preprocess(true);
     param->set_batch_size(1);
 
+    auto _t_pre = _Clock::now();
     util_protobuf::validate_inputs(piece, status_pointer, param);
-    // before we start pad the piece if status references tracks
-    // that do not exist yet
     util_protobuf::pad_piece_with_status(piece, status_pointer, param->model_dim());
-    // add time-signatures from piece into the status
     add_timesigs_to_status(piece, status_pointer);
     apply_future_flags_from_status(piece, status_pointer);
-    // add features to piece when we are sampling auto-regressively
-    // as these are perhaps not yet in the piece
     override_piece_features(piece, status_pointer, enc->rep);
+    if (timings) timings->preprocess_ms += _ms(_t_pre);
 
     std::vector<std::vector<bool>> selection_mask = status_to_selection_mask(status_pointer);
     if (!any(selection_mask)) {
-        return; // nothing to do
+        if (timings) timings->total_gen_ms += _ms(_t_total);
+        return;
     }
 
     std::vector<bool> resample_mask = status_to_resample_mask(status_pointer);
     std::vector<bool> ignore_mask = status_to_ignore_mask(status_pointer);
+    auto _t_plan = _Clock::now();
     std::vector<STEP> steps = find_steps(selection_mask, resample_mask, ignore_mask, param);
+    if (timings) timings->step_plan_ms += _ms(_t_plan);
 
     if (steps.size() == 0) {
-        return; // nothing to be done
-    }
-
-    // find the total number of bars to be generated
-    int bar_count = 0;
-    for (const auto &step : steps) {
-        bar_count += step.generated_bar_count();
+        if (timings) timings->total_gen_ms += _ms(_t_total);
+        return;
     }
 
     // get order and reverse order of tracks
@@ -402,24 +405,24 @@ void sample(midi::Piece* piece, midi::Status* raw_status, midi::HyperParam* para
     for (int track_num = 0; track_num < nt; track_num++) {
         midi::StatusTrack* st = status_pointer->mutable_tracks(track_num);
         order[st->track_id()] = track_num;
-        st->set_track_id(track_num); // now the mapping is the identity
+        st->set_track_id(track_num);
     }
     std::sort(reverse_order.begin(), reverse_order.end(),
         [&order](size_t i, size_t j) {return order[i] < order[j]; });
     util_protobuf::reorder_tracks(piece, order);
 
-    for (int i=0; i<steps.size(); i++) {
-      if (i == steps.size() - 1) {
+    for (int i=0; i<(int)steps.size(); i++) {
+      if (i == (int)steps.size() - 1) {
         status_pointer->set_decode_final(true);
       } else {
         status_pointer->set_decode_final(false);
       }
       STEP step = steps[i];
       data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, data_structures::to_str("Sampling step :: decoding final = ", status_pointer->decode_final()));
-      sample_step(piece, status_pointer, param, model, &step, callbacks);
+      sample_step(piece, status_pointer, param, model, &step, callbacks, timings);
     }
     util_protobuf::reorder_tracks(piece, reverse_order);
-    std::string json_string_res = util_protobuf::protobuf_to_string(piece);
+    if (timings) timings->total_gen_ms += _ms(_t_total);
 }
 
 std::vector<std::tuple<int,int,int>> get_notes_py(std::string &piece_json, int track_start, int track_end, int bar_start, int bar_end, bool onset_only_drums) {
@@ -494,34 +497,31 @@ int count_notes_in_selected_bars(midi::Piece* piece, midi::Status* status) {
 }
 
 // wrapper function that ensures novelty and non-silence
-int sample_multi_attempts(midi::Piece* piece, midi::Status* status, midi::HyperParam* param, CallbackManager *callbacks, int max_attempts) {
-  // Seed RNG once here so retries evolve from a deterministic but diverging state.
-  // Seeding inside generate() would reset per-attempt, making every retry identical.
+int sample_multi_attempts(midi::Piece* piece, midi::Status* status, midi::HyperParam* param, CallbackManager *callbacks, int max_attempts, SamplingTimings *timings = nullptr) {
   if (param->sampling_seed() >= 0) {
     torch::manual_seed(param->sampling_seed());
   }
   int attempts = 0;
   midi::Piece input;
   input.CopyFrom(*piece);
-  midi::Piece best;  // best non-empty result seen so far
+  midi::Piece best;
   bool have_best = false;
   while (attempts < max_attempts) {
     midi::Piece current;
     current.CopyFrom(*piece);
-    sample(&current, status, param, callbacks);
+    sample(&current, status, param, callbacks, timings);
     std::vector<std::tuple<int,int>> identical_bars = find_identical_bars(&input, &current, status);
     int note_count = count_notes_in_selected_bars(&current, status);
     attempts++;
     if (identical_bars.size() == 0 && note_count > 0) {
-      // Novel and non-silent — accept immediately
       piece->CopyFrom(current);
+      if (timings) timings->attempts = attempts;
       return attempts;
     }
     if (note_count > 0 && !have_best) {
       best.CopyFrom(current);
       have_best = true;
     }
-    // Escalate temperature on silent output to escape silence mode
     if (note_count == 0) {
       param->set_temperature( param->temperature() * 1.2f );
     }
@@ -529,37 +529,105 @@ int sample_multi_attempts(midi::Piece* piece, midi::Status* status, midi::HyperP
       param->set_temperature( callbacks->update_temperature(param->temperature()) );
     }
   }
-  // All attempts exhausted: prefer the best non-silent result, otherwise keep input
   if (have_best) {
     piece->CopyFrom(best);
   }
+  if (timings) timings->attempts = attempts;
   return attempts;
 }
 
+// Parse JSON inputs common to both sample_multi_step variants
+static void _parse_inputs(std::string piece_json, std::string status_json, std::string param_json,
+                           midi::Piece &piece, midi::Status &status, midi::HyperParam &hyperParam) {
+  util_protobuf::string_to_protobuf(piece_json, &piece);
+  util_protobuf::string_to_protobuf(status_json, &status);
+  util_protobuf::string_to_protobuf(param_json, &hyperParam);
+  util_protobuf::validate_protobuf_fields(&piece, piece_json);
+  util_protobuf::validate_protobuf_fields(&status, status_json);
+  util_protobuf::validate_protobuf_fields(&hyperParam, param_json);
+}
+
+// Original API: returns (piece_json, attempts) — unchanged
 std::tuple<std::string,int> sample_multi_step_py(std::string &piece_json, std::string &status_json, std::string &param_json, int max_attempts, sampling::CallbackManager *callbacks) {
   midi::Piece piece;
   midi::Status status;
   midi::HyperParam hyperParam;
-
   data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, "to_proto");
-
-  util_protobuf::string_to_protobuf(piece_json, &piece);
-  util_protobuf::string_to_protobuf(status_json, &status);
-  util_protobuf::string_to_protobuf(param_json, &hyperParam);
-  data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, "validating");
-
-  util_protobuf::validate_protobuf_fields(&piece, piece_json);
-  data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, "piece");
-  util_protobuf::validate_protobuf_fields(&status, status_json);
-  data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, "status");
-  util_protobuf::validate_protobuf_fields(&hyperParam, param_json);
-  data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, "param");
-
+  _parse_inputs(piece_json, status_json, param_json, piece, status, hyperParam);
   data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_VERBOSE, util_protobuf::protobuf_to_string(&status));
   data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_VERBOSE, util_protobuf::protobuf_to_string(&hyperParam));
-
   int attempts = sample_multi_attempts(&piece, &status, &hyperParam, callbacks, max_attempts);
   return std::make_tuple(util_protobuf::protobuf_to_string(&piece), attempts);
+}
+
+// Returns the raw prompt token sequences the model would see for each step,
+// without running inference.  Used by parity tests to verify that the orig
+// and refactored engines feed identical token sequences to the model.
+// metadata_json: the "metadata.json" extra-file embedded in the TorchScript
+//                model (obtained via torch.jit.load _extra_files).
+std::vector<std::vector<int>> get_infill_prompts_py(
+    std::string piece_json, std::string status_json, std::string param_json,
+    const std::string &metadata_json
+) {
+  midi::Piece piece; midi::Status status; midi::HyperParam hyperParam;
+  _parse_inputs(piece_json, status_json, param_json, piece, status, hyperParam);
+
+  midi::ModelMetadata meta;
+  google::protobuf::util::JsonStringToMessage(metadata_json.c_str(), &meta);
+
+  std::unique_ptr<encoder::ENCODER> enc = enums::getEncoderFromString(meta.encoder());
+  if (!enc.get()) throw std::invalid_argument("INVALID ENCODER");
+  piece.set_resolution(enc->config->resolution);
+  hyperParam.set_internal_skip_preprocess(true);
+  hyperParam.set_batch_size(1);
+
+  midi::Status status_object(status);
+  midi::Status *sp = &status_object;
+
+  util_protobuf::validate_inputs(&piece, sp, &hyperParam);
+  util_protobuf::pad_piece_with_status(&piece, sp, hyperParam.model_dim());
+  add_timesigs_to_status(&piece, sp);
+  apply_future_flags_from_status(&piece, sp);
+  override_piece_features(&piece, sp, enc->rep);
+
+  std::vector<std::vector<bool>> sel = status_to_selection_mask(sp);
+  if (!any(sel)) return {};
+  std::vector<bool> resample_mask = status_to_resample_mask(sp);
+  std::vector<bool> ignore_mask   = status_to_ignore_mask(sp);
+  std::vector<STEP> steps = find_steps(sel, resample_mask, ignore_mask, &hyperParam);
+  if (steps.empty()) return {};
+
+  // Reorder tracks as sample() does
+  int nt = sp->tracks_size();
+  std::vector<int> order(nt, 0);
+  for (int ti = 0; ti < nt; ti++) {
+    midi::StatusTrack *st = sp->mutable_tracks(ti);
+    order[st->track_id()] = ti;
+    st->set_track_id(ti);
+  }
+  util_protobuf::reorder_tracks(&piece, order);
+
+  // For each step, build prompt via SAMPLE_CONTROL (no model needed)
+  std::vector<std::vector<int>> all_prompts;
+  for (const auto &s : steps) {
+    midi::Piece step_piece   = piece_subset(&piece, s.start, s.end, s.get_tracks());
+    midi::Status step_status = status_subset(sp, s.start, s.end, s.get_tracks());
+    status_rehighlight(&step_status, s.get_bars_to_generate());
+    SAMPLE_CONTROL sc(&step_piece, &step_status, &hyperParam, &meta);
+    all_prompts.push_back(sc.prompt);
+  }
+  return all_prompts;
+}
+
+// Timed API: returns (piece_json, attempts, timings_json)
+std::tuple<std::string,int,std::string> sample_multi_step_timed_py(std::string &piece_json, std::string &status_json, std::string &param_json, int max_attempts, sampling::CallbackManager *callbacks) {
+  midi::Piece piece;
+  midi::Status status;
+  midi::HyperParam hyperParam;
+  _parse_inputs(piece_json, status_json, param_json, piece, status, hyperParam);
+  SamplingTimings timings;
+  int attempts = sample_multi_attempts(&piece, &status, &hyperParam, callbacks, max_attempts, &timings);
+  return std::make_tuple(util_protobuf::protobuf_to_string(&piece), attempts, timings.to_json());
 }
 
 std::vector<std::vector<std::vector<int>>> get_step_grids(midi::Status* status, midi::HyperParam* param) {

@@ -124,6 +124,8 @@ PYBIND11_MODULE(_midigpt,handle) {
 
 #ifndef NO_TORCH
   handle.def("sample_multi_step", &sampling::sample_multi_step_py);
+  handle.def("sample_multi_step_timed", &sampling::sample_multi_step_timed_py);
+  handle.def("get_infill_prompts", &sampling::get_infill_prompts_py);
   handle.def("sample_multi_step_capture_output", [](std::string piece_json, std::string status_json, std::string param_json, int max_attempts, sampling::CallbackManager *callbacks) {
     py::scoped_ostream_redirect stream(
         std::cout,
