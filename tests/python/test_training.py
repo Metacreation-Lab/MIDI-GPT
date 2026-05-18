@@ -1,4 +1,8 @@
 import pytest
+
+pytest.importorskip("pyarrow", reason="train extra not installed")
+pytest.importorskip("torch", reason="inference extra not installed")
+
 from midigpt._types import Score, Track, Bar, Note
 from midigpt.tokenizer import Tokenizer
 from midigpt.training.dataset import DatasetBuilder, MidiGPTDataset
