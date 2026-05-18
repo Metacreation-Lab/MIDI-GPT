@@ -65,3 +65,6 @@ add_custom_command(TARGET _core POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "$<TARGET_FILE:_core>"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/python/midigpt/$<TARGET_FILE_NAME:_core>")
+
+# Install rule so scikit-build-core packages _core into the wheel
+install(TARGETS _core LIBRARY DESTINATION midigpt)
