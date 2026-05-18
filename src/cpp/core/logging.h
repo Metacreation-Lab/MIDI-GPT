@@ -3,6 +3,21 @@
 #include <iostream>
 #include <string>
 
+// Windows headers (wingdi.h, winbase.h, dbgapi.h) define these as macros and
+// collide with our scoped enum below. Undefine if present.
+#ifdef ERROR
+#undef ERROR
+#endif
+#ifdef TRACE
+#undef TRACE
+#endif
+#ifdef DEBUG
+#undef DEBUG
+#endif
+#ifdef WARNING
+#undef WARNING
+#endif
+
 namespace midigpt {
 
 enum class LogLevel {
