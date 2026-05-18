@@ -14,7 +14,7 @@ if _env_log_level is not None:
     except (ValueError, AttributeError):
         pass
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "Score", "Track", "Bar", "Note",
 ]
