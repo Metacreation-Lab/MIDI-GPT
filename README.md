@@ -20,7 +20,7 @@ This release ships the **inference stack** as a clean, self-contained Python pac
 Requires Python ≥ 3.10, CMake ≥ 3.21, a C++20 compiler, and PyTorch ≥ 2.0.
 
 ```bash
-git clone https://github.com/Metacreation-Lab/MIDI-GPT.git
+git clone https://github.com/DaoTwenty/MIDI-GPT.git
 cd MIDI-GPT
 python -m venv .venv
 source .venv/bin/activate
@@ -50,13 +50,13 @@ Pretrained weights are distributed as packed `.pt` files (arch config + encoder 
 
 | Model | Encoder | Size | Download |
 |---|---|---|---|
-| Yellow | `EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER` | ~80 MB | **[yellow.pt](https://github.com/Metacreation-Lab/MIDI-GPT/releases/latest/download/yellow.pt)** |
+| Yellow | `EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER` | ~80 MB | **[yellow.pt](https://github.com/DaoTwenty/MIDI-GPT/releases/latest/download/yellow.pt)** |
 
 Drop it in `models/`:
 
 ```bash
 mkdir -p models
-curl -L https://github.com/Metacreation-Lab/MIDI-GPT/releases/latest/download/yellow.pt \
+curl -L https://github.com/DaoTwenty/MIDI-GPT/releases/latest/download/yellow.pt \
      -o models/yellow.pt
 ```
 
