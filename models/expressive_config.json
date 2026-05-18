@@ -1,0 +1,51 @@
+{
+  "resolution": 12,
+  "decode_resolution": 1920,
+  "model_dim": 840,
+  "use_microtiming": true,
+  "token_domains": [
+    {"type": "PieceStart", "domain_size": 2},
+    {"type": "NumBars", "domain_size": 2},
+    {"type": "Bar", "domain_size": 1},
+    {"type": "BarEnd", "domain_size": 1},
+    {"type": "TimeSig", "domain_size": 36},
+    {"type": "Track", "domain_size": 2},
+    {"type": "TrackEnd", "domain_size": 1},
+    {"type": "Instrument", "domain_size": 109},
+    {"type": "NoteOnset", "domain_size": 128},
+    {"type": "NoteDuration", "domain_size": 96},
+    {"type": "TimeAbsolutePos", "domain_size": 192},
+    {"type": "FillInPlaceholder", "domain_size": 1},
+    {"type": "FillInStart", "domain_size": 1},
+    {"type": "FillInEnd", "domain_size": 1},
+    {"type": "Delta", "domain_size": 96},
+    {"type": "DeltaDirection", "domain_size": 1},
+    {"type": "VelocityLevel", "domain_size": 128},
+    {"type": "MinNoteDuration", "domain_size": 6},
+    {"type": "MaxNoteDuration", "domain_size": 6},
+    {"type": "MinPolyphony", "domain_size": 10},
+    {"type": "MaxPolyphony", "domain_size": 10},
+    {"type": "NoteDensity", "domain_size": 10}
+  ],
+  "time_signatures": [
+    "4/4", "3/4", "2/4", "6/8", "2/2", "1/4", "6/4",
+    "3/8", "5/4", "4/2", "1/8", "3/2", "9/8", "5/8",
+    "7/8", "12/8", "8/4", "7/4", "4/8", "3/1",
+    "1/2", "8/8", "11/8", "2/8", "6/2", "9/4",
+    "2/1", "9/16", "12/4", "10/4", "13/16", "15/16",
+    "17/16", "1/16", "10/8", "16/4"
+  ],
+  "instrument_merge_groups": [
+    [0, 1, 2],
+    [4, 5],
+    [16, 17, 18],
+    [19, 20],
+    [33, 34],
+    [36, 37],
+    [38, 39],
+    [48, 49],
+    [50, 51],
+    [62, 63],
+    [88, 89, 90, 91, 92, 93, 94, 95]
+  ]
+}
