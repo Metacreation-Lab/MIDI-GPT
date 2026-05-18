@@ -462,17 +462,48 @@ class MidiGPTServer:
             log.info("Inference start: target=%d j=%d", target_bar, num_anticipation)
             self._send("/midigpt/status", "generating")
 
-            try:
-                res_piece, attempts = run_inference(
-                    req["piece"], req["status"], req["params"], self._max_attempts
-                )
-                log.info("Inference done in %d attempt(s)", attempts)
-            except Exception as exc:  # noqa: BLE001
-                log.error("Inference failed: %s", exc)
-                self._error(ERR_GENERATION, str(exc))
+            timeout = self._params.get("gen_timeout", 0)
+            _res:    list = [None]   # [res_piece]
+            _att:    list = [0]      # [attempts]
+            _exc:    list = [None]   # [exception]
+
+            def _infer():
+                try:
+                    _res[0], _att[0] = run_inference(
+                        req["piece"], req["status"], req["params"], self._max_attempts
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    _exc[0] = exc
+
+            _t = threading.Thread(target=_infer, daemon=True)
+            _t.start()
+            _t.join(timeout=timeout if timeout > 0 else None)
+
+            if _t.is_alive():
+                log.warning("Inference timeout after %.1fs — skipping bar", timeout)
+                self._error(ERR_GENERATION, f"generation timeout ({timeout}s)")
                 self._clear_once()
                 self._send("/midigpt/status", "ready")
                 continue
+
+            if _exc[0] is not None:
+                log.error("Inference failed: %s", _exc[0])
+                self._error(ERR_GENERATION, str(_exc[0]))
+                self._clear_once()
+                self._send("/midigpt/status", "ready")
+                continue
+
+            res_piece = _res[0]
+            log.info("Inference done in %d attempt(s)", _att[0])
+            try:
+                _agent_idx = self._piece.agent_track_id
+                _agent_bars = res_piece.get("tracks", [])[_agent_idx].get("bars", [])
+                _ev_total = len(res_piece.get("events", []))
+                _bar_ev_counts = [len(b.get("events", [])) for b in _agent_bars]
+                log.warning("DEBUG result: total_events=%d agent_bar_event_counts=%s",
+                            _ev_total, _bar_ev_counts)
+            except Exception as _e:
+                log.warning("DEBUG result inspect failed: %s", _e)
 
             # Merge generated bars back into live state
             generated = self._piece.merge_generated(
@@ -618,6 +649,8 @@ def _parse_args() -> argparse.Namespace:
                    help="Override lookahead_bars parameter at startup")
     p.add_argument("--model_dim", type=int, default=None,
                    help="Override model_dim parameter at startup")
+    p.add_argument("--gen_timeout", type=float, default=None,
+                   help="Inference timeout in seconds; 0 = disabled (also settable via OSC)")
     p.add_argument("--log_level", default="INFO",
                    choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     return p.parse_args()
@@ -643,6 +676,8 @@ def main() -> None:
         server._params["lookahead_bars"] = args.lookahead
     if args.model_dim is not None:
         server._params["model_dim"] = args.model_dim
+    if args.gen_timeout is not None:
+        server._params["gen_timeout"] = args.gen_timeout
 
     server.serve(host=args.host)
 

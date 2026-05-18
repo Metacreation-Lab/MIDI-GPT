@@ -126,22 +126,28 @@ namespace util_protobuf {
 	std::vector<midi::Note> IterateAndConvert(midi::Piece* midi_piece, const midi::Track* current_track, bool bool_drum_track, int* duration_in_ticks) {
 		midi::Event current_midi_event;
 		std::vector<midi::Note> notes;
-		std::map<int, int> onsets;
+		// Map pitch -> (abs_onset_tick, event_id) so we can use precomputed
+		// internal_duration for orphaned note-ons whose note-off was trimmed away.
+		std::map<int, std::pair<int, int>> onsets;
 		int bar_start = 0;
 		for (int bar_num = 0; bar_num < current_track->bars_size(); bar_num++) {
 			const midi::Bar bar = current_track->bars(bar_num);
 			for (auto event_id : bar.events()) {
 				current_midi_event = midi_piece->events(event_id);
 				if (current_midi_event.velocity() > 0) {
-					// need to account for bar offset to get correct start time
-					onsets[current_midi_event.pitch()] = bar_start + current_midi_event.time();
+					// Always add note-ons to onsets regardless of precomputed
+					// internal_duration.  Pairing with a note-off below is the
+					// primary path; only truly orphaned notes (no note-off in
+					// the scanned bars) fall through to the closure below.
+					onsets[current_midi_event.pitch()] = {bar_start + current_midi_event.time(), event_id};
 				}
 				else {
 					auto last_event_with_pitch = onsets.find(current_midi_event.pitch());
-					// need to account for bar offset to get correct end time
-					int end_time = bool_drum_track ? last_event_with_pitch->second + 1 : bar_start + current_midi_event.time();
 					if (last_event_with_pitch != onsets.end()) {
-						midi::Note note = CreateNote(last_event_with_pitch->second, end_time, last_event_with_pitch->first);
+						int abs_onset = last_event_with_pitch->second.first;
+						// need to account for bar offset to get correct end time
+						int end_time = bool_drum_track ? abs_onset + 1 : bar_start + current_midi_event.time();
+						midi::Note note = CreateNote(abs_onset, end_time, last_event_with_pitch->first);
 						notes.push_back(note);
 						onsets.erase(last_event_with_pitch);
 					}
@@ -149,6 +155,21 @@ namespace util_protobuf {
 				*duration_in_ticks = std::max(*duration_in_ticks, bar_start + current_midi_event.time());
 			}
 			bar_start += midi_piece->resolution() * bar.internal_beat_length();
+		}
+		// Close any orphaned note-ons using their precomputed internal_duration.
+		// These are notes whose note-off event was in a bar removed by piece_subset
+		// trimming.  The duration was pre-computed on the full piece and stored in
+		// the event, so we use it here to include them with their true length.
+		for (const auto &kv : onsets) {
+			int pitch       = kv.first;
+			int abs_onset   = kv.second.first;
+			int event_id    = kv.second.second;
+			int precomp_dur = midi_piece->events(event_id).internal_duration();
+			if (precomp_dur > 0) {
+				int end_time = abs_onset + precomp_dur;
+				notes.push_back(CreateNote(abs_onset, end_time, pitch));
+				*duration_in_ticks = std::max(*duration_in_ticks, end_time);
+			}
 		}
 		return notes;
 	}
@@ -413,10 +434,10 @@ namespace util_protobuf {
 
 	// adding note durations to events
 	void calculate_note_durations(midi::Piece* p) {
-		// to start set all durations == 0
-		for (int i = 0; i < p->events_size(); i++) {
-			p->mutable_events(i)->set_internal_duration(0);
-		}
+		// Do NOT reset internal_duration to 0 at the start.
+		// Events that already carry a non-zero internal_duration were pre-computed
+		// from the full piece before piece_subset trimming and must be preserved
+		// so that cross-bar sustaining notes keep their true duration.
 
 		for (const auto &track : p->tracks()) {
 			// pitches to (abs_time, event_index)
@@ -425,8 +446,11 @@ namespace util_protobuf {
 			for (const auto &bar : track.bars()) {
 				for (auto event_id : bar.events()) {
 					midi::Event e = p->events(event_id);
-					//data_structures::LOGGER( "PROC EVENT :: " , e.pitch() , " " , e.velocity() , " " , e.time() );
 					if (e.velocity() > 0) {
+						if (e.internal_duration() > 0) {
+							// Already computed (e.g. pre-computed on full piece) — skip.
+							continue;
+						}
 						if (data_structures::is_drum_track(track.track_type())) {
 							// drums always have duration of 1 timestep
 							p->mutable_events(event_id)->set_internal_duration(1);
@@ -441,6 +465,7 @@ namespace util_protobuf {
 							int index = std::get<1>(it->second);
 							int duration = (bar_start + e.time()) - std::get<0>(it->second);
 							p->mutable_events(index)->set_internal_duration(duration);
+							onsets.erase(it);
 						}
 					}
 				}
@@ -807,9 +832,20 @@ namespace util_protobuf {
 
 	template <typename T>
 	void string_to_protobuf(std::string& s, T* x) {
-		google::protobuf::util::JsonParseOptions opt;
-    	opt.ignore_unknown_fields = true;
-		google::protobuf::util::JsonStringToMessage(s, x, opt);
+		// First pass: strict — fails on unknown fields so we can warn about them.
+		google::protobuf::util::JsonParseOptions strict;
+		strict.ignore_unknown_fields = false;
+		auto strict_status = google::protobuf::util::JsonStringToMessage(s, x, strict);
+		if (!strict_status.ok()) {
+			// Warn about unknown / mismatched fields but continue with a permissive parse.
+			data_structures::LOGGER(data_structures::to_str(
+				"WARNING : unknown field(s) in JSON for ", T::descriptor()->name(),
+				" — ", strict_status.message().ToString()));
+			x->Clear();
+			google::protobuf::util::JsonParseOptions permissive;
+			permissive.ignore_unknown_fields = true;
+			google::protobuf::util::JsonStringToMessage(s, x, permissive);
+		}
 	}
 
 	template <typename T>

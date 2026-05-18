@@ -12,6 +12,7 @@ Generation logic follows docs/realtime_framework.md exactly.
 
 import json
 import logging
+import random
 from typing import Optional, Tuple
 
 log = logging.getLogger(__name__)
@@ -21,15 +22,16 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 PARAM_DEFAULTS: dict = {
-    "lookahead_bars":      2,       # k: bars ahead of playhead to generate
-    "buffer_bars":         4,       # B: bars of silence before agent starts
-    "num_anticipated_bars": 1,      # j: bars generated per inference call
-    "temperature":         1.0,     # global generation entropy
-    "model_dim":           4,       # D: context window in bars
-    "mask_top_k":          0.0,     # probability of masking top-k tokens
-    "sampling_seed":      -1,       # RNG seed (-1 = random)
-    "mask_gap":            False,   # hide agent gap bars with TOKEN_MASK_BAR
-    "adapt_buffer":        False,   # start generating before buffer ends
+    "lookahead_bars":      2,     # k: bars ahead of playhead to generate
+    "buffer_bars":         4,     # B: bars of silence before agent starts
+    "num_anticipated_bars": 1,    # j: bars generated per inference call
+    "temperature":         1.0,   # global generation entropy
+    "model_dim":           4,     # D: context window in bars
+    "mask_top_k":          0.0,   # probability of masking top-k tokens
+    "sampling_seed":      -1,     # RNG seed (-1 = random)
+    "mask_gap":            False, # hide agent gap bars with TOKEN_MASK_BAR
+    "adapt_buffer":        False, # start generating before buffer ends
+    "gen_timeout":         0.0,   # seconds before inference is abandoned; 0 = disabled
 }
 
 # Valid ranges for parameter validation
@@ -43,6 +45,7 @@ PARAM_RANGES: dict = {
     "sampling_seed":       (None, None),    # any int
     "mask_gap":            (None, None),    # bool
     "adapt_buffer":        (None, None),    # bool
+    "gen_timeout":         (0, None),       # seconds ≥ 0; 0 = disabled
 }
 
 
@@ -96,20 +99,34 @@ def compute_num_anticipation(target_bar: int, j: int, total_bars: int) -> int:
 # ---------------------------------------------------------------------------
 
 def build_params(ckpt: str, global_params: dict, num_anticipation: int) -> dict:
-    """Build the HyperParam dict for sample_multi_step."""
-    params: dict = {
-        "ckpt": ckpt,
-        "model_dim": global_params["model_dim"],
-        "bars_per_step": num_anticipation,
-        "tracks_per_step": 1,
-        "temperature": global_params["temperature"],
-        "batch_size": 1,
-        "percentage": 100,
-        "polyphony_hard_limit": 10,
+    """Build the HyperParam dict for sample_multi_step.
+
+    Every field of midi.HyperParam that has a meaningful default is set
+    explicitly: relying on protobuf defaults (e.g. polyphony_hard_limit=0)
+    silently broke generation. Fields are in proto field order.
+    """
+    # Always set a concrete (non-negative) seed for the original implementation —
+    # -1 / unset has been observed to cause the C++ sampler to emit 0 notes.
+    raw_seed = int(global_params.get("sampling_seed", -1))
+    if raw_seed < 0:
+        raw_seed = random.randint(0, 2**31 - 1)
+
+    return {
+        "tracks_per_step":           1,
+        "bars_per_step":             int(num_anticipation),
+        "model_dim":                 int(global_params["model_dim"]),
+        "shuffle":                   False,
+        "percentage":                100,
+        "temperature":               float(global_params["temperature"]),
+        "batch_size":                1,
+        "verbose":                   False,
+        "ckpt":                      ckpt,
+        "mask_top_k":                0.0,
+        "sampling_seed":             raw_seed,
+        "polyphony_hard_limit":      10,
+        "use_per_track_temperature": False,
+        "max_steps":                 0,
     }
-    if global_params.get("sampling_seed", -1) >= 0:
-        params["seed"] = global_params["sampling_seed"]
-    return params
 
 
 # ---------------------------------------------------------------------------
@@ -133,8 +150,21 @@ def run_inference(piece_dict: dict, status_dict: dict, params_dict: dict,
     status_json = json.dumps(status_dict)
     params_json = json.dumps(params_dict)
 
+    # Attach a RecordTokenSequenceCallback so we can see exactly what orig
+    # generates — useful when the resulting piece has 0 notes.
+    rec = midigpt.RecordTokenSequenceCallback()
+    cm = midigpt.CallbackManager()
+    cm.add_callback(rec)
+
     res_str, attempts = midigpt.sample_multi_step(
-        piece_json, status_json, params_json, max_attempts, None
+        piece_json, status_json, params_json, max_attempts, cm
+    )
+    toks = list(rec.tokens)
+    log.warning(
+        "DEBUG captured tokens (n=%d) seed=%s: %s",
+        len(toks),
+        params_dict.get("sampling_seed"),
+        toks[:200],
     )
     return json.loads(res_str), attempts
 

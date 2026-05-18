@@ -5,7 +5,9 @@
 #include <torch/nn/functional/activation.h>
 #include <torch/cuda.h>
 
+#include <chrono>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <array>
@@ -17,6 +19,50 @@
 #include "callback_base.h"
 
 namespace sampling {
+
+  using _Clock = std::chrono::steady_clock;
+  using _TP    = std::chrono::time_point<_Clock>;
+  inline double _ms(_TP t0) {
+    return std::chrono::duration<double, std::milli>(_Clock::now() - t0).count();
+  }
+
+  // Timing data collected during a single sample_multi_step call.
+  // All times in milliseconds.
+  struct SamplingTimings {
+    double model_load_ms     = 0.0; // torch::jit::load + metadata parse
+    double preprocess_ms     = 0.0; // validate + pad + add_timesigs + override_features
+    double step_plan_ms      = 0.0; // find_steps
+    double slice_ms          = 0.0; // piece_subset + status_subset + rehighlight (per step sum)
+    double prompt_encode_ms  = 0.0; // SAMPLE_CONTROL init + prompt building (per step sum)
+    double model_forward_ms  = 0.0; // transformer forward passes (per token, per step sum)
+    double decode_ms         = 0.0; // tokens_to_json_array + finalize (per step sum)
+    double postprocess_ms    = 0.0; // piece_insert + override_features (per step sum)
+    double total_gen_ms      = 0.0; // wall time from entering sample() to returning
+    int    tokens_generated  = 0;   // new tokens generated (sum over steps)
+    int    context_tokens    = 0;   // prompt length per step (sum over steps)
+    int    steps             = 0;   // number of generation steps
+    int    attempts          = 0;   // number of sample() attempts
+
+    std::string to_json() const {
+      std::ostringstream s;
+      s << "{"
+        << "\"model_load_ms\":"    << model_load_ms    << ","
+        << "\"preprocess_ms\":"    << preprocess_ms    << ","
+        << "\"step_plan_ms\":"     << step_plan_ms     << ","
+        << "\"slice_ms\":"         << slice_ms         << ","
+        << "\"prompt_encode_ms\":" << prompt_encode_ms << ","
+        << "\"model_forward_ms\":" << model_forward_ms << ","
+        << "\"decode_ms\":"        << decode_ms        << ","
+        << "\"postprocess_ms\":"   << postprocess_ms   << ","
+        << "\"total_gen_ms\":"     << total_gen_ms     << ","
+        << "\"tokens_generated\":" << tokens_generated << ","
+        << "\"context_tokens\":"   << context_tokens   << ","
+        << "\"steps\":"            << steps            << ","
+        << "\"attempts\":"         << attempts
+        << "}";
+      return s.str();
+    }
+  };
 
   // Determine the device for inference.  TorchScript tracing bakes device
   // literals into the graph, so the model must run on the same device it was
@@ -79,7 +125,7 @@ namespace sampling {
     return model;
   }
 
-  void sample_inner(std::vector<std::unique_ptr<SAMPLE_CONTROL>> &scon, std::vector<std::vector<int>> &seqs, torch::jit::Module *model, std::vector<torch::jit::IValue> &inputs, midi::HyperParam *param, CallbackManager *callbacks) {
+  void sample_inner(std::vector<std::unique_ptr<SAMPLE_CONTROL>> &scon, std::vector<std::vector<int>> &seqs, torch::jit::Module *model, std::vector<torch::jit::IValue> &inputs, midi::HyperParam *param, CallbackManager *callbacks, SamplingTimings *timings = nullptr) {
 
     if (!model) {
       throw std::runtime_error("ERROR : MODEL IS INVALID.");
@@ -88,7 +134,9 @@ namespace sampling {
     torch::Tensor logits;
     torch::jit::IValue past_key_values;
 
+    auto _t_fwd = _Clock::now();
     auto outputs = model->forward(inputs).toTuple();
+    if (timings) timings->model_forward_ms += _ms(_t_fwd);
     logits = outputs->elements()[0].toTensor().index(
       {torch::indexing::Slice(),-1,torch::indexing::Slice()});
     past_key_values = outputs->elements()[1];
@@ -128,6 +176,15 @@ namespace sampling {
         if (scon[i]->rep->has_token_type(ctx_tt)) {
           int ctx_id = scon[i]->rep->encode(ctx_tt, 0);
           logits[i][ctx_id] = -1 * std::numeric_limits<float>::max();
+        }
+      }
+      // In TRACK_MODEL mode, infill boundary tokens are invalid and corrupt the grammar
+      if (scon[i]->model_type == enums::TRACK_MODEL) {
+        for (midi::TOKEN_TYPE ctx_tt : {midi::TOKEN_FILL_IN_START, midi::TOKEN_FILL_IN_END}) {
+          if (scon[i]->rep->has_token_type(ctx_tt)) {
+            int ctx_id = scon[i]->rep->encode(ctx_tt, 0);
+            logits[i][ctx_id] = -1 * std::numeric_limits<float>::max();
+          }
         }
       }
       std::set<std::string> s( unmasked_types.begin(), unmasked_types.end() );
@@ -204,18 +261,27 @@ namespace sampling {
     }
   }
 
-  std::vector<midi::Piece> generate(midi::Status *status, midi::Piece *piece, midi::HyperParam *param, const std::unique_ptr<ModelMeta> &mm, CallbackManager *callbacks) {
+  std::vector<midi::Piece> generate(midi::Status *status, midi::Piece *piece, midi::HyperParam *param, const std::unique_ptr<ModelMeta> &mm, CallbackManager *callbacks, SamplingTimings *timings = nullptr) {
     data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_DEBUG, "generate");
     data_structures::LOGGER(data_structures::VERBOSITY_LEVEL_TRACE, util_protobuf::protobuf_to_string(status));
     param->set_temperature( std::max((double)param->temperature(), 1e-6) ); // CAN'T HAVE ZERO TEMPERATURE
+
+    // Time SAMPLE_CONTROL construction (prompt encoding)
+    auto _t_enc = _Clock::now();
     std::vector<std::unique_ptr<SAMPLE_CONTROL>> scon;
     for (int i=0; i<param->batch_size(); i++) {
       scon.push_back( std::make_unique<SAMPLE_CONTROL>(piece, status, param, &mm->meta) );
     }
+    if (timings) timings->prompt_encode_ms += _ms(_t_enc);
+
     std::vector<int> prompt = scon[0]->prompt;
     std::vector<torch::jit::IValue> inputs;
     std::vector<std::vector<int>> seqs = std::vector<std::vector<int>>(param->batch_size(), prompt);
     scon[0]->rep->show(prompt, data_structures::VERBOSITY_LEVEL_SEQUENCES, "INPUT SEQUENCE");
+
+    if (timings) {
+      timings->context_tokens += (int)prompt.size();
+    }
 
     auto opts = torch::TensorOptions().dtype(torch::kInt64).device(mm->device);
     torch::Tensor x = torch::zeros({param->batch_size(), (int)prompt.size()}, opts);
@@ -231,11 +297,11 @@ namespace sampling {
     }
     inputs.push_back(torch::ivalue::Tuple::create(state));
 
-
+    int tokens_before = (int)seqs[0].size();
     bool terminated = false;
     int num_steps = 0;
     while (!scon[0]->finished) {
-      sample_inner(scon, seqs, &mm->model, inputs, param, callbacks);
+      sample_inner(scon, seqs, &mm->model, inputs, param, callbacks, timings);
       num_steps++;
       if ((param->max_steps() > 0) && (num_steps >= param->max_steps())) {
         terminated = true;
@@ -246,12 +312,16 @@ namespace sampling {
         break;
       }
     }
+    if (timings) timings->tokens_generated += (int)seqs[0].size() - tokens_before;
+
     scon[0]->enc->config->decode_final = status->decode_final();
     scon[0]->enc->rep->show(seqs[0], data_structures::VERBOSITY_LEVEL_SEQUENCES, "OUTPUT SEQUENCE");
     std::vector<midi::Piece> output(param->batch_size());
     if (!terminated) {
+      auto _t_dec = _Clock::now();
       scon[0]->enc->tokens_to_json_array(seqs, output);
       scon[0]->finalize(&output[0]); // batch size should be 1 anyways
+      if (timings) timings->decode_ms += _ms(_t_dec);
     }
     return output;
   }
