@@ -1,173 +1,141 @@
-[![N|Solid](https://drive.google.com/uc?export=view&id=1u4xiWN3s0PAii8zn3-qxJ7wn35tBOypY)](https://metacreation.net/category/projects/)
-
 # MIDI-GPT
 
-Generative system based on the Transformer architecture for computer-assisted music composition.
-Paper: [AAAI 2025](https://arxiv.org/abs/2501.17011)
+A GPT-2 transformer for symbolic music generation — tokenizes MIDI, generates new bars or in-fills missing ones, and decodes back to MIDI.
+
+Paper: [AAAI 2025 — *MIDI-GPT: A Controllable Generative Model for Computer-Assisted Multitrack Music Composition*](https://arxiv.org/abs/2501.17011)
+
+This release ships the **inference stack** as a clean, self-contained Python package:
+
+- C++ tokenizer / encoder / decoder (built via `pybind11` + `scikit-build-core`)
+- Pure-PyTorch GPT-2 with `F.scaled_dot_product_attention` and KV cache
+- Self-contained packed checkpoint format (weights + arch config + encoder config in one file)
+- CPU, MPS (Apple Silicon), and CUDA devices
+
+> The real-time OSC server and Max MSP integration ship in a separate release.
 
 ---
 
-## Dependencies
+## Install
 
-| Dependency | Source |
-|---|---|
-| CMake ≥ 3.21 | system / module |
-| C++20 compiler (GCC ≥ 11 or Clang ≥ 14) | system / module |
-| Protobuf (libprotobuf + protoc) | system / module |
-| Python ≥ 3.10 | system / module |
-| PyTorch ≥ 2.5.1 | pip |
-| pybind11 ≥ 2.12 | pip (or git submodule) |
-| midifile | git submodule |
-
----
-
-## Build
-
-### Prerequisites
+Requires Python ≥ 3.10, CMake ≥ 3.21, a C++20 compiler, and PyTorch ≥ 2.0.
 
 ```bash
-git submodule update --init --recursive
-```
-
-### Python install (recommended)
-
-```bash
+git clone https://github.com/Metacreation-Lab/MIDI-GPT.git
+cd MIDI-GPT
 python -m venv .venv
 source .venv/bin/activate
-pip install torch
-pip install -e .              # development / editable install
-# or
-pip install -e ".[train]"     # + training dependencies
+pip install -e ".[inference]"
 ```
 
-Verify:
+macOS dependencies:
 
 ```bash
-python -c "import midigpt; print(midigpt.version())"
+brew install cmake
 ```
 
-### Wheel build
+Extras:
 
-```bash
-pip install build
-python -m build --wheel
-```
-
-### C++-only (no Python required)
-
-Requires Protobuf headers and `protoc` on `PATH`.
-
-```bash
-cmake -S . -B build -DMIDIGPT_NO_TORCH=ON
-cmake --build build -j$(nproc)
-```
-
-With Torch (manual LibTorch path):
-
-```bash
-cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/libtorch
-cmake --build build -j$(nproc)
-```
-
-### CMake options
-
-| Option | Default | Description |
-|---|---|---|
-| `MIDIGPT_NO_TORCH` | `OFF` | Exclude LibTorch — dataset creation and training only |
-| `MIDIGPT_TRACE` | `OFF` | Enable `-finstrument-functions` tracing |
+| extra | adds |
+|---|---|
+| `inference` | `torch>=2.0` |
+| `train` | `transformers`, `datasets`, `accelerate`, `pyarrow` |
+| `dev` | `pytest`, `ruff`, `mypy` |
+| `all` | everything |
 
 ---
 
-## HPC (Fir / Alliance Canada)
+## Download a model
+
+Pretrained weights are distributed as packed `.pt` files (arch config + encoder config + state dict in one archive).
+
+| Model | Encoder | Size | Download |
+|---|---|---|---|
+| Yellow | `EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER` | ~80 MB | **[yellow.pt](https://example.com/midigpt/yellow.pt)** *(placeholder)* |
+
+Drop it in `models/`:
 
 ```bash
-module load StdEnv/2023 python/3.11 gcc/12 cmake protobuf
-
-python -m venv $SCRATCH/.venvs/midigpt
-source $SCRATCH/.venvs/midigpt/bin/activate
-pip install torch
-pip install -e ".[train]"
-```
-
-C++-only (training only, no inference):
-
-```bash
-cmake -S . -B $SCRATCH/midigpt-build -DMIDIGPT_NO_TORCH=ON
-cmake --build $SCRATCH/midigpt-build -j$(nproc)
+mkdir -p models
+curl -L https://example.com/midigpt/yellow.pt -o models/yellow.pt
 ```
 
 ---
 
-## Usage
+## Quick start
 
-### Inference
+```python
+from midigpt.inference.model import GPT2LMHeadModel
+from midigpt.inference.engine import InferenceEngine
+from midigpt.inference.config import GenerationRequest, TrackPrompt, SamplingConfig
+from midigpt.tokenizer.tokenizer import Tokenizer
+from midigpt.attributes import AttributeAnalyzer
+from midigpt import _core
+import json
 
-See `python_scripts_for_testing/pythoninferencetest.py`.
+# Load the packed checkpoint — auto-detects device (cuda > mps > cpu)
+model = GPT2LMHeadModel.from_pretrained("models/yellow.pt", device="auto")
 
-Unzip the model first:
+# The encoder config travels inside the checkpoint
+cfg       = _core.EncoderConfig.from_json(json.dumps(model.encoder_config))
+analyzer  = AttributeAnalyzer.from_config(cfg)
+tokenizer = Tokenizer(cfg, analyzer)
+engine    = InferenceEngine(model=model, tokenizer=tokenizer, analyzer=analyzer)
 
-```bash
-unzip models/model.zip -d models/
-```
+# Build a request: tracks to keep as prompt, bars to fill, sampling controls
+request = GenerationRequest(
+    midi_path="path/to/input.mid",
+    tracks=[TrackPrompt(index=0)],
+    bars_to_generate=[3, 4],
+    sampling=SamplingConfig(temperature=1.0, max_attempts=1),
+)
 
-### Dataset creation
-
-```bash
-python python_scripts/create_dataset.py \
-    --encoding EXPRESSIVE_ENCODER \
-    --data_dir /path/to/midi/{train,test,valid} \
-    --output /path/to/output.arr
-```
-
-### Training
-
-```bash
-python python_scripts/train.py \
-    --arch gpt2 \
-    --config python_scripts/config/gpt2.json \
-    --encoding EXPRESSIVE_ENCODER \
-    --dataset /path/to/output.arr \
-    --batch_size 32 \
-    --label my_run
-```
-
-### Checkpoint → TorchScript
-
-```bash
-python python_scripts/convert.py --checkpoint /path/to/checkpoint
+result = engine.generate(request)
+result.save("output.mid")
 ```
 
 ---
 
-## Repository layout
+## Architecture
 
 ```
-CMakeLists.txt               top-level CMake (single authoritative build)
-cmake/
-  dependencies.cmake         all find_package / add_subdirectory calls
-pyproject.toml               pip / wheel build (scikit-build-core backend)
-src/
-  cpp/
-    bindings/
-      lib.cpp                pybind11 PYBIND11_MODULE definition
-  common/                    shared C++ (encoders, MIDI I/O, data structures)
-  dataset_creation/          LZ4 compression, file I/O
-  inference/                 sampling loop, Jagged dataset reader
-include/                     public C++ headers
-libraries/
-  protobuf/                  .proto files + generated CMake library
-  midifile/                  git submodule — MIDI file parser
-  pybind11/                  git submodule — Python bindings
-python_scripts/              training, dataset creation, conversion scripts
-pyproject.toml               package metadata + optional-dependency groups (train, dataset)
+┌──────────────────────────────────────────────────────────────┐
+│  midigpt (Python package)                                    │
+│                                                              │
+│   tokenizer/    →  encode MIDI ↔ token IDs   (C++ ext)       │
+│   attributes/   →  density / polyphony / duration controls   │
+│   inference/                                                 │
+│     model.py    →  GPT2LMHeadModel (SDPA + KV cache)         │
+│     engine.py   →  high-level generate()                     │
+│     session.py  →  multi-step planning + sampling            │
+│   augmentation/ →  transpose / velocity / track swap …       │
+│   training/     →  optional HF-trainer integration           │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-## CMake targets
+### Packed checkpoint format (`format_version: 1`)
 
-| Target | Type | Description |
-|---|---|---|
-| `midigpt_core` | STATIC library | Pure C++ — encoder, MIDI I/O, sampling, dataset I/O |
-| `midigpt` | Shared module | pybind11 Python extension (`import midigpt`) |
-| `midigpt_proto` | STATIC library | Protobuf generated C++ (from `libraries/protobuf/`) |
-| `midifile` | STATIC library | MIDI file parser (from `libraries/midifile/`) |
-| `midigpt_tracer` | STATIC library | Only built when `MIDIGPT_TRACE=ON` |
+```python
+{
+    "format_version": 1,
+    "config":         {"vocab_size": ..., "n_positions": ..., "n_embd": ..., "n_layer": ..., "n_head": ...},
+    "encoder_config": {...},   # full encoder JSON
+    "state_dict":     {...},   # HF GPT-2 layout
+}
+```
+
+`GPT2LMHeadModel.from_pretrained(path)` auto-detects this format. Everything needed to tokenize and run is inside the file — no sidecar JSON.
+
+---
+
+## Tests
+
+```bash
+pytest tests/python/                       # Python unit tests
+ctest --test-dir build_cpp                 # C++ unit tests (after a build)
+```
+
+---
+
+## License
+
+See `LICENSE`.

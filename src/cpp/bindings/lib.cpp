@@ -1,333 +1,307 @@
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
+#include <pybind11/chrono.h>
+#include <pybind11/complex.h>
+#include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <pybind11/numpy.h>
-#include <pybind11/iostream.h>
+
+#include "../core/score.h"
+#include "../core/types.h"
+#include "../io/midi_reader.h"
+#include "../io/midi_writer.h"
+#include "../masking/attribute_value_constraint.h"
+#include "../masking/constraint.h"
+#include "../masking/constraint_graph.h"
+#include "../masking/density_constraint.h"
+#include "../masking/grammar_constraint.h"
+#include "../masking/polyphony_constraint.h"
+#include "../sampling/generation_step.h"
+#include "../sampling/selection_mask.h"
+#include "../sampling/session_state.h"
+#include "../sampling/step_planner.h"
+#include "../tokenizer/decoder.h"
+#include "../tokenizer/encoder.h"
+#include "../tokenizer/encoder_config.h"
+#include "../tokenizer/vocabulary.h"
+
+#include "../core/logging.h"
+
 namespace py = pybind11;
+using namespace midigpt;
+using namespace midigpt::io;
+using namespace midigpt::tokenizer;
+using namespace midigpt::masking;
+using namespace midigpt::sampling;
 
-#include "common/encoder/encoder_all.h"
+PYBIND11_MODULE(_core, m) {
 
-#include "common/midi_parsing/midi_io.h"
-#include "inference/dataset/jagged.h"
-#include "inference/enum/model_type.h"
-#include "inference/enum/encoder_types.h"
-#include "inference/sampling/control.h"
-#include "inference/sampling/callback_base.h"
-#include "inference/version.h"
+  // Logging
+  py::enum_<LogLevel>(m, "LogLevel")
+      .value("OFF", LogLevel::OFF)
+      .value("ERROR", LogLevel::ERROR)
+      .value("WARNING", LogLevel::WARNING)
+      .value("INFO", LogLevel::INFO)
+      .value("DEBUG", LogLevel::DEBUG)
+      .value("TRACE", LogLevel::TRACE);
 
-#include "common/midi_parsing/feature_extraction.h"
+  m.def("set_verbosity",
+        [](int level) { Logger::set_level(static_cast<LogLevel>(level)); });
 
-#ifndef NO_TORCH
-#include "inference/sampling/sample_internal.h"
-#include "inference/sampling/multi_step_sample.h"
-#endif
+  m.def("set_verbosity", [](LogLevel level) { Logger::set_level(level); });
 
-#include <iostream>
-#include <string>
-// bytes_to_file.h is found via the `include/` directory in midigpt_core's include path
-#include "dataset_creation/dataset_manipulation/bytes_to_file.h"
-// midi.pb.h is found via the midigpt_proto target's exported include directory
-#include "midi.pb.h"
-#ifndef MIDIGPT_USE_SYMUSIC
-#include "MidiFile.h"
-#endif
-#include "common/data_structures/train_config.h"
-#include "lib_encoder.h"
+  // enums
+  py::enum_<TokenType>(m, "TokenType")
+      .value("PieceStart", TokenType::PieceStart)
+      .value("NoteOnset", TokenType::NoteOnset)
+      .value("NoteOffset", TokenType::NoteOffset)
+      .value("NotePitch", TokenType::NotePitch)
+      .value("NonPitch", TokenType::NonPitch)
+      .value("Velocity", TokenType::Velocity)
+      .value("TimeDelta", TokenType::TimeDelta)
+      .value("TimeAbsolutePos", TokenType::TimeAbsolutePos)
+      .value("Instrument", TokenType::Instrument)
+      .value("Bar", TokenType::Bar)
+      .value("BarEnd", TokenType::BarEnd)
+      .value("Track", TokenType::Track)
+      .value("TrackEnd", TokenType::TrackEnd)
+      .value("DrumTrack", TokenType::DrumTrack)
+      .value("FillIn", TokenType::FillIn)
+      .value("FillInPlaceholder", TokenType::FillInPlaceholder)
+      .value("FillInStart", TokenType::FillInStart)
+      .value("FillInEnd", TokenType::FillInEnd)
+      .value("Header", TokenType::Header)
+      .value("VelocityLevel", TokenType::VelocityLevel)
+      .value("Genre", TokenType::Genre)
+      .value("NoteDensity", TokenType::NoteDensity)
+      .value("TimeSig", TokenType::TimeSig)
+      .value("Segment", TokenType::Segment)
+      .value("SegmentEnd", TokenType::SegmentEnd)
+      .value("SegmentFillIn", TokenType::SegmentFillIn)
+      .value("NoteDuration", TokenType::NoteDuration)
+      .value("AvPolyphony", TokenType::AvPolyphony)
+      .value("MinPolyphony", TokenType::MinPolyphony)
+      .value("MaxPolyphony", TokenType::MaxPolyphony)
+      .value("MinNoteDuration", TokenType::MinNoteDuration)
+      .value("MaxNoteDuration", TokenType::MaxNoteDuration)
+      .value("NumBars", TokenType::NumBars)
+      .value("MinPolyphonyHard", TokenType::MinPolyphonyHard)
+      .value("MaxPolyphonyHard", TokenType::MaxPolyphonyHard)
+      .value("MinNoteDurationHard", TokenType::MinNoteDurationHard)
+      .value("MaxNoteDurationHard", TokenType::MaxNoteDurationHard)
+      .value("RestPercentage", TokenType::RestPercentage)
+      .value("PitchClass", TokenType::PitchClass)
+      .value("PitchClassCount", TokenType::PitchClassCount)
+      .value("BarLevelOnsetDensity", TokenType::BarLevelOnsetDensity)
+      .value("BarLevelOnsetPolyphonyMin", TokenType::BarLevelOnsetPolyphonyMin)
+      .value("BarLevelOnsetPolyphonyMax", TokenType::BarLevelOnsetPolyphonyMax)
+      .value("TrackLevelOnsetDensity", TokenType::TrackLevelOnsetDensity)
+      .value("TrackLevelOnsetPolyphonyMin",
+             TokenType::TrackLevelOnsetPolyphonyMin)
+      .value("TrackLevelOnsetPolyphonyMax",
+             TokenType::TrackLevelOnsetPolyphonyMax)
+      .value("TrackLevelOnsetDensityMin", TokenType::TrackLevelOnsetDensityMin)
+      .value("TrackLevelOnsetDensityMax", TokenType::TrackLevelOnsetDensityMax)
+      .value("TrackLevelPitchRangeMin", TokenType::TrackLevelPitchRangeMin)
+      .value("TrackLevelPitchRangeMax", TokenType::TrackLevelPitchRangeMax)
+      .value("KeySignature", TokenType::KeySignature)
+      .value("BarLevelPitchClassSet", TokenType::BarLevelPitchClassSet)
+      .value("TrackLevelSilenceProportionMin",
+             TokenType::TrackLevelSilenceProportionMin)
+      .value("TrackLevelSilenceProportionMax",
+             TokenType::TrackLevelSilenceProportionMax)
+      .value("ValenceSpotify", TokenType::ValenceSpotify)
+      .value("EnergySpotify", TokenType::EnergySpotify)
+      .value("DanceabilitySpotify", TokenType::DanceabilitySpotify)
+      .value("Danceability", TokenType::Danceability)
+      .value("Tension", TokenType::Tension)
+      .value("ContainsNoteDurationThirtySecond",
+             TokenType::ContainsNoteDurationThirtySecond)
+      .value("ContainsNoteDurationSixteenth",
+             TokenType::ContainsNoteDurationSixteenth)
+      .value("ContainsNoteDurationEighth",
+             TokenType::ContainsNoteDurationEighth)
+      .value("ContainsNoteDurationQuarter",
+             TokenType::ContainsNoteDurationQuarter)
+      .value("ContainsNoteDurationHalf", TokenType::ContainsNoteDurationHalf)
+      .value("ContainsNoteDurationWhole", TokenType::ContainsNoteDurationWhole)
+      .value("WnbdSyncopation", TokenType::WnbdSyncopation)
+      .value("Repetition", TokenType::Repetition)
+      .value("Delta", TokenType::Delta)
+      .value("DeltaDirection", TokenType::DeltaDirection)
+      .value("None", TokenType::None)
+      .value("MaskBar", TokenType::MaskBar)
+      .value("TensionDrum", TokenType::TensionDrum)
+      .value("OnsetPolyphony", TokenType::OnsetPolyphony)
+      .value("PitchRange", TokenType::PitchRange)
+      .value("NoteDurationDist", TokenType::NoteDurationDist)
+      .value("SilenceProportion", TokenType::SilenceProportion)
+      .value("PitchClassSet", TokenType::PitchClassSet)
+      .value("PieceEnd", TokenType::PieceEnd);
 
-// ======================
+  py::enum_<TrackType>(m, "TrackType")
+      .value("Melodic", TrackType::Melodic)
+      .value("Drum", TrackType::Drum);
 
-namespace midigpt { // you can probably remove this namespace
-std::string generate_py(std::string &status_str, std::string &piece_str, std::string &param_str) {
-  midi::Piece piece;
-  google::protobuf::util::JsonStringToMessage(piece_str.c_str(), &piece);
-  midi::Status status;
-  google::protobuf::util::JsonStringToMessage(status_str.c_str(), &status);
-  midi::HyperParam param;
-  google::protobuf::util::JsonStringToMessage(param_str.c_str(), &param);
-  #ifndef NO_TORCH
-  sampling::sample(&piece, &status, &param, NULL);
-  #endif
+  py::enum_<BooleanEnum>(m, "BooleanEnum")
+      .value("Any", BooleanEnum::Any)
+      .value("False", BooleanEnum::False)
+      .value("True", BooleanEnum::True);
 
-  std::string output_str;
-  google::protobuf::util::MessageToJsonString(piece, &output_str);
-  return output_str;
-}
-}
+  // core structs
+  py::class_<Note>(m, "Note")
+      .def(py::init<>())
+      .def_readwrite("pitch", &Note::pitch)
+      .def_readwrite("velocity", &Note::velocity)
+      .def_readwrite("onset_ticks", &Note::onset_ticks)
+      .def_readwrite("duration_ticks", &Note::duration_ticks)
+      .def_readwrite("delta", &Note::delta);
 
-// MAYBE THESE SHOULD GO IN A SEPARATE FILE FOR PYTHON WRAPPERS
-midi::Piece string_to_piece(std::string json_string) {
-  midi::Piece x;
-  google::protobuf::util::JsonStringToMessage(json_string.c_str(), &x);
-  return x;
-}
+  py::class_<Bar>(m, "Bar")
+      .def(py::init<>())
+      .def_readwrite("note_indices", &Bar::note_indices)
+      .def_readwrite("ts_numerator", &Bar::ts_numerator)
+      .def_readwrite("ts_denominator", &Bar::ts_denominator)
+      .def_readwrite("beat_length", &Bar::beat_length)
+      .def_readwrite("has_notes", &Bar::has_notes)
+      .def_readwrite("future", &Bar::future);
 
-std::string piece_to_string(midi::Piece x) {
-  std::string json_string;
-  google::protobuf::util::MessageToJsonString(x, &json_string);
-  return json_string;
-}
+  py::class_<Track>(m, "Track")
+      .def(py::init<>())
+      .def_readwrite("bars", &Track::bars)
+      .def_readwrite("instrument", &Track::instrument)
+      .def_readwrite("type", &Track::type)
+      .def_readwrite("attributes", &Track::attributes);
 
-std::string select_random_segment_py(std::string json_string, int num_bars, int min_tracks, int max_tracks, int seed) {
-  std::mt19937 engine(seed);
-  midi::Piece x;
-  util_protobuf::string_to_protobuf(json_string, &x);
-  util_protobuf::select_random_segment(&x, num_bars, min_tracks, max_tracks, &engine);
-  return util_protobuf::protobuf_to_string(&x);
-}
-// MAYBE THESE SHOULD GO IN A SEPARATE FILE FOR PYTHON WRAPPERS
+  py::class_<Score>(m, "Score")
+      .def(py::init<>())
+      .def_readwrite("tracks", &Score::tracks)
+      .def_readwrite("notes", &Score::notes)
+      .def_readwrite("resolution", &Score::resolution)
+      .def_readwrite("tempo", &Score::tempo);
 
+  // io
+  py::class_<MidiReader>(m, "MidiReader")
+      .def(py::init<int>(), py::arg("resolution") = 480)
+      .def("read", &MidiReader::read)
+      .def("read_bytes", &MidiReader::read_bytes);
 
-py::bytes midi_to_json_bytes(std::string &filepath, data_structures::TrainConfig *tc, std::string &metadata_labels) {
-  std::string x;
-  midi::Piece p;
-  auto config = std::make_shared<data_structures::EncoderConfig>();
-  config->resolution = tc->resolution;
-  config->decode_resolution = tc->decode_resolution;
-  config->delta_resolution = tc->delta_resolution;
-  config->use_microtiming = tc->use_microtiming;
-  midi_io::ParseSong(filepath, &p, config);
-  util_protobuf::UpdateValidSegments(&p, tc->num_bars, tc->min_tracks);
-  if (!p.internal_valid_segments_size()) {
-    return py::bytes(x); // empty bytes
-  }
+  py::class_<MidiWriter>(m, "MidiWriter")
+      .def(py::init<>())
+      .def("write", &MidiWriter::write)
+      .def("write_bytes", &MidiWriter::write_bytes);
 
-  // insert metadata labels here
-  midi::MetadataLabels *ml = new midi::MetadataLabels();
-  google::protobuf::util::JsonStringToMessage(metadata_labels, ml);
-  p.set_allocated_internal_metadata_labels(ml);
+  // tokenizer
+  py::class_<EncoderConfig>(m, "EncoderConfig")
+      .def(py::init<>())
+      .def_static("from_json", &EncoderConfig::from_json)
+      .def("to_json", &EncoderConfig::to_json)
+      .def_readwrite("resolution",               &EncoderConfig::resolution)
+      .def_readwrite("decode_resolution",        &EncoderConfig::decode_resolution)
+      .def_readwrite("model_dim",                &EncoderConfig::model_dim)
+      .def_readwrite("emit_delta_tokens",        &EncoderConfig::emit_delta_tokens)
+      .def_readwrite("supports_infill",          &EncoderConfig::supports_infill)
+      .def_readwrite("velocity_sticky",          &EncoderConfig::velocity_sticky)
+      .def_readwrite("pitch_min",                &EncoderConfig::pitch_min)
+      .def_readwrite("pitch_max",                &EncoderConfig::pitch_max)
+      .def_readwrite("velocity_levels",          &EncoderConfig::velocity_levels)
+      .def_readwrite("note_duration_max_beats",  &EncoderConfig::note_duration_max_beats)
+      .def_readwrite("attribute_controls_json",  &EncoderConfig::attribute_controls_json)
+      .def("derive_token_domains",               &EncoderConfig::derive_token_domains)
+      .def("add_attribute_token_domains",        &EncoderConfig::add_attribute_token_domains);
 
-  p.SerializeToString(&x);
-  return py::bytes(x);
-}
+  py::class_<EncodeOptions>(m, "EncodeOptions")
+      .def(py::init<>())
+      .def_readwrite("partial_encode_track_index",
+                     &EncodeOptions::partial_encode_track_index)
+      .def_readwrite("partial_encode_track_bars",
+                     &EncodeOptions::partial_encode_track_bars)
+      .def_readwrite("multi_fill", &EncodeOptions::multi_fill)
+      .def_readwrite("window_bars", &EncodeOptions::window_bars);
 
-std::string json_bytes_to_string(py::bytes &json_bytes) {
-  midi::Piece p;
-  p.ParseFromString(json_bytes);
-  return util_protobuf::protobuf_to_string(&p);
-}
+  py::class_<Vocabulary>(m, "Vocabulary")
+      .def(py::init<const EncoderConfig &>())
+      .def("encode_val",
+           py::overload_cast<TokenType, int>(&Vocabulary::encode, py::const_))
+      .def("decode", &Vocabulary::decode)
+      .def("size", &Vocabulary::size)
+      .def("has", &Vocabulary::has)
+      .def("domain_size", &Vocabulary::domain_size)
+      .def("range", &Vocabulary::range)
+      .def("get_type", &Vocabulary::get_type)
+      .def("is_type", &Vocabulary::is_type)
+      .def("config", &Vocabulary::config, py::return_value_policy::reference);
 
+  py::class_<Encoder>(m, "Encoder")
+      .def(py::init<const Vocabulary &>())
+      .def("encode", &Encoder::encode,
+           py::arg("score"), py::arg("opts") = EncodeOptions{});
 
-PYBIND11_MODULE(_midigpt,handle) {
+  py::class_<Decoder>(m, "Decoder")
+      .def(py::init<const Vocabulary &>())
+      .def("decode", &Decoder::decode);
 
-  handle.def("select_random_segment", &select_random_segment_py);
-  handle.def("status_from_piece", &util_protobuf::status_from_piece_py);
-  handle.def("default_sample_param", &util_protobuf::default_sample_param_py);
-  handle.def("prune_tracks", &util_protobuf::prune_tracks_py);
+  // masking
+  py::class_<Constraint, std::shared_ptr<Constraint>>(m, "Constraint");
 
-  handle.def("version", &version);
-  handle.def("getEncoderSize", &enums::getEncoderSize);
-  handle.def("getEncoderType", &enums::getEncoderType);
-  handle.def("getEncoder", &enums::getEncoder);
-  handle.def("getEncoderTypeList", &enums::getEncoderTypeList);
-  handle.def("getAttributeControlStr", &encoder::getAttributeControlStr);
+  py::class_<GrammarConstraint, Constraint, std::shared_ptr<GrammarConstraint>>(
+      m, "GrammarConstraint")
+      .def(py::init<>())
+      .def("set_mask_track_start", &GrammarConstraint::set_mask_track_start)
+      .def("set_mask_track_end", &GrammarConstraint::set_mask_track_end)
+      .def("set_max_bars", &GrammarConstraint::set_max_bars)
+      .def("set_exact_bars", &GrammarConstraint::set_exact_bars)
+      .def("set_autoregressive_mode", &GrammarConstraint::set_autoregressive_mode)
+      .def("set_max_tracks", &GrammarConstraint::set_max_tracks)
+      .def("set_require_notes", &GrammarConstraint::set_require_notes);
 
-#ifndef NO_TORCH
-  handle.def("sample_multi_step", &sampling::sample_multi_step_py);
-  handle.def("sample_multi_step_timed", &sampling::sample_multi_step_timed_py);
-  handle.def("get_infill_prompts", &sampling::get_infill_prompts_py);
-  handle.def("sample_multi_step_capture_output", [](std::string piece_json, std::string status_json, std::string param_json, int max_attempts, sampling::CallbackManager *callbacks) {
-    py::scoped_ostream_redirect stream(
-        std::cout,
-        py::module_::import("sys").attr("stdout") // Python output
-    );
-    return sampling::sample_multi_step_py(piece_json, status_json, param_json, max_attempts, callbacks);
-  });
-  handle.def("get_notes", &sampling::get_notes_py);
-  handle.def("get_step_grids", [](std::string &status_json, std::string &param_json) {
-    midi::Status status;
-    midi::HyperParam param;
-    (void)google::protobuf::util::JsonStringToMessage(status_json.c_str(), &status);
-    (void)google::protobuf::util::JsonStringToMessage(param_json.c_str(), &param);
-    return sampling::get_step_grids(&status, &param);
-  });
+  py::class_<DensityConstraint, Constraint, std::shared_ptr<DensityConstraint>>(
+      m, "DensityConstraint")
+      .def(py::init<int>());
 
-#endif
+  py::class_<PolyphonyConstraint, Constraint,
+             std::shared_ptr<PolyphonyConstraint>>(m, "PolyphonyConstraint")
+      .def(py::init<int>());
 
-  handle.def("compute_all_attribute_controls", &encoder::compute_all_attribute_controls_py);
-  handle.def("get_instruments_by_category", &enums::get_instruments_by_category);
-  handle.def("get_instrument_and_track_type_from_gm_inst", &enums::get_instrument_and_track_type_from_gm_inst);
-  handle.def("midi_to_json_bytes", &midi_to_json_bytes);
-  handle.def("json_bytes_to_string", &json_bytes_to_string);
-  handle.def("write_midi", [](std::string piece_json, std::string path, int single_track) {
-      midi::Piece piece;
-      google::protobuf::util::JsonStringToMessage(piece_json.c_str(), &piece);
-      midi_io::write_midi(&piece, path, single_track);
-  }, py::arg("piece_json"), py::arg("path"), py::arg("single_track") = -1);
+  py::class_<AttributeValueConstraint, Constraint,
+             std::shared_ptr<AttributeValueConstraint>>(
+      m, "AttributeValueConstraint")
+      .def(py::init<TokenType, int>());
 
-  py::enum_<enums::MODEL_TYPE>(handle, "MODEL_TYPE", py::arithmetic())
-    .value("TRACK_MODEL", enums::MODEL_TYPE::TRACK_MODEL)
-    .value("BAR_INFILL_MODEL", enums::MODEL_TYPE::BAR_INFILL_MODEL)
-    .export_values();
+  py::class_<ConstraintGraph>(m, "ConstraintGraph")
+      .def(py::init<>())
+      .def("add_constraint", &ConstraintGraph::add_constraint)
+      .def("get_mask", &ConstraintGraph::get_mask)
+      .def("step", &ConstraintGraph::step);
 
-  py::class_<compression::Jagged>(handle, "Jagged")
-    .def(py::init<std::string &>())
-    .def("set_seed", &compression::Jagged::set_seed)
-    .def("set_num_bars", &compression::Jagged::set_num_bars)
-    .def("set_min_tracks", &compression::Jagged::set_min_tracks)
-    .def("set_max_tracks", &compression::Jagged::set_max_tracks)
-    .def("set_max_seq_len", &compression::Jagged::set_max_seq_len)
-    .def("enable_write", &compression::Jagged::enable_write)
-    .def("enable_read", &compression::Jagged::enable_read)
-    .def("append", &compression::Jagged::append)
-    .def("read", &compression::Jagged::read)
-    .def("read_bytes", &compression::Jagged::read_bytes)
-    .def("read_json", &compression::Jagged::read_json)
-    .def("read_batch", &compression::Jagged::read_batch)
-    .def("load_random_piece", &compression::Jagged::load_random_piece_py)
-    .def("load_piece", &compression::Jagged::load_piece)
-    .def("close", &compression::Jagged::close)
-    .def("get_size", &compression::Jagged::get_size)
-    .def("get_split_size", &compression::Jagged::get_split_size);
+  // sampling
+  py::class_<SelectionMask>(m, "SelectionMask")
+      .def(py::init<>())
+      .def_readwrite("selected", &SelectionMask::selected)
+      .def_readwrite("autoregressive", &SelectionMask::autoregressive)
+      .def_readwrite("ignore", &SelectionMask::ignore);
 
-  py::class_<data_structures::TrainConfig>(handle, "TrainConfig")
-    .def(py::init<>())
-    .def_readwrite("num_bars", &data_structures::TrainConfig::num_bars)
-    .def_readwrite("min_tracks", &data_structures::TrainConfig::min_tracks)
-    .def_readwrite("max_tracks", &data_structures::TrainConfig::max_tracks)
-    .def_readwrite("max_mask_percentage", &data_structures::TrainConfig::max_mask_percentage)
-    .def_readwrite("no_max_length", &data_structures::TrainConfig::no_max_length)
-    .def_readwrite("resolution", &data_structures::TrainConfig::resolution)
-    .def_readwrite("use_microtiming", &data_structures::TrainConfig::use_microtiming)
-    .def_readwrite("microtiming", &data_structures::TrainConfig::microtiming)
-    .def_readwrite("decode_resolution", &data_structures::TrainConfig::decode_resolution)
-    .def_readwrite("delta_resolution", &data_structures::TrainConfig::delta_resolution)
-    .def_readwrite("do_mask_augmentation", &data_structures::TrainConfig::do_mask_augmentation)
-    .def_readwrite("mask_apply_probability", &data_structures::TrainConfig::mask_apply_probability)
-    .def_readwrite("mask_type", &data_structures::TrainConfig::mask_type)
-    .def_readwrite("mask_bar_fraction", &data_structures::TrainConfig::mask_bar_fraction)
-    .def_readwrite("mask_max_lookahead", &data_structures::TrainConfig::mask_max_lookahead)
-    .def("to_json", &data_structures::TrainConfig::ToJson)
-    .def("from_json", &data_structures::TrainConfig::FromJson);
+  py::class_<GenerationStep>(m, "GenerationStep")
+      .def(py::init<>())
+      .def_readwrite("start_bar", &GenerationStep::start_bar)
+      .def_readwrite("end_bar", &GenerationStep::end_bar)
+      .def_readwrite("is_autoregressive", &GenerationStep::is_autoregressive)
+      .def_readwrite("track_indices", &GenerationStep::track_indices)
+      .def_readwrite("bars_to_generate", &GenerationStep::bars_to_generate)
+      .def_readwrite("bar_mapping", &GenerationStep::bar_mapping)
+      .def_readwrite("context", &GenerationStep::context);
 
-  py::class_<encoder::REPRESENTATION,std::shared_ptr<encoder::REPRESENTATION>>(handle, "REPRESENTATION")
-    .def(py::init<std::vector<std::pair<midi::TOKEN_TYPE,encoder::TOKEN_DOMAIN>>>())
-    .def("decode", &encoder::REPRESENTATION::decode)
-    .def("is_token_type", &encoder::REPRESENTATION::is_token_type)
-    .def("has_token_type", &encoder::REPRESENTATION::has_token_type)
-    .def("in_domain", &encoder::REPRESENTATION::in_domain)
-    .def("encode", &encoder::REPRESENTATION::encode)
-    .def("encode_partial", &encoder::REPRESENTATION::encode_partial_py_int)
-    .def("encode_to_one_hot", &encoder::REPRESENTATION::encode_to_one_hot)
-    .def("pretty", &encoder::REPRESENTATION::pretty)
-    .def_readonly("vocab_size", &encoder::REPRESENTATION::vocab_size)
-    .def("get_type_mask", &encoder::REPRESENTATION::get_type_mask)
-    .def("max_token", &encoder::REPRESENTATION::max_token)
-    .def_readonly("token_domains", &encoder::REPRESENTATION::token_domains);
+  py::class_<StepPlanner>(m, "StepPlanner")
+      .def(py::init<const SelectionMask &, const EncoderConfig &, int, int>(),
+           py::arg("mask"), py::arg("config"), py::arg("bars_per_step") = 1,
+           py::arg("tracks_per_step") = 1)
+      .def("plan", &StepPlanner::plan);
 
-  py::class_<encoder::TOKEN_DOMAIN>(handle, "TOKEN_DOMAIN")
-    .def(py::init<int>());
-
-py::class_<data_structures::EncoderConfig,std::shared_ptr<data_structures::EncoderConfig>>(handle, "EncoderConfig")
-  .def(py::init<>())
-  .def("ToJson", &data_structures::EncoderConfig::ToJson)
-  .def("FromJson", &data_structures::EncoderConfig::FromJson)
-  .def_readwrite("both_in_one", &data_structures::EncoderConfig::both_in_one)
-  .def_readwrite("unquantized", &data_structures::EncoderConfig::unquantized)
-  .def_readwrite("do_multi_fill", &data_structures::EncoderConfig::do_multi_fill)
-
-  .def_readwrite("use_velocity_levels", &data_structures::EncoderConfig::use_velocity_levels)
-  .def_readwrite("use_microtiming", &data_structures::EncoderConfig::use_microtiming)
-  .def_readwrite("transpose", &data_structures::EncoderConfig::transpose)
-  .def_readwrite("resolution", &data_structures::EncoderConfig::resolution)
-  .def_readwrite("decode_resolution", &data_structures::EncoderConfig::decode_resolution)
-  .def_readwrite("decode_final", &data_structures::EncoderConfig::decode_final)
-  .def_readwrite("delta_resolution", &data_structures::EncoderConfig::delta_resolution)
-  .def_readwrite("multi_fill", &data_structures::EncoderConfig::multi_fill)
-  .def_readwrite("do_mask_augmentation", &data_structures::EncoderConfig::do_mask_augmentation)
-  .def_readwrite("mask_apply_probability", &data_structures::EncoderConfig::mask_apply_probability)
-  .def_readwrite("mask_type", &data_structures::EncoderConfig::mask_type)
-  .def_readwrite("mask_bar_fraction", &data_structures::EncoderConfig::mask_bar_fraction)
-  .def_readwrite("mask_max_lookahead", &data_structures::EncoderConfig::mask_max_lookahead)
-  .def_readwrite("mask_seed", &data_structures::EncoderConfig::mask_seed);
-
-py::enum_<midi::TOKEN_TYPE>(handle, "TOKEN_TYPE", py::arithmetic())
-  .value("PIECE_START", midi::TOKEN_PIECE_START)
-  .value("NOTE_ONSET", midi::TOKEN_NOTE_ONSET)
-  .value("PITCH", midi::TOKEN_PITCH)
-  .value("VELOCITY", midi::TOKEN_VELOCITY)
-  .value("DELTA", midi::TOKEN_DELTA)
-  .value("DELTA_DIRECTION", midi::TOKEN_DELTA_DIRECTION)
-  .value("TIME_ABSOLUTE_POS", midi::TOKEN_TIME_ABSOLUTE_POS)
-  .value("INSTRUMENT", midi::TOKEN_INSTRUMENT)
-  .value("BAR", midi::TOKEN_BAR)
-  .value("BAR_END", midi::TOKEN_BAR_END)
-  .value("TRACK", midi::TOKEN_TRACK)
-  .value("TRACK_END", midi::TOKEN_TRACK_END)
-  .value("DRUM_TRACK", midi::TOKEN_DRUM_TRACK)
-  .value("FILL_IN", midi::TOKEN_FILL_IN)
-  .value("FILL_IN_PLACEHOLDER", midi::TOKEN_FILL_IN_PLACEHOLDER)
-  .value("FILL_IN_START", midi::TOKEN_FILL_IN_START)
-  .value("FILL_IN_END", midi::TOKEN_FILL_IN_END)
-  .value("VELOCITY_LEVEL", midi::TOKEN_VELOCITY_LEVEL)
-  .value("GENRE", midi::TOKEN_GENRE)
-  .value("DENSITY_LEVEL", midi::TOKEN_DENSITY_LEVEL)
-  .value("TIME_SIGNATURE", midi::TOKEN_TIME_SIGNATURE)
-  .value("NOTE_DURATION", midi::TOKEN_NOTE_DURATION)
-  .value("AV_POLYPHONY", midi::TOKEN_AV_POLYPHONY)
-  .value("MIN_POLYPHONY", midi::TOKEN_MIN_POLYPHONY)
-  .value("MAX_POLYPHONY", midi::TOKEN_MAX_POLYPHONY)
-  .value("MIN_NOTE_DURATION", midi::TOKEN_MIN_NOTE_DURATION)
-  .value("MAX_NOTE_DURATION", midi::TOKEN_MAX_NOTE_DURATION)
-  .value("NUM_BARS", midi::TOKEN_NUM_BARS)
-  .value("MIN_POLYPHONY_HARD", midi::TOKEN_MIN_POLYPHONY_HARD)
-  .value("MAX_POLYPHONY_HARD", midi::TOKEN_MAX_POLYPHONY_HARD)
-  .value("MIN_NOTE_DURATION_HARD", midi::TOKEN_MIN_NOTE_DURATION_HARD)
-  .value("MAX_NOTE_DURATION_HARD", midi::TOKEN_MAX_NOTE_DURATION_HARD)
-  .value("NONE", midi::TOKEN_NONE)
-  .value("MASK_BAR", midi::TOKEN_MASK_BAR)
-  .value("BAR_LEVEL_TENSION", midi::TOKEN_BAR_LEVEL_TENSION)
-  .value("BAR_LEVEL_TENSION_DRUM", midi::TOKEN_BAR_LEVEL_TENSION_DRUM)
-  .export_values();
-
-
-
-// =========================================================
-// =========================================================
-// ENCODERS
-// =========================================================
-// =========================================================
-init_encoders(handle);
-
-//
-// =========================================================
-// =========================================================
-// DATASET CREATION
-// =========================================================
-// =========================================================
-
-//dataset_manipulation folder definitions
-py::class_<dataset_manipulation::BytesToFile>(handle, "BytesToFile")
-.def(py::init<std::string&>())
-.def("append_bytes_to_file_stream", &dataset_manipulation::BytesToFile::appendBytesToFileStream)
-.def("write_file", &dataset_manipulation::BytesToFile::writeFile)
-.def("close", &dataset_manipulation::BytesToFile::close);
-
-// callback wrappers
-py::class_<sampling::CallbackBase, std::shared_ptr<sampling::CallbackBase>>(handle, "CallbackBase")
-  .def(py::init<>())
-  .def("on_bar_end", &sampling::CallbackBase::on_bar_end)
-  .def("on_start", &sampling::CallbackBase::on_bar_end)
-  .def("on_prediction", &sampling::CallbackBase::on_prediction);
-
-py::class_<sampling::LogLikelihoodCallback, sampling::CallbackBase, std::shared_ptr<sampling::LogLikelihoodCallback>>(handle, "LogLikelihoodCallback")
-  .def(py::init<>())
-  .def_readwrite("loglik", &sampling::LogLikelihoodCallback::loglik)
-  .def_readwrite("sequence_length", &sampling::LogLikelihoodCallback::sequence_length);
-
-py::class_<sampling::RecordTokenSequenceCallback, sampling::CallbackBase, std::shared_ptr<sampling::RecordTokenSequenceCallback>>(handle, "RecordTokenSequenceCallback")
-  .def(py::init<>())
-  .def_readwrite("tokens", &sampling::RecordTokenSequenceCallback::tokens);
-
-py::class_<sampling::TemperatureIncreaseCallback, sampling::CallbackBase, std::shared_ptr<sampling::TemperatureIncreaseCallback>>(handle, "TemperatureIncreaseCallback")
-  .def(py::init<float,float>())
-  .def_readwrite("current_temperature", &sampling::TemperatureIncreaseCallback::current_temperature);
-
-py::class_<sampling::CallbackManager>(handle, "CallbackManager")
-  .def(py::init<>())
-  .def("add_callback", &sampling::CallbackManager::add_callback_ptr)
-  .def("on_bar_end", &sampling::CallbackManager::on_bar_end)
-  .def("on_prediction", &sampling::CallbackManager::on_prediction)
-  .def("on_start", &sampling::CallbackManager::on_start);
-
+  py::class_<SessionState>(m, "SessionState")
+      .def(
+          py::init<Score, const GenerationStep &, const Vocabulary &,
+                   const ConstraintGraph &, const Encoder &, const Decoder &>())
+      .def("complete", &SessionState::complete)
+      .def("context_tokens", &SessionState::context_tokens)
+      .def("logit_mask", &SessionState::logit_mask)
+      .def("advance", &SessionState::advance)
+      .def("result", &SessionState::result);
 }

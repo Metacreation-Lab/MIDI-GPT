@@ -1,78 +1,26 @@
 [build-system]
-requires = ["scikit-build-core>=0.9", "pybind11>=2.12"]
+requires      = ["scikit-build-core>=0.9", "pybind11"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "midigpt"
-version = "0.1.0"
-description = "MIDI music generation — C++/Python hybrid (GPT-2 Transformer)"
-readme = "README.md"
-license = { text = "MIT" }
+name            = "midigpt"
+version         = "0.1.0"
 requires-python = ">=3.10"
-# torch is required for inference (sample_multi_step / get_notes).
-# Dataset creation and encoding work without it (build with MIDIGPT_NO_TORCH=ON).
-dependencies = [
-    "torch>=2.0",
-    "torchvision",
-    "torchaudio",
-    "numpy<2",
-]
+dependencies    = []
 
 [project.optional-dependencies]
-train = [
-    "transformers>=4.40.0",
-    "accelerate>=1.1.0",
-    "numpy>=1.24",
-    "tqdm>=4.60",
-    "tensorboard>=2.12",
-    "scipy>=1.9",
-    "matplotlib>=3.6",
-    "pretty_midi>=0.2.10",
-    "attrs>=22.0",
-    "jsonlines>=3.0",
-    "optuna>=3.0",
-]
-dataset = [
-    "attrs>=22.0",
-    "jsonlines>=3.0",
-    "numpy>=1.24",
-    "tqdm>=4.60",
-    "pretty_midi>=0.2.10",
-]
-osc = [
-    "python-osc>=1.8.0",
-]
-
-[project.scripts]
-midigpt-server = "midigpt.osc_server:main"
-midigpt-listen = "midigpt.osc_listen:main"
+inference = ["torch>=2.0"]
+train     = ["midigpt[inference]", "transformers>=4.40",
+             "datasets>=2.18", "pyarrow>=15.0", "accelerate>=0.29"]
+dev       = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.9"]
+all       = ["midigpt[inference,train]"]
 
 [tool.scikit-build]
 cmake.build-type = "Release"
-# midifile submodule uses cmake_minimum_required(2.8) which CMake 4.x rejects
 cmake.args = ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
-# cmake.args can be extended at install time via CMAKE_ARGS env var:
-#   CMAKE_ARGS="-DMIDIGPT_NO_TORCH=ON" pip install -e .
-#   CMAKE_ARGS="-DMIDIGPT_MIDI_BACKEND=symusic" pip install -e .
-wheel.packages = ["src/python/midigpt"]
+wheel.packages   = ["src/python/midigpt"]
 
-[tool.pytest.ini_options]
-markers = [
-    "benchmark: speed benchmarks (deselect with '-m \"not benchmark\"')",
-    "inference: tests requiring a TorchScript checkpoint (set MIDIGPT_CKPT env var)",
-    "realtime: real-time generation tests",
-]
-
-# ── System libraries required before `pip install` ───────────────────────────
-#
-#   macOS   : brew install cmake abseil protobuf
-#   Debian  : apt install cmake libprotobuf-dev protobuf-compiler libabsl-dev
-#   Windows : vcpkg install protobuf abseil (then set CMAKE_TOOLCHAIN_FILE)
-#   HPC/Fir : module load cmake abseil protobuf (cuda optional, for GPU inference)
-#
-# Quick-start (CPU inference + training):
-#   pip install -e ".[train]"
-#
-# Real-time OSC server (requires python-osc):
-#   pip install -e ".[osc]"
-#   midigpt-server --ckpt model.pt --port 7400
+[tool.cibuildwheel]
+build-verbosity = 1
+test-requires = "pytest"
+test-command = "pytest {project}/tests/python"
