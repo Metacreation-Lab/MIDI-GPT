@@ -49,7 +49,10 @@ PYBIND11_MODULE(_core, m) {
   m.def("set_verbosity", [](LogLevel level) { Logger::set_level(level); });
 
   // enums
-  py::enum_<TokenType>(m, "TokenType")
+  // Fully qualify TokenType: Windows SDK <winnt.h> exposes a global
+  // enumerator named TokenType (in _TOKEN_INFORMATION_CLASS) which would
+  // shadow midigpt::TokenType in template-argument lookup under MSVC.
+  py::enum_<::midigpt::TokenType>(m, "TokenType")
       .value("PieceStart", TokenType::PieceStart)
       .value("NoteOnset", TokenType::NoteOnset)
       .value("NoteOffset", TokenType::NoteOffset)
@@ -220,7 +223,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<Vocabulary>(m, "Vocabulary")
       .def(py::init<const EncoderConfig &>())
       .def("encode_val",
-           py::overload_cast<TokenType, int>(&Vocabulary::encode, py::const_))
+           py::overload_cast<::midigpt::TokenType, int>(&Vocabulary::encode, py::const_))
       .def("decode", &Vocabulary::decode)
       .def("size", &Vocabulary::size)
       .def("has", &Vocabulary::has)
@@ -264,7 +267,7 @@ PYBIND11_MODULE(_core, m) {
   py::class_<AttributeValueConstraint, Constraint,
              std::shared_ptr<AttributeValueConstraint>>(
       m, "AttributeValueConstraint")
-      .def(py::init<TokenType, int>());
+      .def(py::init<::midigpt::TokenType, int>());
 
   py::class_<ConstraintGraph>(m, "ConstraintGraph")
       .def(py::init<>())
