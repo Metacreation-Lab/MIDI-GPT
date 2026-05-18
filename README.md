@@ -50,13 +50,14 @@ Pretrained weights are distributed as packed `.pt` files (arch config + encoder 
 
 | Model | Encoder | Size | Download |
 |---|---|---|---|
-| Yellow | `EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER` | ~80 MB | **[yellow.pt](https://example.com/midigpt/yellow.pt)** *(placeholder)* |
+| Yellow | `EL_VELOCITY_DURATION_POLYPHONY_YELLOW_ENCODER` | ~80 MB | **[yellow.pt](https://github.com/Metacreation-Lab/MIDI-GPT/releases/latest/download/yellow.pt)** |
 
 Drop it in `models/`:
 
 ```bash
 mkdir -p models
-curl -L https://example.com/midigpt/yellow.pt -o models/yellow.pt
+curl -L https://github.com/Metacreation-Lab/MIDI-GPT/releases/latest/download/yellow.pt \
+     -o models/yellow.pt
 ```
 
 ---
