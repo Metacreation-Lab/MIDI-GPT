@@ -7,7 +7,7 @@ FetchContent_MakeAvailable(pybind11)
 
 FetchContent_Declare(symusic
     GIT_REPOSITORY https://github.com/Yikai-Liao/symusic.git
-    GIT_TAG        v0.4.5)     # pinned — update deliberately
+    GIT_TAG        v0.6.0)     # pinned — update deliberately
 FetchContent_MakeAvailable(symusic)
 
 target_include_directories(symusic INTERFACE
@@ -15,4 +15,5 @@ target_include_directories(symusic INTERFACE
     ${symusic_SOURCE_DIR}/3rdparty
     ${symusic_SOURCE_DIR}/3rdparty/pdqsort
     ${symusic_SOURCE_DIR}/3rdparty/zpp_bits
+    ${symusic_SOURCE_DIR}/3rdparty/pyvec/include
 )

@@ -30,7 +30,7 @@ Score MidiReader::read_bytes(const std::vector<uint8_t>& bytes) const {
 Score MidiReader::from_symusic(const symusic::Score<symusic::Tick>& s) const {
     Score out;
     out.resolution = resolution_; // Target resolution
-    out.tempo = s.tempos.empty() ? 500000 : s.tempos[0].mspq; // Use first tempo event for now
+    out.tempo = s.tempos->empty() ? 500000 : (*s.tempos)[0].mspq; // Use first tempo event for now
 
     int tpq = s.ticks_per_quarter;
     if (tpq <= 0) {
@@ -39,15 +39,15 @@ Score MidiReader::from_symusic(const symusic::Score<symusic::Tick>& s) const {
     }
 
     int max_tick = 0;
-    for (const auto& track : s.tracks) {
-        for (const auto& note : track.notes) {
+    for (const auto& track_ptr : *s.tracks) {
+        for (const auto& note : *track_ptr->notes) {
             max_tick = std::max(max_tick, (int)(note.time + note.duration));
         }
     }
 
     // Accumulate time signatures and bar lengths
     std::map<int, std::tuple<int, int, int>> timesigs; // time -> (length, numerator, denominator)
-    for (const auto& ts : s.time_signatures) {
+    for (const auto& ts : *s.time_signatures) {
         // Calculate ticks_per_bar based on actual numerator and denominator
         int ticks_per_bar = (tpq * 4 * ts.numerator) / ts.denominator;
         timesigs[ts.time] = std::make_tuple(ticks_per_bar, ts.numerator, ts.denominator);
@@ -113,7 +113,8 @@ Score MidiReader::from_symusic(const symusic::Score<symusic::Tick>& s) const {
         current_abs += (double)out.resolution * std::get<0>(binfo.second) / tpq;
     }
 
-    for (const auto& strack : s.tracks) {
+    for (const auto& strack_ptr : *s.tracks) {
+        const auto& strack = *strack_ptr;
         Track t;
         t.instrument = strack.program;
         t.type = strack.is_drum ? TrackType::Drum : TrackType::Melodic;
@@ -130,7 +131,7 @@ Score MidiReader::from_symusic(const symusic::Score<symusic::Tick>& s) const {
             t.bars.push_back(b);
         }
 
-        for (const auto& snote : strack.notes) {
+        for (const auto& snote : *strack.notes) {
             Note n;
             n.pitch = snote.pitch;
             n.velocity = snote.velocity;

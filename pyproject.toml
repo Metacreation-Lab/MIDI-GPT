@@ -44,7 +44,7 @@ skip          = "*-musllinux_* *-win32 *-manylinux_i686"
 build-verbosity = 1
 test-extras   = ["inference"]
 test-requires = "pytest"
-test-command  = "pytest {project}/tests/python -m 'not slow and not inference'"
+test-command  = 'pytest {project}/tests/python -m "not slow and not inference"'
 
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]

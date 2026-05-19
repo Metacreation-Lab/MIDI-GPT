@@ -22,7 +22,7 @@ symusic::Score<symusic::Tick> MidiWriter::to_symusic(const Score& score) const {
     s.ticks_per_quarter = score.resolution;
     
     symusic::Tempo<symusic::Tick> tempo(0, score.tempo);
-    s.tempos.push_back(tempo);
+    s.tempos->push_back(tempo);
 
     // Track cumulative absolute ticks for bar starts using double precision
     // to match MidiReader's bar_starts_raw calculation logic exactly.
@@ -44,10 +44,10 @@ symusic::Score<symusic::Tick> MidiWriter::to_symusic(const Score& score) const {
             int bar_start_quantized = (int)round(current_abs_double);
             bar_starts.push_back(bar_start_quantized);
             
-            if (i == 0 || 
+            if (i == 0 ||
                 b.ts_numerator != ref_track->bars[i-1].ts_numerator ||
                 b.ts_denominator != ref_track->bars[i-1].ts_denominator) {
-                s.time_signatures.push_back(symusic::TimeSignature<symusic::Tick>(
+                s.time_signatures->push_back(symusic::TimeSignature<symusic::Tick>(
                     bar_start_quantized, b.ts_numerator, b.ts_denominator));
             }
 
@@ -83,11 +83,11 @@ symusic::Score<symusic::Tick> MidiWriter::to_symusic(const Score& score) const {
                 // stored_rel = round(bar_start_raw + rel_raw) - round(bar_start_raw)
                 // This is what MidiReader now does.
 
-                strack.notes.push_back(symusic::Note<symusic::Tick>(
+                strack.notes->push_back(symusic::Note<symusic::Tick>(
                     (int)bar_offset + n.onset_ticks, n.duration_ticks, n.pitch, n.velocity));
             }
         }
-        s.tracks.push_back(strack);
+        s.tracks->push_back(std::make_shared<symusic::Track<symusic::Tick>>(std::move(strack)));
     }
     return s;
 }
