@@ -76,6 +76,40 @@ def test_inference_session():
         s2 = session.run()
         assert isinstance(s2, Score)
 
+def test_load_checkpoint_single_file_bundle(tmp_path):
+    """Single-file .pt bundle {config, encoder_config, state_dict} loads end-to-end."""
+    torch = pytest.importorskip("torch")
+    from midigpt.inference.model import GPT2LMHeadModel, GPT2Config
+    from midigpt.tokenizer.checkpoint import load_checkpoint
+
+    enc_cfg_dict = json.loads(MINIMAL_CONFIG_JSON)
+    enc_cfg = _core.EncoderConfig.from_json(MINIMAL_CONFIG_JSON)
+    vocab_size = Tokenizer(enc_cfg).vocab_size()
+    cfg = GPT2Config(vocab_size=vocab_size, n_positions=64,
+                     n_embd=16, n_layer=2, n_head=2)
+    model = GPT2LMHeadModel(cfg)
+    model.encoder_config = enc_cfg_dict
+    bundle_path = tmp_path / "tiny.pt"
+    model.save_pretrained(str(bundle_path))
+
+    bundle = load_checkpoint(str(bundle_path))
+    assert bundle.model is not None
+    assert bundle.model_path is None
+
+    engine = InferenceEngine.from_checkpoint(str(bundle_path))
+
+    bars = [Bar(notes=[Note(pitch=60, velocity=100, onset_ticks=0, duration_ticks=480)],
+                ts_numerator=4, ts_denominator=4) for _ in range(4)]
+    s = Score(tracks=[Track(bars=bars, instrument=0, track_type="melodic")])
+    req = GenerationRequest(
+        tracks=[TrackPrompt(id=0, bars=[2, 3])],
+        config=SamplingConfig(max_attempts=1, silence_check=False, novelty_check=False),
+    )
+    with engine.session(s, req) as session:
+        out = session.run()
+        assert isinstance(out, Score)
+
+
 def test_inference_attributes():
     config = _core.EncoderConfig.from_json(MINIMAL_CONFIG_JSON)
     tokenizer = Tokenizer(config)

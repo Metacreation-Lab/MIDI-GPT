@@ -19,8 +19,11 @@ class InferenceEngine:
             raise ImportError("pip install midigpt[inference]")
         from midigpt.tokenizer.checkpoint import load_checkpoint
         bundle    = load_checkpoint(path)
-        model     = torch.jit.load(bundle.model_path, map_location="cpu")
-        model.eval()
+        if bundle.model is not None:
+            model = bundle.model
+        else:
+            model = torch.jit.load(bundle.model_path, map_location="cpu")
+            model.eval()
         tokenizer = Tokenizer(bundle.encoder_config, analyzer)
         engine    = cls(model, tokenizer,
                         analyzer or AttributeAnalyzer.from_config(bundle.encoder_config))

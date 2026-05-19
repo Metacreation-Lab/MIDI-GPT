@@ -1,23 +1,58 @@
+import json
 import pathlib
 from dataclasses import dataclass
+from typing import Any, Optional
+
 import midigpt._core as _core
+
 
 @dataclass
 class CheckpointBundle:
-    model_path:     str
     encoder_config: _core.EncoderConfig
+    model_path: Optional[str] = None        # legacy: TorchScript model.pt path
+    model: Optional[Any] = None             # new: ready-to-use nn.Module
+
 
 def load_checkpoint(path: str) -> CheckpointBundle:
     p = pathlib.Path(path)
-    if not p.is_dir():
-        raise ValueError(f"Checkpoint must be a directory: {path}")
-    config_path = p / "config.json"
-    model_path  = p / "model.pt"
-    if not config_path.exists():
-        raise FileNotFoundError(f"config.json missing in: {path}")
-    if not model_path.exists():
-        raise FileNotFoundError(f"model.pt missing in: {path}")
+
+    if p.is_dir():
+        config_path = p / "config.json"
+        model_path = p / "model.pt"
+        if not config_path.exists():
+            raise FileNotFoundError(f"config.json missing in: {path}")
+        if not model_path.exists():
+            raise FileNotFoundError(f"model.pt missing in: {path}")
+        return CheckpointBundle(
+            encoder_config=_core.EncoderConfig.from_json(config_path.read_text()),
+            model_path=str(model_path),
+        )
+
+    if p.is_file() and p.suffix == ".pt":
+        return _load_bundle_file(p)
+
+    raise ValueError(f"Checkpoint must be a directory or a .pt bundle file: {path}")
+
+
+def _load_bundle_file(p: pathlib.Path) -> CheckpointBundle:
+    try:
+        import torch  # noqa: F401
+    except ImportError:
+        raise ImportError("pip install midigpt[inference]")
+    from midigpt.inference.model import GPT2LMHeadModel
+
+    model = GPT2LMHeadModel.from_pretrained(str(p), device="cpu")
+    enc_cfg = model.encoder_config
+    if enc_cfg is None:
+        raise ValueError(f"Bundle {p} missing 'encoder_config' — cannot tokenize without it")
+    if isinstance(enc_cfg, dict):
+        enc_cfg_json = json.dumps(enc_cfg)
+    elif isinstance(enc_cfg, str):
+        enc_cfg_json = enc_cfg
+    else:
+        raise ValueError(f"encoder_config must be a dict or JSON string, got {type(enc_cfg)}")
+
     return CheckpointBundle(
-        model_path     = str(model_path),
-        encoder_config = _core.EncoderConfig.from_json(config_path.read_text()),
+        encoder_config=_core.EncoderConfig.from_json(enc_cfg_json),
+        model=model,
     )
