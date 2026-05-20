@@ -41,7 +41,12 @@ class Tokenizer:
         self._decoder  = _core.Decoder(self._vocab)
         self._analyzer = analyzer
 
-    def encode(self, score: Score, compute_attributes: bool = True) -> list[int]:
+    def encode(
+        self,
+        score: Score,
+        opts: "_core.EncodeOptions | None" = None,
+        compute_attributes: bool = True,
+    ) -> list[int]:
         if compute_attributes and self._analyzer:
             for t_idx, track in enumerate(score.tracks):
                 # Pybind11 std::map returns a copy, so we must assign the whole dict back
@@ -54,7 +59,7 @@ class Tokenizer:
                     for key, val in bar_attrs.items():
                         new_attrs[f"bar_{key}_{b_idx}"] = val
                 track.attributes = new_attrs
-        return self._encoder.encode(to_cpp(score))
+        return self._encoder.encode(to_cpp(score), opts or _core.EncodeOptions())
 
     def decode(self, tokens: list[int], resample: bool = True) -> Score:
         score = from_cpp(self._decoder.decode(tokens))

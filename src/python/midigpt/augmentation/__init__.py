@@ -4,7 +4,7 @@ from midigpt.augmentation.velocity import VelocityScale
 from midigpt.augmentation.track_permutation import TrackPermutation
 from midigpt.augmentation.score_window import select_window
 from midigpt.augmentation.instrument_swap import InstrumentSwap
-from midigpt.augmentation.mask_bar import MaskBar, MaskBarConfig
+from midigpt.augmentation.mask_bar import MaskBar, MaskBarConfig, MaskMode
 
 __all__ = [
     "BaseTransform",
@@ -16,4 +16,5 @@ __all__ = [
     "InstrumentSwap",
     "MaskBar",
     "MaskBarConfig",
+    "MaskMode",
 ]
