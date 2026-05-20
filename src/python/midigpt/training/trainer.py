@@ -34,6 +34,8 @@ class TrainConfig:
     precision: Literal["fp16", "bf16", "fp32"] = "fp16"
 
     # ── Sequence length ───────────────────────────────────────────────────
+    # Dataset-side cap on token sequences. Must not exceed the model's
+    # max_context() (n_positions). Validated at training start.
     max_seq_len: int = 2048
 
     # ── Checkpointing / logging ──────────────────────────────────────────
@@ -41,18 +43,27 @@ class TrainConfig:
     eval_steps: int = 500
     logging_steps: int = 50
     logger: Literal["tensorboard", "wandb", "none"] = "none"
+    # WandB-specific (ignored when logger != "wandb")
+    wandb_project: str = "midigpt"
+    wandb_entity: str = ""              # defaults to your personal WandB account
 
     # ── Window / track sampling ───────────────────────────────────────────
     max_tracks: int = 12
     min_tracks: int = 1
     min_fill_ratio: float = 0.75
 
-    # ── Infill vs. autoregressive sampling ───────────────────────────────
+    # ── Infill training (independent of bar masking) ──────────────────────
+    # Fraction of samples encoded with FillIn tokens. 0.0 = always AR.
     infill_probability: float = 0.75
+    # Maximum per-cell infill density. Each sample draws p ~ Uniform(0, this),
+    # then each (track, bar) cell is independently selected with probability p.
+    infill_bar_fraction: float = 0.5
 
-    # ── MaskBar config (applied to infill samples) ───────────────────────
+    # ── Bar masking (independent of infill) ───────────────────────────────
+    # Fraction of samples where MASK_BAR is applied (gate inside MaskBarConfig).
+    # Set mask_apply_probability=0.0 to disable masking entirely.
     mask_apply_probability: float = 0.5
-    mask_type: int = 2
+    mask_mode: int = 2                  # MaskMode: 0=RANDOM 1=STRUCTURED 2=MIXED
     mask_bar_fraction: float = 0.25
     mask_max_lookahead: int = 4
 
@@ -61,18 +72,35 @@ def _precision_str(precision: str) -> str:
     return {"fp16": "16-mixed", "bf16": "bf16-mixed", "fp32": "32"}[precision]
 
 
-def _build_logger(logger_type: str, output_dir: str):
-    if logger_type == "tensorboard":
+def _build_logger(config: "TrainConfig"):
+    if config.logger == "tensorboard":
         from lightning.pytorch.loggers import TensorBoardLogger
-        return TensorBoardLogger(save_dir=output_dir, name="logs")
-    if logger_type == "wandb":
+        return TensorBoardLogger(save_dir=config.output_dir, name="logs")
+    if config.logger == "wandb":
         from lightning.pytorch.loggers import WandbLogger
-        return WandbLogger(save_dir=output_dir)
-    return False   # Lightning disables logging when logger=False
+        kwargs = dict(
+            project=config.wandb_project,
+            save_dir=config.output_dir,
+        )
+        if config.wandb_entity:
+            kwargs["entity"] = config.wandb_entity
+        return WandbLogger(**kwargs)
+    return False
+
+
+def _load_dotenv() -> None:
+    """Load .env from the repo root if python-dotenv is available."""
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
 
 
 def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
     """Train GPT2LMHeadModel using PyTorch Lightning."""
+    _load_dotenv()
+
     try:
         import lightning as L
         from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
@@ -81,7 +109,7 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
 
     import midigpt._core as _core
     from midigpt.tokenizer.tokenizer import Tokenizer
-    from midigpt.augmentation.mask_bar import MaskBarConfig
+    from midigpt.augmentation.mask_bar import MaskBarConfig, MaskMode
     from midigpt.inference.model import GPT2Config, GPT2LMHeadModel
     from midigpt.training.lightning_module import MidiGPTLightningModule
     from midigpt.training.data_module import MidiGPTDataModule
@@ -93,42 +121,51 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
     )
     tokenizer = Tokenizer(encoder_config)
 
-    mask_cfg = MaskBarConfig(
-        apply_probability=config.mask_apply_probability,
-        mode=config.mask_type,
-        bar_fraction=config.mask_bar_fraction,
-        max_lookahead=config.mask_max_lookahead,
-    ) if config.infill_probability > 0.0 else None
-
-    data_module = MidiGPTDataModule(
-        train_path=train_path,
-        tokenizer=tokenizer,
-        mask_bar_config=mask_cfg,
-        max_seq_len=config.max_seq_len,
-        max_tracks=config.max_tracks,
-        min_tracks=config.min_tracks,
-        min_fill_ratio=config.min_fill_ratio,
-        infill_probability=config.infill_probability,
-        per_device_batch_size=config.per_device_batch_size,
-        num_workers=config.num_workers,
-        eval_path=eval_path,
-    )
-    # Setup datasets so we can compute total_steps for the LR scheduler.
-    data_module.setup()
-    steps_per_epoch = math.ceil(
-        data_module.train_dataset_size
-        / config.per_device_batch_size
-        / config.gradient_accumulation_steps
-    )
-    total_steps = steps_per_epoch * config.num_epochs
-
+    # Build the model first so we can validate max_seq_len.
     gpt2_cfg = GPT2Config(
         vocab_size=tokenizer.vocab_size(),
         n_positions=config.max_seq_len,
     )
     model = GPT2LMHeadModel(gpt2_cfg)
     model.encoder_config = encoder_config
+
+    if config.max_seq_len > model.max_context():
+        raise ValueError(
+            f"max_seq_len={config.max_seq_len} exceeds the model's positional "
+            f"budget ({model.max_context()}). Lower max_seq_len or increase "
+            f"n_positions in the model config."
+        )
     log.info("Model params: %d", sum(p.numel() for p in model.parameters()))
+
+    mask_cfg = MaskBarConfig(
+        apply_probability=config.mask_apply_probability,
+        mode=MaskMode(config.mask_mode),
+        bar_fraction=config.mask_bar_fraction,
+        max_lookahead=config.mask_max_lookahead,
+    ) if config.mask_apply_probability > 0.0 else None
+
+    data_module = MidiGPTDataModule(
+        train_path=train_path,
+        tokenizer=tokenizer,
+        infill_probability=config.infill_probability,
+        infill_bar_fraction=config.infill_bar_fraction,
+        mask_bar_config=mask_cfg,
+        max_seq_len=config.max_seq_len,
+        max_tracks=config.max_tracks,
+        min_tracks=config.min_tracks,
+        min_fill_ratio=config.min_fill_ratio,
+        per_device_batch_size=config.per_device_batch_size,
+        num_workers=config.num_workers,
+        eval_path=eval_path,
+    )
+    data_module.setup()
+
+    steps_per_epoch = math.ceil(
+        data_module.train_dataset_size
+        / config.per_device_batch_size
+        / config.gradient_accumulation_steps
+    )
+    total_steps = steps_per_epoch * config.num_epochs
 
     lit_module = MidiGPTLightningModule(model, config)
     lit_module.total_steps = total_steps
@@ -137,7 +174,7 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
         ModelCheckpoint(
             dirpath=Path(config.output_dir) / "checkpoints",
             every_n_train_steps=config.save_steps,
-            save_top_k=-1,           # keep all checkpoints
+            save_top_k=-1,
             filename="step={step}",
         ),
         LearningRateMonitor(logging_interval="step"),
@@ -152,16 +189,15 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
         log_every_n_steps=config.logging_steps,
         default_root_dir=config.output_dir,
         callbacks=callbacks,
-        logger=_build_logger(config.logger, config.output_dir),
+        logger=_build_logger(config),
     )
 
     trainer.fit(lit_module, data_module)
 
-    # Save final packed inference bundle.
-    import json
+    import json as _json
     enc_cfg = model.encoder_config
     if hasattr(enc_cfg, "to_json"):
-        enc_cfg = json.loads(enc_cfg.to_json())
+        enc_cfg = _json.loads(enc_cfg.to_json())
     final_path = Path(config.output_dir) / "model_final.pt"
     model.save_pretrained(str(final_path), encoder_config=enc_cfg)
     log.info("Training complete. Final bundle: %s", final_path)

@@ -18,13 +18,17 @@ class MidiGPTDataModule(L.LightningDataModule):
         self,
         train_path: str,
         tokenizer: "Tokenizer",
-        # Dataset sampling params
+        # Infill training
+        infill_probability: float = 0.75,
+        infill_bar_fraction: float = 0.5,
+        # Bar masking (independent of infill)
         mask_bar_config: "MaskBarConfig | None" = None,
+        # Sequence budget
         max_seq_len: int = 2048,
+        # Window / track sampling
         max_tracks: int = 12,
         min_tracks: int = 1,
         min_fill_ratio: float = 0.75,
-        infill_probability: float = 0.75,
         # DataLoader params
         per_device_batch_size: int = 4,
         num_workers: int = 4,
@@ -36,12 +40,13 @@ class MidiGPTDataModule(L.LightningDataModule):
         self._train_path   = train_path
         self._eval_path    = eval_path
         self._tokenizer    = tokenizer
+        self._infill_prob  = infill_probability
+        self._infill_frac  = infill_bar_fraction
         self._mask_cfg     = mask_bar_config
         self._max_seq_len  = max_seq_len
         self._max_tracks   = max_tracks
         self._min_tracks   = min_tracks
         self._fill_ratio   = min_fill_ratio
-        self._infill_prob  = infill_probability
         self._batch_size   = per_device_batch_size
         self._num_workers  = num_workers
         self._pin_memory   = pin_memory
@@ -53,19 +58,20 @@ class MidiGPTDataModule(L.LightningDataModule):
         if self._train_ds is None:
             self._train_ds = MidiGPTDataset(
                 self._train_path, self._tokenizer,
+                infill_probability=self._infill_prob,
+                infill_bar_fraction=self._infill_frac,
                 mask_bar_config=self._mask_cfg,
                 max_seq_len=self._max_seq_len,
                 max_tracks=self._max_tracks,
                 min_tracks=self._min_tracks,
                 min_fill_ratio=self._fill_ratio,
-                infill_probability=self._infill_prob,
             )
         if self._eval_path and self._eval_ds is None:
             self._eval_ds = MidiGPTDataset(
                 self._eval_path, self._tokenizer,
+                infill_probability=0.0,
                 mask_bar_config=None,
                 max_seq_len=self._max_seq_len,
-                infill_probability=0.0,
             )
 
     def train_dataloader(self) -> DataLoader:

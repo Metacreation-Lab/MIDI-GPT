@@ -250,6 +250,36 @@ def validate_request(request: GenerationRequest, score, encoder_config,
                     f"got {sorted(tp.bars)}"
                 )
 
+        # A bar cannot be both masked (future=True → MASK_BAR) and an infill
+        # target (bars_to_generate → FillInPlaceholder/FillInStart/FillInEnd).
+        # These states are mutually exclusive: the encoder resolves the conflict
+        # silently (infill wins), so we catch it here instead.
+        if not tp.autoregressive and not tp.ignore and tp.bars:
+            masked_infill = [
+                b for b in tp.bars
+                if b < nb_track and score.tracks[tp.id].bars[b].future
+            ]
+            if masked_infill:
+                raise RequestValidationError(
+                    f"track_id={tp.id}: bars {masked_infill} are both marked as "
+                    f"masked (future=True) and requested for infill generation — "
+                    f"these states are mutually exclusive"
+                )
+
+        # An AR track's bars cannot be masked either (the model is supposed to
+        # freely generate the whole track from the given context).
+        if tp.autoregressive:
+            masked_ar = [
+                b for b in (tp.bars or range(nb_track))
+                if b < nb_track and score.tracks[tp.id].bars[b].future
+            ]
+            if masked_ar:
+                raise RequestValidationError(
+                    f"track_id={tp.id} (autoregressive): bars {masked_ar} are "
+                    f"marked as masked (future=True) — cannot mask bars on an "
+                    f"autoregressive generation track"
+                )
+
         # Selection accounting
         if tp.ignore:
             pass
