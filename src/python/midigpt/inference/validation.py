@@ -49,6 +49,13 @@ def _time_signatures(cfg_dict: dict) -> set[tuple[int, int]]:
     return out
 
 
+def _supports_mask_bar(cfg_dict: dict) -> bool:
+    return any(
+        d.get("type") == "MaskBar"
+        for d in (cfg_dict.get("token_domains") or [])
+    )
+
+
 def _attribute_control_names(encoder_config) -> set[str]:
     raw = getattr(encoder_config, "attribute_controls_json", "") or ""
     if not raw:
@@ -141,6 +148,18 @@ def validate_request(request: GenerationRequest, score, encoder_config,
             f"score has {nb_score} bars but model_dim={cfg.model_dim}; "
             f"model was trained on fixed windows ({nb_values or 'unknown'}). "
             "Pad the score or pick a smaller model_dim."
+        )
+
+    # ---------------- mask bar support ----------------
+    has_masked_bars = any(
+        getattr(b, "future", False)
+        for t in score.tracks
+        for b in t.bars
+    )
+    if has_masked_bars and not _supports_mask_bar(cfg_dict):
+        raise RequestValidationError(
+            "score contains bars with future=True (MASK_BAR) but the encoder "
+            "config does not include a MaskBar token domain"
         )
 
     # ---------------- time signatures ----------------
