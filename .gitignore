@@ -37,7 +37,7 @@ cmake_install.cmake
 *.bin
 *.safetensors
 
-# Generated MIDI / audio
+# Generated MIDI / audio (test fixtures are excepted below)
 *.mid
 *.midi
 *.wav
@@ -57,3 +57,7 @@ cmake_install.cmake
 notes/
 output/
 wandb/
+
+# Test MIDI fixtures
+!tests/midi/*.mid
+!tests/comparison/midi/*.mid
