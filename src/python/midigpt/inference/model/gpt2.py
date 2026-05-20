@@ -296,37 +296,6 @@ class GPT2LMHeadModel(nn.Module):
     # ------------------------------------------------------------------- #
     #  Checkpoint I/O
     # ------------------------------------------------------------------- #
-    @staticmethod
-    def _strip_legacy_buffers(sd: dict) -> dict:
-        return {
-            k: v for k, v in sd.items()
-            if not (k.endswith(".attn.bias") or k.endswith(".attn.masked_bias"))
-        }
-
-    @staticmethod
-    def _infer_config_from_sd(sd: dict) -> GPT2Config:
-        V, D = sd["transformer.wte.weight"].shape
-        P = sd["transformer.wpe.weight"].shape[0]
-        n_layer = sum(1 for k in sd if k.endswith(".attn.c_attn.weight"))
-        n_head = 8 if D % 8 == 0 else next(h for h in (16, 12, 4, 2, 1) if D % h == 0)
-        return GPT2Config(vocab_size=V, n_positions=P, n_embd=D, n_layer=n_layer, n_head=n_head)
-
-    @classmethod
-    def from_torchscript(
-        cls,
-        ts_path: str,
-        cfg: GPT2Config | None = None,
-        device: str | torch.device | None = "cpu",
-    ) -> "GPT2LMHeadModel":
-        ts = torch.jit.load(ts_path, map_location="cpu")
-        sd = cls._strip_legacy_buffers(ts.state_dict())
-        if cfg is None:
-            cfg = cls._infer_config_from_sd(sd)
-        model = cls(cfg)
-        model.load_state_dict(sd, strict=True)
-        model.eval()
-        return model.to(resolve_device(device))
-
     @classmethod
     def from_pretrained(
         cls,
@@ -335,27 +304,17 @@ class GPT2LMHeadModel(nn.Module):
         dtype: torch.dtype | None = None,
     ) -> "GPT2LMHeadModel":
         dev = resolve_device(device)
-        try:
-            ckpt = torch.load(path, map_location="cpu", weights_only=False)
-            is_packed = (
-                isinstance(ckpt, dict)
-                and ckpt.get("format_version") == PACKED_FORMAT_VERSION
-                and "config" in ckpt
-                and "state_dict" in ckpt
+        ckpt = torch.load(path, map_location="cpu", weights_only=False)
+        if not (isinstance(ckpt, dict) and ckpt.get("format_version") == PACKED_FORMAT_VERSION):
+            raise ValueError(
+                f"{path} is not a packed bundle. "
+                "Convert old checkpoints first with save_pretrained()."
             )
-        except Exception:
-            is_packed = False
-
-        if is_packed:
-            cfg = GPT2Config(**ckpt["config"])
-            sd = cls._strip_legacy_buffers(ckpt["state_dict"])
-            model = cls(cfg)
-            model.load_state_dict(sd, strict=True)
-            model.encoder_config = ckpt.get("encoder_config")
-            model.eval()
-        else:
-            model = cls.from_torchscript(path, device="cpu")
-
+        cfg = GPT2Config(**ckpt["config"])
+        model = cls(cfg)
+        model.load_state_dict(ckpt["state_dict"], strict=True)
+        model.encoder_config = ckpt.get("encoder_config")
+        model.eval()
         if dtype is not None:
             model = model.to(dtype=dtype)
         return model.to(dev)
