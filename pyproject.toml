@@ -38,6 +38,12 @@ all       = ["midigpt[realtime,train]"]
 midigpt-server = "midigpt.osc.server:main"
 midigpt-listen = "midigpt.osc.listen:main"
 
+[tool.pytest.ini_options]
+markers = [
+    "slow: requires real model bundles on disk",
+    "inference: requires torch and a real model",
+]
+
 [tool.scikit-build]
 cmake.build-type = "Release"
 cmake.args = ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
