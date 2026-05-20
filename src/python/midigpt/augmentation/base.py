@@ -18,12 +18,14 @@ class AugmentationPipeline:
 
     @staticmethod
     def default_training() -> "AugmentationPipeline":
-        from midigpt.augmentation import (
-            Transpose, VelocityScale, TrackPermutation, BarWindow
-        )
+        """Pitch and velocity augmentations applied to the full score before windowing.
+
+        Window selection, track sampling, and infill masking are handled by
+        MidiGPTDataset, which needs to retry on overflow — those steps cannot
+        be inside a stateless transform pipeline.
+        """
+        from midigpt.augmentation import Transpose, VelocityScale
         return AugmentationPipeline([
-            Transpose(range(-6, 7)),     # ±6 semitones, drums excluded
-            VelocityScale((0.8, 1.2)),   # ±20%
-            TrackPermutation(),          # shuffle track order
-            BarWindow(num_bars=16),      # random 16-bar window
+            Transpose(range(-6, 7)),   # ±6 semitones, drums excluded
+            VelocityScale((0.8, 1.2)), # ±20%
         ])

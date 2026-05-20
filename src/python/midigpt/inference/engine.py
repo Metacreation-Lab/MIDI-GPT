@@ -31,25 +31,31 @@ class InferenceEngine:
         return engine
 
     def warmup(self) -> None:
-        """Disable TorchScript's profiling executor (which causes shape-specific
-        re-optimization spikes and adds per-call overhead) and probe the KV
-        cache shape.  After this, the first real generate() runs at
-        steady-state speed.
-        """
+        """Disable TorchScript profiling and pre-build the empty KV cache."""
         import torch
         torch._C._jit_set_profiling_mode(False)        # type: ignore[attr-defined]
         torch._C._jit_set_profiling_executor(False)    # type: ignore[attr-defined]
         self._initial_kv = self._compute_initial_kv()
 
     def _compute_initial_kv(self):
-        """Build empty past_key_values matching the model's expected signature.
+        """Build an empty past_kv for the first model call.
 
-        GPT-2 TorchScript export shape: (batch=1, n_heads, seq=0, head_dim).
-        Tries common n_head values; returns None if the model doesn't accept KV.
+        Prefers model.make_empty_kv() when the model satisfies the ModelBase
+        protocol. Falls back to a probe loop for TorchScript or other callables.
         """
         import torch
+        model = self._model
+
+        # Fast path: model implements ModelBase
+        if hasattr(model, "make_empty_kv"):
+            kv = model.make_empty_kv()
+            with torch.no_grad():
+                model(torch.tensor([[0]], dtype=torch.long), kv)
+            return kv
+
+        # Slow path: TorchScript or opaque callable — probe n_head
         try:
-            trf    = self._model.transformer
+            trf    = model.transformer
             n_embd = trf.wte.weight.shape[1]
             n_layer = sum(1 for _ in trf.h.children())
         except Exception:
@@ -66,8 +72,7 @@ class InferenceEngine:
             )
             try:
                 with torch.no_grad():
-                    # also triggers JIT compilation for this input shape
-                    self._model(torch.tensor([[0]], dtype=torch.long), kv)
+                    model(torch.tensor([[0]], dtype=torch.long), kv)
                 return kv
             except Exception:
                 continue
@@ -80,7 +85,6 @@ class InferenceEngine:
         request = validate_request(
             request, score, self._tokenizer._vocab.config(), self._analyzer
         )
-        # lazily compute KV on first generate if warmup() was not called
         if self._initial_kv is None:
             self._initial_kv = self._compute_initial_kv()
         return SamplingSession(self, score, request)

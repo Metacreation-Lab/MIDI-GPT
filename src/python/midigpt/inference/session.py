@@ -323,9 +323,14 @@ class SamplingSession:
         return n_tracks * (model_dim * 20 + max_notes * 6 + 16)
 
     def _model_max_context(self) -> int:
-        """Best-effort read of the model's positional context length.
-        Falls back to 2048 when the attribute can't be located (e.g. mock model)."""
+        """Read the model's positional context length.
+
+        Prefers model.max_context() (ModelBase protocol). Falls back to
+        attribute probing for TorchScript / legacy callables, then 2048.
+        """
         m = self._engine._model
+        if hasattr(m, "max_context"):
+            return m.max_context()
         for path in (
             ("config", "n_positions"),
             ("config", "n_ctx"),

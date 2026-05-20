@@ -1,6 +1,6 @@
 import pytest
 from midigpt._types import Score, Track, Bar, Note
-from midigpt.augmentation import Transpose, VelocityScale, TrackPermutation, BarWindow, InstrumentSwap, AugmentationPipeline
+from midigpt.augmentation import Transpose, VelocityScale, TrackPermutation, select_window, InstrumentSwap, AugmentationPipeline
 
 def test_transpose():
     n1 = Note(pitch=60, velocity=100, onset_ticks=0, duration_ticks=480)

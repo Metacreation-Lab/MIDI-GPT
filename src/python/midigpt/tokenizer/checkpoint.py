@@ -36,12 +36,22 @@ def load_checkpoint(path: str) -> CheckpointBundle:
 
 def _load_bundle_file(p: pathlib.Path) -> CheckpointBundle:
     try:
-        import torch  # noqa: F401
+        import torch
     except ImportError:
         raise ImportError("pip install midigpt[inference]")
-    from midigpt.inference.model import GPT2LMHeadModel
 
-    model = GPT2LMHeadModel.from_pretrained(str(p), device="cpu")
+    from midigpt.inference.model import get_model_class
+
+    ckpt = torch.load(str(p), map_location="cpu", weights_only=False)
+    if not (isinstance(ckpt, dict) and "format_version" in ckpt and "state_dict" in ckpt):
+        # Assume TorchScript archive — fall back to GPT-2 (only arch that existed before registry)
+        from midigpt.inference.model import GPT2LMHeadModel
+        model = GPT2LMHeadModel.from_torchscript(str(p), device="cpu")
+    else:
+        arch = ckpt.get("arch", "gpt2")
+        model_cls = get_model_class(arch)
+        model = model_cls.from_pretrained(str(p), device="cpu")
+
     enc_cfg = model.encoder_config
     if enc_cfg is None:
         raise ValueError(f"Bundle {p} missing 'encoder_config' — cannot tokenize without it")
