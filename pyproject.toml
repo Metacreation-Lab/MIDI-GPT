@@ -31,12 +31,13 @@ inference = ["torch>=2.0", "tqdm>=4.65"]
 train     = ["midigpt[inference]", "lightning>=2.2",
              "datasets>=2.18", "pyarrow>=15.0", "python-dotenv>=1.0"]
 dev       = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.9"]
-realtime  = ["midigpt[inference]", "python-osc>=1.8"]
+realtime  = ["midigpt[inference]", "python-osc>=1.8", "flask>=3.0", "flask-socketio>=5.3", "eventlet>=0.35"]
 all       = ["midigpt[realtime,train]"]
 
 [project.scripts]
 midigpt-server = "midigpt.osc.server:main"
 midigpt-listen = "midigpt.osc.listen:main"
+midigpt-studio = "midigpt.osc.studio.app:main"
 
 [tool.pytest.ini_options]
 markers = [
