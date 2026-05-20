@@ -1,0 +1,92 @@
+syntax = "proto2";
+
+package midi;
+
+message PitchRange {
+    optional int32 instrument = 1;
+    optional int32 min = 2;
+    optional int32 max = 3;
+}
+
+message MetricDepth {
+    optional string filepath = 1;
+    optional int32 track_num = 2;
+    optional int32 instrument = 3;
+    optional bool is_drum = 4;
+    optional bool has_time_signatures = 5;
+    repeated int32 metric_depth = 6;
+    optional int32 tpq = 7;
+}
+
+message MedianMetricDepth {
+    optional string filepath = 1;
+    optional int32 track_num = 2;
+    optional int32 instrument = 3;
+    optional bool is_drum = 4;
+    optional bool has_time_signatures = 5;
+    optional int32 median_metric_depth = 6;
+    optional int32 tpq = 7;
+}
+
+message MostFrequentMetricDepth {
+    optional string filepath = 1;
+    optional int32 track_num = 2;
+    optional int32 instrument = 3;
+    optional bool is_drum = 4;
+    optional bool has_time_signatures = 5;
+    optional int32 most_frequent_metric_depth = 6;
+    optional int32 tpq = 7;
+}
+
+message DownbeatProportion {
+    optional string filepath = 1;
+    optional int32 track_num = 2;
+    optional int32 instrument = 3;
+    optional bool is_drum = 4;
+    optional float downbeat_proportion = 5;
+}
+
+message AlignedMetricDepth {
+    optional string filepath = 1;
+    optional int32 track_num = 2;
+    optional int32 instrument = 3;
+    optional bool is_drum = 4;
+
+    optional int32 aligned_offset = 5;
+}
+
+message SimultaneousOnset {
+    optional string filepath = 1;
+    optional int32 track_num = 2;
+    optional int32 instrument = 3;
+    optional bool is_drum = 4;
+
+    optional int32 simultaneous_onset_count = 5;
+}
+
+message BeatStability {
+    optional string filepath = 1;
+    //optional int32 track_num = 2;
+    //optional int32 instrument = 3;
+    //optional bool is_drum = 4;
+
+    optional float beat_stability_stdev = 5;
+    optional float beat_stability_median = 6;
+}
+
+message DrumPresence {
+    optional string filepath = 1;
+    optional float drum_presence = 2;
+}
+
+message Features {
+    repeated PitchRange pitch_range = 1;
+    repeated MetricDepth metric_depth = 2;
+    repeated DownbeatProportion downbeat_proportion = 3;
+    repeated AlignedMetricDepth aligned_metric_depth = 4;
+    repeated SimultaneousOnset simultaneous_onset = 5;
+    repeated BeatStability beat_stability = 6;
+    repeated DrumPresence drum_presence = 7;
+    repeated MedianMetricDepth median_metric_depth = 8;
+    repeated MostFrequentMetricDepth most_frequent_metric_depth = 9;
+}
