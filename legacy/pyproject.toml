@@ -6,7 +6,6 @@ build-backend = "scikit_build_core.build"
 name = "midigpt-legacy"
 version = "0.1.0"
 description = "MIDI music generation — original C++/Python implementation (reference for comparison tests)"
-readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 # torch is required for inference (sample_multi_step / get_notes).
