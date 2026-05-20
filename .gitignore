@@ -57,6 +57,7 @@ cmake_install.cmake
 notes/
 output/
 wandb/
+docs/
 
 # Test MIDI fixtures
 !tests/midi/*.mid
