@@ -1,53 +1,84 @@
+// ParamPanelView.js — right column vertical param panel
+
 import { View } from '../core/mvc.js';
-import { PARAM_META, PARAM_DEFAULTS, ATTR_DEFAULTS } from '../models/SessionModel.js';
+import { PARAM_META, PARAM_DEFAULTS, ATTR_DEFAULTS, DRUM_ONLY_ATTRS } from '../models/SessionModel.js';
 
 export class ParamPanelView extends View {
   constructor(el, sessionModel, oscBridge, midiCtrl) {
     super(el);
-    this._session  = sessionModel;
-    this._osc      = oscBridge;
-    this._midi     = midiCtrl;
+    this._session = sessionModel;
+    this._osc     = oscBridge;
+    this._midi    = midiCtrl;
     this._build();
-    sessionModel.on('change', p => {
-      if ('ccBindings' in p) this._updateBindingBadges();
+    sessionModel.on('change', (p) => {
+      if ('ccBindings' in p)  this._updateBindingBadges();
+      if ('state' in p)       this._updateLockState(p.state);
+      if ('agentIsDrum' in p) this._applyAttrVisibility();
+      if ('attrCaps' in p)    this._applyAttrVisibility();
     });
+    this._updateLockState(sessionModel.get('state'));
+  }
+
+  _updateLockState(state) {
+    const locked = state === 'RUNNING';
+    for (const row of this.el.querySelectorAll('.param-row[data-structural="1"]')) {
+      row.classList.toggle('locked', locked);
+      for (const inp of row.querySelectorAll('input, select')) inp.disabled = locked;
+    }
   }
 
   _build() {
-    this.el.innerHTML = `
-      <div class="param-panel-inner">
-        <div class="param-section">
-          <h4>Session Parameters</h4>
-          <div id="sessionParams" class="param-grid"></div>
-        </div>
-        <div class="param-section">
-          <h4>Attribute Targets <small>(−1 = off)</small></h4>
-          <div id="attrParams" class="param-grid"></div>
-        </div>
-        <div class="param-section">
-          <h4>MIDI CC Bindings</h4>
-          <div id="ccBindings" class="cc-bindings"></div>
-          <button id="btnClearCC" class="btn btn-xs btn-danger">Clear all</button>
-        </div>
-      </div>`;
+    this.el.innerHTML = '';
 
-    const sessionGrid = this.el.querySelector('#sessionParams');
+    // ── Generation params ──────────────────────────────────────────────────
+    const genSection = document.createElement('div');
+    genSection.className = 'param-section';
+    genSection.innerHTML = '<h4>Generation</h4><div id="sessionParams" class="param-grid"></div>';
+    this.el.appendChild(genSection);
+
+    const sessionGrid = genSection.querySelector('#sessionParams');
     for (const [name, meta] of Object.entries(PARAM_META)) {
-      sessionGrid.appendChild(this._buildParamRow(name, meta, PARAM_DEFAULTS[name], (v) => {
+      const row = this._buildParamRow(name, meta, PARAM_DEFAULTS[name], (v) => {
         this._session.setParam(name, v);
         this._osc.paramSet(name, v);
-      }));
+      });
+      sessionGrid.appendChild(row);
     }
 
-    const attrGrid = this.el.querySelector('#attrParams');
+    // ── Attributes section ─────────────────────────────────────────────────
+    const attrSection = document.createElement('div');
+    attrSection.className = 'param-section';
+    attrSection.innerHTML = '<h4>Attributes <small>(-1 = off)</small></h4><div id="attrParams" class="param-grid"></div>';
+    this.el.appendChild(attrSection);
+
+    const attrGrid = attrSection.querySelector('#attrParams');
     for (const [name, def] of Object.entries(ATTR_DEFAULTS)) {
       const meta = { type: 'int', min: -1, max: 9, step: 1 };
-      attrGrid.appendChild(this._buildParamRow(name, meta, def, (v) => {
+      const row  = this._buildParamRow(name, meta, def, (v) => {
         this._session.setAttr(name, v);
-      }));
+        this._osc.attrSet(name, v);
+      });
+      row.dataset.attr = name;
+      attrGrid.appendChild(row);
     }
 
-    this.el.querySelector('#btnClearCC').onclick = () => {
+    // Hide attributes the loaded model can't tokenize (capabilities arrive
+    // on /midigpt/capabilities right before /session/ready) or that are
+    // drum-only when the agent track is melodic (e.g. note_density).
+    this._attrGrid = attrGrid;
+    this._applyAttrVisibility();
+    this._session.on('caps:update', () => this._applyAttrVisibility());
+
+    // ── MIDI CC section ────────────────────────────────────────────────────
+    const ccSection = document.createElement('div');
+    ccSection.className = 'param-section';
+    ccSection.innerHTML = `
+      <h4>MIDI CC Bindings</h4>
+      <div id="ccBindings" class="cc-bindings"></div>
+      <button id="btnClearCC" class="btn btn-xs btn-danger">Clear all</button>`;
+    this.el.appendChild(ccSection);
+
+    ccSection.querySelector('#btnClearCC').onclick = () => {
       for (const k of Object.keys(this._session.get('ccBindings'))) {
         this._session.unbindCC(+k);
       }
@@ -57,8 +88,9 @@ export class ParamPanelView extends View {
 
   _buildParamRow(name, meta, defaultVal, onChange) {
     const row = document.createElement('div');
-    row.className = 'param-row';
+    row.className  = 'param-row';
     row.dataset.param = name;
+    if (meta.structural) row.dataset.structural = '1';
 
     if (meta.type === 'bool') {
       row.innerHTML = `
@@ -67,17 +99,25 @@ export class ParamPanelView extends View {
           <input type="checkbox" ${defaultVal ? 'checked' : ''}>
           <span class="slider-toggle"></span>
         </label>
-        <button class="btn btn-xs btn-cc" title="Bind MIDI CC">CC</button>
         <span class="cc-badge"></span>`;
       const cb = row.querySelector('input[type=checkbox]');
       cb.onchange = () => onChange(cb.checked);
+    } else if (meta.type === 'enum') {
+      const opts = meta.options.map(([v, label]) =>
+        `<option value="${v}" ${v === defaultVal ? 'selected' : ''}>${label}</option>`
+      ).join('');
+      row.innerHTML = `
+        <label class="param-label">${name}</label>
+        <select class="param-select">${opts}</select>
+        <span class="cc-badge"></span>`;
+      const sel = row.querySelector('.param-select');
+      sel.onchange = () => onChange(sel.value);
     } else {
       row.innerHTML = `
         <label class="param-label">${name}</label>
         <input type="range" class="param-slider"
                min="${meta.min}" max="${meta.max}" step="${meta.step}" value="${defaultVal}">
         <span class="param-value mono">${defaultVal}</span>
-        <button class="btn btn-xs btn-cc" title="Bind MIDI CC">CC</button>
         <span class="cc-badge"></span>`;
       const slider = row.querySelector('.param-slider');
       const valEl  = row.querySelector('.param-value');
@@ -88,28 +128,23 @@ export class ParamPanelView extends View {
       };
     }
 
-    // CC bind button
-    const btnCC = row.querySelector('.btn-cc');
-    btnCC.onclick = () => {
-      this._midi.startCapture(name);
-      btnCC.textContent = '…';
-      btnCC.classList.add('capturing');
-      // Revert after 5s if no CC received
-      setTimeout(() => {
-        if (this._midi._captureMode) {
-          this._midi.stopCapture();
-          btnCC.textContent = 'CC';
-          btnCC.classList.remove('capturing');
-        }
-      }, 5000);
-    };
-
     return row;
+  }
+
+  _applyAttrVisibility() {
+    if (!this._attrGrid) return;
+    const caps      = this._session.get('attrCaps');
+    const isDrum    = !!this._session.get('agentIsDrum');
+    for (const row of this._attrGrid.querySelectorAll('[data-attr]')) {
+      const name = row.dataset.attr;
+      const hideByCap  = caps && caps[name] === false;
+      const hideByDrum = DRUM_ONLY_ATTRS.has(name) && !isDrum;
+      row.style.display = (hideByCap || hideByDrum) ? 'none' : '';
+    }
   }
 
   _updateBindingBadges() {
     const bindings = this._session.get('ccBindings');
-    // Build reverse map: paramName → ccNum
     const rev = {};
     for (const [cc, param] of Object.entries(bindings)) rev[param] = cc;
 
@@ -127,8 +162,8 @@ export class ParamPanelView extends View {
       }
     }
 
-    // Also render CC list
     const list = this.el.querySelector('#ccBindings');
+    if (!list) return;
     list.innerHTML = '';
     for (const [cc, param] of Object.entries(bindings)) {
       const span = document.createElement('span');

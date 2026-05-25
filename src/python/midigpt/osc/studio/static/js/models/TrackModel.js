@@ -67,4 +67,11 @@ export class TrackModel extends Model {
     this.set('loopPosition', (pos + 1) % bars.length);
     return bar;
   }
+
+  // Peek at a future loop bar without advancing (offset=0 → next bar after current position)
+  peekLoop(offset) {
+    const bars = this.get('loopBars');
+    if (!bars.length) return null;
+    return bars[(this.get('loopPosition') + offset) % bars.length];
+  }
 }
