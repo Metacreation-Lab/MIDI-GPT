@@ -13,12 +13,60 @@ SessionState::SessionState(
 ) : context_(std::move(context)), step_(step), vocab_(vocab),
     constraints_(constraints), encoder_(encoder), decoder_(decoder)
 {
+    // Snapshot bars OUTSIDE the step window before any trim/shift, so result()
+    // can splice them back and return a Score with absolute bar indices.
+    // Saved in original track order — the AR reorder below permutes context_
+    // but result() reverses that before splicing. The bars carry note_indices
+    // that point into the ORIGINAL notes pool, so we keep a copy of that pool
+    // and remap indices at splice time into the decoded result's pool.
+    original_start_bar_ = step_.start_bar;
+    original_notes_     = context_.notes;
+    prefix_bars_.resize(context_.tracks.size());
+    suffix_bars_.resize(context_.tracks.size());
+    for (size_t ti = 0; ti < context_.tracks.size(); ++ti) {
+        const auto& bars = context_.tracks[ti].bars;
+        int n = static_cast<int>(bars.size());
+        int s = std::min(step_.start_bar, n);
+        int e = std::min(step_.end_bar, n);
+        prefix_bars_[ti].assign(bars.begin(), bars.begin() + s);
+        if (e < n) suffix_bars_[ti].assign(bars.begin() + e, bars.end());
+    }
+
     // Trim bars to the step's window [start_bar, end_bar)
-    // Keep bars [0, end_bar) so bar indices stay valid
     for (auto& track : context_.tracks) {
         if (static_cast<int>(track.bars.size()) > step_.end_bar) {
             track.bars.resize(step_.end_bar);
         }
+    }
+
+    // Apply sliding window: drop bars before start_bar so the model only
+    // sees model_dim bars, preventing context overflow on long sessions.
+    if (step_.start_bar > 0) {
+        int shift = step_.start_bar;
+        for (auto& track : context_.tracks) {
+            if (shift <= static_cast<int>(track.bars.size())) {
+                track.bars.erase(track.bars.begin(), track.bars.begin() + shift);
+            } else {
+                track.bars.clear();
+            }
+        }
+        std::set<std::pair<int,int>> new_btg;
+        for (const auto& [tr, br] : step_.bars_to_generate) {
+            new_btg.insert({tr, br - shift});
+        }
+        step_.bars_to_generate = std::move(new_btg);
+        for (auto& row : step_.context) {
+            if (shift <= static_cast<int>(row.size())) {
+                row.erase(row.begin(), row.begin() + shift);
+            } else {
+                row.clear();
+            }
+        }
+        for (auto& tup : step_.bar_mapping) {
+            std::get<3>(tup) -= shift;
+        }
+        step_.end_bar -= shift;
+        step_.start_bar = 0;
     }
 
     tokenizer::EncodeOptions encode_opts;
@@ -137,18 +185,34 @@ SessionState::SessionState(
     context_cache_ = encoder_.encode(context_, encode_opts);
 
     if (step_.is_autoregressive) {
-        // Strip trailing structural tokens so the model can continue generating
-        while (!context_cache_.empty()) {
-            TokenType type = vocab_.get_type(context_cache_.back());
-            if (type == TokenType::PieceEnd || type == TokenType::TrackEnd ||
-                type == TokenType::Bar || type == TokenType::BarEnd ||
-                type == TokenType::TimeSig || type == TokenType::NumBars ||
-                type == TokenType::MaskBar) {
+        // Strip trailing structural tokens so the model can continue generating.
+        //
+        // The agent's target bars are empty in the encoded prompt, each rendered
+        // as `Bar TimeSig BarEnd`. We want the prompt to END with the first
+        // target bar's `Bar TimeSig` exposed — that way the model autoregresses
+        // notes for bar 1, emits BarEnd, then (if N>1) opens further `Bar TimeSig
+        // ... BarEnd` blocks for bars 2..N, then TrackEnd.
+        //
+        // Pop in this order: trailing TrackEnd/PieceEnd, then for each of the
+        // last (N-1) target bars pop a full `BarEnd TimeSig Bar` (right-to-left),
+        // then finally pop the first target bar's `BarEnd` — leaving its
+        // `Bar TimeSig` intact.
+        auto pop_if = [&](TokenType t) -> bool {
+            if (!context_cache_.empty()
+                && vocab_.get_type(context_cache_.back()) == t) {
                 context_cache_.pop_back();
-            } else {
-                break;
+                return true;
             }
+            return false;
+        };
+        while (pop_if(TokenType::PieceEnd) || pop_if(TokenType::TrackEnd)) {}
+        int N = static_cast<int>(step_.bars_to_generate.size());
+        for (int i = 0; i < N - 1; ++i) {
+            if (!pop_if(TokenType::BarEnd)) break;
+            if (!pop_if(TokenType::TimeSig)) break;
+            if (!pop_if(TokenType::Bar))     break;
         }
+        pop_if(TokenType::BarEnd);
     } else {
         // For infill: truncate at the first FILL_IN_START token
         // The model generates fill blocks from this point
@@ -244,6 +308,37 @@ Score SessionState::result() const {
         out.tracks.pop_back();
         out.tracks.insert(out.tracks.begin() + ar_original_agent_idx_,
                           std::move(agent));
+    }
+    // Splice the bars saved before the window-shift back around the decoded
+    // window so callers see absolute bar indices over the full piece. The
+    // saved bars' note_indices point into original_notes_, NOT out.notes, so
+    // we copy the referenced notes into out.notes and remap indices.
+    auto splice_one = [&](Bar bar) -> Bar {
+        std::vector<int> remapped;
+        remapped.reserve(bar.note_indices.size());
+        for (int old_idx : bar.note_indices) {
+            if (old_idx < 0
+                || old_idx >= static_cast<int>(original_notes_.size())) {
+                continue;
+            }
+            int new_idx = static_cast<int>(out.notes.size());
+            out.notes.push_back(original_notes_[old_idx]);
+            remapped.push_back(new_idx);
+        }
+        bar.note_indices = std::move(remapped);
+        return bar;
+    };
+    for (size_t ti = 0; ti < out.tracks.size(); ++ti) {
+        auto& bars = out.tracks[ti].bars;
+        if (ti < prefix_bars_.size() && !prefix_bars_[ti].empty()) {
+            std::vector<Bar> remapped;
+            remapped.reserve(prefix_bars_[ti].size());
+            for (const auto& b : prefix_bars_[ti]) remapped.push_back(splice_one(b));
+            bars.insert(bars.begin(), remapped.begin(), remapped.end());
+        }
+        if (ti < suffix_bars_.size() && !suffix_bars_[ti].empty()) {
+            for (const auto& b : suffix_bars_[ti]) bars.push_back(splice_one(b));
+        }
     }
     return out;
 }

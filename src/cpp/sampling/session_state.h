@@ -49,6 +49,17 @@ private:
     // records the agent's original position so result() can restore the
     // user-visible track order.
     int                ar_original_agent_idx_ = -1;
+
+    // Bars OUTSIDE the step's window, saved per track (in original track
+    // order) before the trim/shift mutations. result() splices them back
+    // around the decoded window so the returned Score uses absolute bar
+    // indices — callers see the full piece, not just the window. note_indices
+    // on these bars reference original_notes_, NOT the decoded result's pool;
+    // result() copies the notes across and remaps indices on the fly.
+    std::vector<std::vector<Bar>>  prefix_bars_;   // bars [0, original_start_bar)
+    std::vector<std::vector<Bar>>  suffix_bars_;   // bars [original_end_bar, ...)
+    std::vector<Note>              original_notes_;
+    int                            original_start_bar_ = 0;
 };
 
 } // namespace midigpt::sampling
