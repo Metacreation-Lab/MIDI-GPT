@@ -21,6 +21,7 @@ const BAR_STATE_COLORS = {
   // Simplified model-side view — only what the model's prompt actually sees.
   M_CONTEXT:     '#238636',
   M_MASKED:      MASKED_BASE,
+  M_ATTN_MASKED: '#a371f7',
   M_TO_GEN:      '#d29922',
 };
 
@@ -58,6 +59,7 @@ const BAR_STATE_LABELS = {
 
   M_CONTEXT:     'CTX',
   M_MASKED:      'MSK',
+  M_ATTN_MASKED: 'ATN',
   M_TO_GEN:      '→T←',
 };
 
@@ -145,6 +147,8 @@ export class ContextView {
     const bufferBars  = params.buffer_bars ?? 8;
     const adaptBuffer = params.adapt_buffer ?? true;
     const policy      = params.warmup_policy ?? 'a_empty';
+    const maskMode    = params.mask_mode ?? 'token';
+    const maskedCode  = maskMode === 'attention' ? 'A' : 'M';
     const firstGenPlayhead = adaptBuffer
       ? Math.max(0, bufferBars - lookahead)
       : bufferBars;
@@ -174,10 +178,13 @@ export class ContextView {
         const predicted = MODEL_STATE[detail] ?? detail;
         const pCode = predicted === 'M_CONTEXT' ? 'C'
                     : predicted === 'M_TO_GEN'  ? 'T'
-                    : predicted === 'M_MASKED'  ? 'M'
+                    : predicted === 'M_MASKED'  ? maskedCode
                     : '?';
         const actual = tinfo.states[i];
-        if (pCode === actual) matches++;
+        // 'A' and 'M' are both masked — distinguish only via mask_mode param.
+        const ok = pCode === actual
+                || (pCode === maskedCode && (actual === 'A' || actual === 'M'));
+        if (ok) matches++;
         else {
           mismatches++;
           diffs.push({ track: tinfo.id, bar, predicted: pCode, actual, detail });
@@ -217,7 +224,12 @@ export class ContextView {
     canvas.style.height = (n * PROMPT_ROW_H) + 'px';
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const codeToState = { C: 'M_CONTEXT', T: 'M_TO_GEN', M: 'M_MASKED' };
+    const codeToState = {
+      C: 'M_CONTEXT',
+      T: 'M_TO_GEN',
+      M: 'M_MASKED',
+      A: 'M_ATTN_MASKED',
+    };
 
     for (let ti = 0; ti < n; ti++) {
       const track  = this._tracks[ti];
