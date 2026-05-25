@@ -74,7 +74,14 @@ static void encode_bar_notes(
 
 std::vector<int> Encoder::encode(const Score& score,
                                  const EncodeOptions& opts) const {
-    std::vector<int> tokens;
+    return encode_full(score, opts).tokens;
+}
+
+EncodeResult Encoder::encode_full(const Score& score,
+                                  const EncodeOptions& opts) const {
+    EncodeResult result;
+    std::vector<int>& tokens = result.tokens;
+    std::vector<std::pair<int,int>>& hidden_spans = result.hidden_spans;
     const auto& config = vocab_.config();
 
     const bool do_multi_fill = !opts.multi_fill.empty();
@@ -172,6 +179,9 @@ std::vector<int> Encoder::encode(const Score& score,
         // --- BARS ---
         for (int bar_idx = 0; bar_idx < num_bars; ++bar_idx) {
             const auto& bar = track.bars[bar_idx];
+            // Record start-of-bar token index up front; if this turns out to
+            // be a span-masked future bar, we close the span at end-of-bar.
+            int span_start = static_cast<int>(tokens.size());
 
             if (vocab_.has(TokenType::Bar)) {
                 tokens.push_back(vocab_.encode(TokenType::Bar, 0));
@@ -196,10 +206,18 @@ std::vector<int> Encoder::encode(const Score& score,
             // Check for multi-fill placeholder
             bool is_infill = do_multi_fill
                 && opts.multi_fill.count({static_cast<int>(track_idx), bar_idx});
+            bool emit_span = false;
             if (is_infill && vocab_.has(TokenType::FillInPlaceholder)) {
                 tokens.push_back(vocab_.encode(TokenType::FillInPlaceholder, 0));
             }
-            // Check if bar should be masked (future bars for lookahead)
+            // Span-mask mode: leave the bar as an empty shell and record the
+            // [Bar..BarEnd] token range; the model will see only the shell
+            // positions through additive attention masking. Used so checkpoints
+            // without a MaskBar token (yellow) can still drive realtime.
+            else if (bar.future && opts.use_span_masks) {
+                emit_span = true;
+            }
+            // Default masked-bar behaviour: emit MaskBar token.
             else if (bar.future && vocab_.has(TokenType::MaskBar)) {
                 tokens.push_back(vocab_.encode(TokenType::MaskBar, 0));
             } else if (!is_infill) {
@@ -208,6 +226,13 @@ std::vector<int> Encoder::encode(const Score& score,
 
             if (vocab_.has(TokenType::BarEnd)) {
                 tokens.push_back(vocab_.encode(TokenType::BarEnd, 0));
+            }
+
+            if (emit_span) {
+                int span_end = static_cast<int>(tokens.size());
+                if (span_end > span_start) {
+                    hidden_spans.emplace_back(span_start, span_end);
+                }
             }
         }
 
@@ -239,7 +264,7 @@ std::vector<int> Encoder::encode(const Score& score,
     if (vocab_.has(TokenType::PieceEnd)) {
         tokens.push_back(vocab_.encode(TokenType::PieceEnd, 0));
     }
-    return tokens;
+    return result;
 }
 
 } // namespace midigpt::tokenizer

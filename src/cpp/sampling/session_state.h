@@ -18,7 +18,8 @@ public:
         const tokenizer::Vocabulary&              vocab,
         const masking::ConstraintGraph&           constraints,
         const tokenizer::Encoder&                 encoder,
-        const tokenizer::Decoder&                 decoder
+        const tokenizer::Decoder&                 decoder,
+        bool                                      use_span_masks = false
     );
 
     bool              complete()       const; // all bars_to_generate are done
@@ -26,6 +27,11 @@ public:
     std::vector<bool> logit_mask()     const; // from ConstraintGraph — valid next tokens
     void              advance(int token);     // append token, update internal state
     Score             result()         const; // decode + apply generated bars into context
+
+    // [start,end) token-index ranges that should be hidden from self-attention
+    // (set only when constructed with use_span_masks=true). Indexed into the
+    // sequence returned by context_tokens(); generated tokens are never hidden.
+    std::vector<std::pair<int,int>> hidden_spans() const { return hidden_spans_; }
 
 private:
     Score              context_;
@@ -60,6 +66,10 @@ private:
     std::vector<std::vector<Bar>>  suffix_bars_;   // bars [original_end_bar, ...)
     std::vector<Note>              original_notes_;
     int                            original_start_bar_ = 0;
+
+    // Token-index ranges within context_cache_ that should be attention-masked.
+    // Populated by the encoder when use_span_masks is enabled.
+    std::vector<std::pair<int,int>> hidden_spans_;
 };
 
 } // namespace midigpt::sampling

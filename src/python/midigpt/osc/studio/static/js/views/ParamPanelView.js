@@ -10,7 +10,29 @@ export class ParamPanelView extends View {
     this._build();
     sessionModel.on('change', p => {
       if ('ccBindings' in p) this._updateBindingBadges();
+      if ('attrCaps' in p)   this._applyMaskModeCapability();
     });
+    sessionModel.on('caps:update', () => this._applyMaskModeCapability());
+    this._applyMaskModeCapability();
+  }
+
+  _applyMaskModeCapability() {
+    // Token-based masking needs MaskBar in vocab; yellow.pt lacks it. When
+    // unavailable, disable the "token" option and force value to "attention".
+    const caps = this._session.get('attrCaps') || {};
+    const supportsToken = caps.supports_token_mask !== false;
+    const row = this.el.querySelector('.param-row[data-param="mask_mode"]');
+    if (!row) return;
+    const sel = row.querySelector('select.param-select');
+    if (!sel) return;
+    for (const opt of sel.options) {
+      if (opt.value === 'token') opt.disabled = !supportsToken;
+    }
+    if (!supportsToken && sel.value === 'token') {
+      sel.value = 'attention';
+      this._session.setParam('mask_mode', 'attention');
+      this._osc.paramSet('mask_mode', 'attention');
+    }
   }
 
   _build() {
@@ -71,6 +93,17 @@ export class ParamPanelView extends View {
         <span class="cc-badge"></span>`;
       const cb = row.querySelector('input[type=checkbox]');
       cb.onchange = () => onChange(cb.checked);
+    } else if (meta.type === 'enum') {
+      const opts = meta.options.map(([v, label]) =>
+        `<option value="${v}" ${v === defaultVal ? 'selected' : ''}>${label}</option>`
+      ).join('');
+      row.innerHTML = `
+        <label class="param-label">${name}</label>
+        <select class="param-select">${opts}</select>
+        <button class="btn btn-xs btn-cc" title="Bind MIDI CC">CC</button>
+        <span class="cc-badge"></span>`;
+      const sel = row.querySelector('select.param-select');
+      sel.onchange = () => onChange(sel.value);
     } else {
       row.innerHTML = `
         <label class="param-label">${name}</label>

@@ -117,6 +117,7 @@ class GPT2Attention(nn.Module):
         x: torch.Tensor,
         past_kv: tuple[torch.Tensor, torch.Tensor] | None = None,
         return_attn_weights: bool = False,
+        key_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor], torch.Tensor | None]:
         qkv = self.c_attn(x)
         q, k, v = qkv.split(qkv.shape[-1] // 3, dim=-1)
@@ -129,31 +130,46 @@ class GPT2Attention(nn.Module):
         present = (k, v)
 
         T_q, T_k = q.shape[2], k.shape[2]
+
+        # key_mask: bool tensor (T_k,) — True = visible key position. Built from
+        # encoder hidden_spans; broadcast across queries and combined with the
+        # causal triangular mask. None = no span masking (cheap fast path).
+        def _causal_bool_mask() -> torch.Tensor:
+            return torch.ones(T_q, T_k, dtype=torch.bool, device=q.device).tril(
+                diagonal=T_k - T_q
+            )
+
         if return_attn_weights:
             # Manual attention to capture weights
             scale = self.head_dim ** -0.5
             scores = torch.matmul(q, k.transpose(-2, -1)) * scale
             if T_q == T_k:
-                causal = torch.ones(T_q, T_k, dtype=torch.bool, device=q.device).tril()
-                scores = scores.masked_fill(~causal, float("-inf"))
+                allow = torch.ones(T_q, T_k, dtype=torch.bool, device=q.device).tril()
             elif T_q > 1:
-                causal = torch.ones(T_q, T_k, dtype=torch.bool, device=q.device).tril(
-                    diagonal=T_k - T_q
-                )
-                scores = scores.masked_fill(~causal, float("-inf"))
+                allow = _causal_bool_mask()
+            else:
+                allow = torch.ones(T_q, T_k, dtype=torch.bool, device=q.device)
+            if key_mask is not None:
+                allow = allow & key_mask.view(1, T_k).to(allow.device)
+            scores = scores.masked_fill(~allow, float("-inf"))
             attn_weights = scores.softmax(-1)
             y = torch.matmul(attn_weights, v)
         else:
             attn_weights = None
-            if T_q == T_k:
-                y = F.scaled_dot_product_attention(q, k, v, is_causal=True)
-            elif T_q == 1:
-                y = F.scaled_dot_product_attention(q, k, v)
+            if key_mask is None:
+                if T_q == T_k:
+                    y = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+                elif T_q == 1:
+                    y = F.scaled_dot_product_attention(q, k, v)
+                else:
+                    mask = _causal_bool_mask()
+                    y = F.scaled_dot_product_attention(q, k, v, attn_mask=mask)
             else:
-                mask = torch.ones(T_q, T_k, dtype=torch.bool, device=q.device).tril(
-                    diagonal=T_k - T_q
-                )
-                y = F.scaled_dot_product_attention(q, k, v, attn_mask=mask)
+                if T_q == 1:
+                    allow = key_mask.view(1, T_k).to(q.device)
+                else:
+                    allow = _causal_bool_mask() & key_mask.view(1, T_k).to(q.device)
+                y = F.scaled_dot_product_attention(q, k, v, attn_mask=allow)
 
         y = self._merge_heads(y)
         return self.c_proj(y), present, attn_weights
@@ -182,9 +198,11 @@ class GPT2Block(nn.Module):
         x: torch.Tensor,
         past_kv: tuple | None = None,
         return_attn_weights: bool = False,
+        key_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, tuple, torch.Tensor | None]:
         a, present, attn_w = self.attn(
-            self.ln_1(x), past_kv=past_kv, return_attn_weights=return_attn_weights
+            self.ln_1(x), past_kv=past_kv,
+            return_attn_weights=return_attn_weights, key_mask=key_mask,
         )
         x = x + a
         x = x + self.mlp(self.ln_2(x))
@@ -222,6 +240,7 @@ class GPT2LMHeadModel(nn.Module):
         self,
         input_ids: torch.Tensor,
         past_kv: tuple[tuple[torch.Tensor, torch.Tensor], ...] | None = None,
+        key_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, tuple]:
         B, T = input_ids.shape
         past_len = past_kv[0][0].shape[2] if past_kv is not None and past_kv[0][0].shape[2] > 0 else 0
@@ -231,7 +250,9 @@ class GPT2LMHeadModel(nn.Module):
         presents = []
         for i, block in enumerate(self.transformer.h):
             pkv = past_kv[i] if past_kv is not None else None
-            x, present, _ = block(x, past_kv=pkv, return_attn_weights=False)
+            x, present, _ = block(
+                x, past_kv=pkv, return_attn_weights=False, key_mask=key_mask,
+            )
             presents.append(present)
         x = self.transformer.ln_f(x)
         logits = self.lm_head(x)

@@ -12,6 +12,10 @@ class SamplingConfig:
     tracks_per_step:        int   = 1     # tracks processed per step
     model_dim:              int   = 4     # context window size in bars (NOT vocab size)
     shuffle:                bool  = False # shuffle steps
+    # Encoder-driven span masking: emit empty-shell bars (no MaskBar token) for
+    # lookahead bars and mask their token spans out of self-attention. Lets
+    # checkpoints without MaskBar in vocab (yellow.pt) drive the realtime path.
+    use_span_masks:         bool  = False
 
 @dataclass
 class TrackPrompt:

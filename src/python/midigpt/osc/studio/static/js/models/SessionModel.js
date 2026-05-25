@@ -12,6 +12,7 @@ export const PARAM_DEFAULTS = {
   adapt_buffer:          true,
   sampling_seed:         -1,
   gen_timeout:           0,
+  mask_mode:             'token',
 };
 
 export const PARAM_META = {
@@ -24,6 +25,10 @@ export const PARAM_META = {
   adapt_buffer:         { type: 'bool'                                    },
   sampling_seed:        { type: 'int',   min: -1,  max: 9999, step: 1    },
   gen_timeout:          { type: 'float', min: 0,   max: 60,   step: 0.5  },
+  mask_mode:            { type: 'enum',  options: [
+                            ['token',     'token (MaskBar)'],
+                            ['attention', 'attention (span mask)'],
+                          ] },
 };
 
 export const ATTR_DEFAULTS = {
