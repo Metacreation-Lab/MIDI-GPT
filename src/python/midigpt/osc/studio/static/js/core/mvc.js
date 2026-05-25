@@ -21,7 +21,7 @@ export class Model extends Observable {
     this._state = { ...initial };
   }
   get(key)       { return this._state[key]; }
-  set(key, val)  { this._state[key] = val; this.emit('change', { key, val }); }
+  set(key, val)  { this._state[key] = val; this.emit('change', { [key]: val }); }
   update(patch)  { Object.assign(this._state, patch); this.emit('change', patch); }
   state()        { return { ...this._state }; }
 }

@@ -1,3 +1,4 @@
+
 """
 MIDI-GPT OSC Studio — Flask + flask-socketio WebSocket bridge.
 
@@ -17,8 +18,6 @@ import threading
 log = logging.getLogger(__name__)
 
 try:
-    import eventlet
-    eventlet.monkey_patch()
     from flask import Flask, send_from_directory
     from flask_socketio import SocketIO, emit
     from pythonosc import dispatcher as osc_dispatcher, udp_client
@@ -34,7 +33,7 @@ STATIC_DIR = pathlib.Path(__file__).parent / "static"
 
 app = Flask(__name__, static_folder=str(STATIC_DIR), static_url_path="/static")
 app.config["SECRET_KEY"] = "midigpt-studio"
-sio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+sio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # Global state — set by main() before serve
 _osc_client: udp_client.SimpleUDPClient | None = None
@@ -159,6 +158,10 @@ def on_param_set_once(data):
 def on_param_reset(data):
     _send_osc("/midigpt/param/reset", str(data["name"]))
 
+@sio.on("attr:set")
+def on_attr_set(data):
+    _send_osc("/midigpt/attr/set", str(data["name"]), int(data["value"]))
+
 
 # ---------------------------------------------------------------------------
 # OSC listener — OSC server → browser
@@ -238,7 +241,7 @@ def main() -> None:
     t.start()
 
     log.info("Studio UI → http://%s:%d", args.host if args.host != "0.0.0.0" else "localhost", args.port)
-    sio.run(app, host=args.host, port=args.port)
+    sio.run(app, host=args.host, port=args.port, allow_unsafe_werkzeug=True)
 
 
 if __name__ == "__main__":

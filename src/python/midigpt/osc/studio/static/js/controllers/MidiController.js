@@ -1,6 +1,7 @@
 // MidiController — Web MIDI API, loop player, live MIDI routing, CC bindings.
 
 import { MODE_LOOP, MODE_LIVE, MODE_AGENT } from '../models/TrackModel.js';
+import { PARAM_META } from '../models/SessionModel.js';
 
 export class MidiController {
   constructor(sessionModel, oscBridge) {
@@ -13,6 +14,9 @@ export class MidiController {
     this._loopInterval  = null;
     this._loopBarIndex  = 0;
     this._loopTickMs    = 500;  // recalculated on bpm/ts change
+    this._stepMode      = false;
+    this._loopTsNum     = 4;
+    this._loopTsDen     = 4;
     this._captureMode   = false;
     this._captureTarget = null; // param name waiting for CC
 
@@ -114,7 +118,7 @@ export class MidiController {
     const bindings  = this._session.get('ccBindings');
     const paramName = bindings[ccNum];
     if (paramName) {
-      const meta   = (await import('../models/SessionModel.js')).PARAM_META[paramName];
+      const meta   = PARAM_META[paramName];
       let   mapped = value / 127;
       if (meta) {
         if (meta.type === 'bool') {
@@ -137,6 +141,13 @@ export class MidiController {
     this.stopLoop();
     this._loopBarIndex = 0;
     this._loopTickMs   = (60000 / bpm) * tsNum * (4 / tsDen);
+    this._loopTsNum    = tsNum;
+    this._loopTsDen    = tsDen;
+    if (this._stepMode) return; // wait for manual stepBar() calls
+    // Fire bar 0 immediately. setInterval would otherwise wait a full
+    // _loopTickMs before the first tick — the user-visible symptom is
+    // "bars are playing one bar too late."
+    this._tickBar(tsNum, tsDen);
     this._loopInterval = setInterval(() => this._tickBar(tsNum, tsDen), this._loopTickMs);
   }
 
@@ -148,8 +159,32 @@ export class MidiController {
     if (this._loopInterval) this.startLoop(bpm, tsNum, tsDen);
   }
 
+  setStepMode(on) {
+    this._stepMode = !!on;
+    if (on && this._loopInterval) {
+      clearInterval(this._loopInterval);
+      this._loopInterval = null;
+    } else if (!on && this._loopBarIndex > 0 && !this._loopInterval) {
+      this._loopInterval = setInterval(
+        () => this._tickBar(this._loopTsNum, this._loopTsDen), this._loopTickMs);
+    }
+  }
+
+  stepBar() {
+    if (!this._stepMode) return;
+    this._tickBar(this._loopTsNum, this._loopTsDen);
+  }
+
   _tickBar(tsNum, tsDen) {
     const bar = this._loopBarIndex;
+
+    // /bar/end refers to the bar whose audio JUST ended (the previous bar).
+    // Sending barEnd(bar) at the START of bar would tell the server a bar
+    // ended before it had played, advancing bars_completed by one too early
+    // and causing generation to fire one bar ahead of the audible playhead.
+    if (bar > 0) {
+      this._osc.barEnd(bar - 1, tsNum, tsDen);
+    }
 
     for (const track of this._tracks) {
       if (track.mode !== MODE_LOOP || track.isAgent) continue;
@@ -167,11 +202,21 @@ export class MidiController {
           note.duration ?? 0.5,
           bar,
         );
+        // Local audio preview (loop tracks otherwise wouldn't be audible
+        // until the OSC server echoed them back, which it doesn't).
+        const onsetMs = (note.onset ?? 0) * this._loopTickMs;
+        const durMs   = Math.max(50, (note.duration ?? 0.5) * this._loopTickMs);
+        setTimeout(
+          () => this._onNoteOn?.(track, note.pitch, note.velocity, durMs),
+          onsetMs,
+        );
       }
     }
-    this._osc.barEnd(bar, tsNum, tsDen);
-    this._loopBarIndex++;
+    // bar:sent / bar:tick refer to the bar that is NOW starting to play
+    // audibly. bar:sent drains queued agent notes for this bar.
+    this.emit('bar:sent', bar);
     this.emit('bar:tick', bar);
+    this._loopBarIndex++;
   }
 
   // Observable shim (simple)

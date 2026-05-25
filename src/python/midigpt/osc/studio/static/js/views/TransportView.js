@@ -1,3 +1,5 @@
+// TransportView.js — topbar transport controls
+
 import { View } from '../core/mvc.js';
 
 export class TransportView extends View {
@@ -13,39 +15,49 @@ export class TransportView extends View {
     this.el.innerHTML = `
       <div class="transport-inner">
         <div class="transport-session">
-          <button id="btnConnect"    class="btn btn-secondary btn-sm">Connect</button>
+          <button id="btnConnect"     class="btn btn-secondary btn-sm">Connect</button>
           <button id="btnInitSession" class="btn btn-secondary btn-sm">Init</button>
-          <button id="btnStart"      class="btn btn-primary   btn-sm" disabled>▶ Start</button>
-          <button id="btnStop"       class="btn btn-danger    btn-sm" disabled>■ Stop</button>
+          <button id="btnStart"       class="btn btn-primary   btn-sm" disabled>▶ Start</button>
+          <button id="btnStop"        class="btn btn-danger    btn-sm" disabled>■ Stop</button>
+          <label class="step-mode-toggle"><input id="chkStepMode" type="checkbox"> Step</label>
+          <button id="btnStepBar"     class="btn btn-secondary btn-sm" disabled>⏭ Next bar</button>
         </div>
         <div class="transport-tempo">
           <label>BPM</label>
-          <input id="inpBpm" type="number" min="40" max="240" value="120" class="inp-sm">
+          <input id="inpBpm" type="number" min="40" max="240" value="120" class="inp-sm w40">
           <label>TS</label>
           <input id="inpTsNum" type="number" min="1" max="12" value="4" class="inp-sm w40">
           <span>/</span>
           <input id="inpTsDen" type="number" min="1" max="16" value="4" class="inp-sm w40">
+          <label>Bar</label>
+          <span id="barCounter" class="mono">0</span>
         </div>
         <div class="transport-info">
           <span class="badge" id="bridgeStatus">disconnected</span>
           <span class="badge" id="serverStatus">idle</span>
-          <span id="barCounter" class="mono">Bar: 0</span>
-          <span id="sessionState" class="mono">UNINITIALIZED</span>
+          <span id="sessionState" class="mono" style="font-size:11px">UNINITIALIZED</span>
         </div>
       </div>`;
 
-    this.el.querySelector('#btnConnect').onclick    = () => this._app.connect();
+    this.el.querySelector('#btnConnect').onclick     = () => this._app.connect();
     this.el.querySelector('#btnInitSession').onclick = () => this._app.initSession();
-    this.el.querySelector('#btnStart').onclick      = () => this._app.startSession();
-    this.el.querySelector('#btnStop').onclick       = () => this._app.stopSession();
+    this.el.querySelector('#btnStart').onclick       = () => this._app.startSession();
+    this.el.querySelector('#btnStop').onclick        = () => this._app.stopSession();
+    this.el.querySelector('#chkStepMode').onchange   = (e) => {
+      this._app._midi.setStepMode(e.target.checked);
+    };
+    this.el.querySelector('#btnStepBar').onclick     = () => this._app._midi.stepBar();
 
-    const bpmInput = this.el.querySelector('#inpBpm');
+    const bpmInput   = this.el.querySelector('#inpBpm');
+    const tsNumInput = this.el.querySelector('#inpTsNum');
+    const tsDenInput = this.el.querySelector('#inpTsDen');
+
     bpmInput.oninput = () => {
       this._session.set('bpm', +bpmInput.value);
       this._app._midi.updateTempo(
         +bpmInput.value,
-        +this.el.querySelector('#inpTsNum').value,
-        +this.el.querySelector('#inpTsDen').value,
+        +tsNumInput.value,
+        +tsDenInput.value,
       );
     };
   }
@@ -61,13 +73,15 @@ export class TransportView extends View {
       el.textContent = patch.serverStatus;
     }
     if ('currentBar' in patch) {
-      this.el.querySelector('#barCounter').textContent = `Bar: ${patch.currentBar}`;
+      this.el.querySelector('#barCounter').textContent = Math.max(0, patch.currentBar);
     }
     if ('state' in patch) {
       const state = patch.state;
       this.el.querySelector('#sessionState').textContent = state;
       this.el.querySelector('#btnStart').disabled = state !== 'INITIALIZING';
       this.el.querySelector('#btnStop').disabled  = state !== 'RUNNING';
+      this.el.querySelector('#btnStepBar').disabled = state !== 'RUNNING'
+        || !this.el.querySelector('#chkStepMode').checked;
     }
   }
 }
