@@ -26,15 +26,33 @@ struct EncodeOptions {
     // 0 means "not set"; the encoder falls back to EncoderConfig::model_dim.
     // Validation that this matches num_bars_map happens at the request layer.
     int window_bars = 0;
+
+    // If true, "future" bars are emitted as empty shells (Bar TimeSig BarEnd)
+    // instead of a MaskBar token, and the encoder records the [start,end)
+    // token range of each such shell as a "hidden span". At inference time,
+    // queries are masked out of those key positions so the model cannot attend
+    // to the empty shell — used to run yellow-style checkpoints (no MaskBar
+    // token in vocab) on the realtime lookahead path.
+    bool use_span_masks = false;
+};
+
+struct EncodeResult {
+    std::vector<int>                  tokens;
+    std::vector<std::pair<int,int>>   hidden_spans;  // [start, end) per masked bar
 };
 
 class Encoder {
 public:
     explicit Encoder(const Vocabulary& vocab);
 
-    // Encodes a full score into a linear sequence of tokens.
+    // Encodes a full score into a linear sequence of tokens. Convenience
+    // wrapper around encode_full() that discards span metadata.
     std::vector<int> encode(const Score& score,
                             const EncodeOptions& opts = {}) const;
+
+    // Encodes and also returns per-bar hidden spans when use_span_masks=true.
+    EncodeResult encode_full(const Score& score,
+                             const EncodeOptions& opts = {}) const;
 
 private:
     const Vocabulary& vocab_;

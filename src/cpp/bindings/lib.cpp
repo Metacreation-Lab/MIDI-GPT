@@ -218,7 +218,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("partial_encode_track_bars",
                      &EncodeOptions::partial_encode_track_bars)
       .def_readwrite("multi_fill", &EncodeOptions::multi_fill)
-      .def_readwrite("window_bars", &EncodeOptions::window_bars);
+      .def_readwrite("window_bars", &EncodeOptions::window_bars)
+      .def_readwrite("use_span_masks", &EncodeOptions::use_span_masks);
 
   py::class_<Vocabulary>(m, "Vocabulary")
       .def(py::init<const EncoderConfig &>())
@@ -233,9 +234,15 @@ PYBIND11_MODULE(_core, m) {
       .def("is_type", &Vocabulary::is_type)
       .def("config", &Vocabulary::config, py::return_value_policy::reference);
 
+  py::class_<EncodeResult>(m, "EncodeResult")
+      .def_readonly("tokens",       &EncodeResult::tokens)
+      .def_readonly("hidden_spans", &EncodeResult::hidden_spans);
+
   py::class_<Encoder>(m, "Encoder")
       .def(py::init<const Vocabulary &>())
       .def("encode", &Encoder::encode,
+           py::arg("score"), py::arg("opts") = EncodeOptions{})
+      .def("encode_full", &Encoder::encode_full,
            py::arg("score"), py::arg("opts") = EncodeOptions{});
 
   py::class_<Decoder>(m, "Decoder")
@@ -301,9 +308,14 @@ PYBIND11_MODULE(_core, m) {
   py::class_<SessionState>(m, "SessionState")
       .def(
           py::init<Score, const GenerationStep &, const Vocabulary &,
-                   const ConstraintGraph &, const Encoder &, const Decoder &>())
+                   const ConstraintGraph &, const Encoder &, const Decoder &,
+                   bool>(),
+          py::arg("context"), py::arg("step"), py::arg("vocab"),
+          py::arg("constraints"), py::arg("encoder"), py::arg("decoder"),
+          py::arg("use_span_masks") = false)
       .def("complete", &SessionState::complete)
       .def("context_tokens", &SessionState::context_tokens)
+      .def("hidden_spans", &SessionState::hidden_spans)
       .def("logit_mask", &SessionState::logit_mask)
       .def("advance", &SessionState::advance)
       .def("result", &SessionState::result);

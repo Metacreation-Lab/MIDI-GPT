@@ -190,10 +190,22 @@ class SamplingSession:
             self._engine._tokenizer._vocab,
             self._build_constraints(step),
             self._engine._tokenizer._encoder,
-            self._engine._tokenizer._decoder
+            self._engine._tokenizer._decoder,
+            getattr(self._request.config, "use_span_masks", False),
         )
 
         context_len = len(state.context_tokens())
+        # Encoder-driven span mask: bool tensor of shape (T,) where True = key
+        # position is visible to attention. Built once per step; SDPA combines
+        # this with the causal mask. Only non-None when use_span_masks is set
+        # AND the encoder produced spans (no spans => fast unmasked path).
+        spans = state.hidden_spans() if getattr(self._request.config, "use_span_masks", False) else []
+        if spans:
+            key_visible = torch.ones(context_len, dtype=torch.bool)
+            for s, e in spans:
+                key_visible[s:e] = False
+        else:
+            key_visible = None
         if self.enable_profiling:
             self.encode_time += time.perf_counter() - t_enc
         model_max_ctx = self._model_max_context()
@@ -216,15 +228,27 @@ class SamplingSession:
                     ctx = torch.tensor([[state.context_tokens()[-1]]], dtype=torch.long)
 
                 t_fwd = time.perf_counter()
+                # Pass key_mask only on the production path. Stubs / TorchScript
+                # callables may not accept kwargs, so fall back without it.
+                model_call = self._engine._model
                 try:
                     if past_kv is None and initial_kv is not None:
-                        outputs = self._engine._model(ctx, initial_kv)
+                        if key_visible is not None:
+                            outputs = model_call(ctx, initial_kv, key_mask=key_visible)
+                        else:
+                            outputs = model_call(ctx, initial_kv)
                     elif past_kv is None:
-                        outputs = self._engine._model(ctx)
+                        if key_visible is not None:
+                            outputs = model_call(ctx, key_mask=key_visible)
+                        else:
+                            outputs = model_call(ctx)
                     else:
-                        outputs = self._engine._model(ctx, past_kv)
+                        if key_visible is not None:
+                            outputs = model_call(ctx, past_kv, key_mask=key_visible)
+                        else:
+                            outputs = model_call(ctx, past_kv)
                 except Exception:
-                    outputs = self._engine._model(ctx)
+                    outputs = model_call(ctx)
                     past_kv = None
                 if self.enable_profiling:
                     self.model_forward_time += time.perf_counter() - t_fwd
@@ -281,9 +305,18 @@ class SamplingSession:
                         f"  after NoteOnset({token}) n_legal={sum(nxt_mask)} "
                         f"legal_types={sorted(legal_types)}")
                     self.gen_count += 1
+                    if key_visible is not None:
+                        key_visible = torch.cat(
+                            [key_visible, torch.ones(1, dtype=torch.bool)]
+                        )
                     continue
                 state.advance(token)
                 self.gen_count += 1
+                if key_visible is not None:
+                    # Generated tokens are always visible to subsequent queries.
+                    key_visible = torch.cat(
+                        [key_visible, torch.ones(1, dtype=torch.bool)]
+                    )
 
         t_dec = time.perf_counter()
         result = from_cpp(state.result())
@@ -294,10 +327,14 @@ class SamplingSession:
     def _snapshot_prompt_state(self, step) -> dict:
         """Per-bar prompt state for the current step, post-mask_bars patch.
 
-        Each entry is "C" (CONTEXT), "M" (MASKED), or "T" (TO_GENERATE).
+        Each entry is "C" (CONTEXT), "M" (MASKED via MaskBar token),
+        "A" (MASKED via attention span-mask), or "T" (TO_GENERATE).
+        "A" only appears when SamplingConfig.use_span_masks is True — purely
+        a visualization label; the bar classification is identical to "M".
         """
         ar_ids = {tp.id for tp in self._request.tracks if tp.autoregressive}
         btg    = set(step.bars_to_generate)
+        masked_label = "A" if getattr(self._request.config, "use_span_masks", False) else "M"
         tracks = []
         for t_idx, row in enumerate(step.context):
             states = []
@@ -307,7 +344,7 @@ class SamplingSession:
                 elif b_abs < len(row) and row[b_abs]:
                     states.append("C")
                 else:
-                    states.append("M")
+                    states.append(masked_label)
             tracks.append({
                 "id":       t_idx,
                 "is_agent": t_idx in ar_ids,

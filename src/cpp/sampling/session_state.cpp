@@ -9,7 +9,8 @@ SessionState::SessionState(
     const tokenizer::Vocabulary&              vocab,
     const masking::ConstraintGraph&           constraints,
     const tokenizer::Encoder&                 encoder,
-    const tokenizer::Decoder&                 decoder
+    const tokenizer::Decoder&                 decoder,
+    bool                                      use_span_masks
 ) : context_(std::move(context)), step_(step), vocab_(vocab),
     constraints_(constraints), encoder_(encoder), decoder_(decoder)
 {
@@ -71,6 +72,7 @@ SessionState::SessionState(
 
     tokenizer::EncodeOptions encode_opts;
     encode_opts.window_bars = step_.end_bar - step_.start_bar;
+    encode_opts.use_span_masks = use_span_masks;
 
     if (step_.is_autoregressive) {
         // --- Autoregressive step: suffix-AR encoding ---
@@ -182,7 +184,11 @@ SessionState::SessionState(
     }
 
     // Encode the windowed context using the shared encoder + per-step options.
-    context_cache_ = encoder_.encode(context_, encode_opts);
+    {
+        tokenizer::EncodeResult enc = encoder_.encode_full(context_, encode_opts);
+        context_cache_ = std::move(enc.tokens);
+        hidden_spans_  = std::move(enc.hidden_spans);
+    }
 
     if (step_.is_autoregressive) {
         // Strip trailing structural tokens so the model can continue generating.
@@ -228,6 +234,18 @@ SessionState::SessionState(
                 }
             }
         }
+    }
+
+    // Trim hidden spans to the (possibly popped) cache and drop empty ones.
+    if (!hidden_spans_.empty()) {
+        const int cache_len = static_cast<int>(context_cache_.size());
+        std::vector<std::pair<int,int>> trimmed;
+        trimmed.reserve(hidden_spans_.size());
+        for (auto& s : hidden_spans_) {
+            int e = std::min(s.second, cache_len);
+            if (s.first < e) trimmed.emplace_back(s.first, e);
+        }
+        hidden_spans_ = std::move(trimmed);
     }
 
     // Pre-step constraints with the full context sequence

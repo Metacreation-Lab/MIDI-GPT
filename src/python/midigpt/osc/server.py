@@ -185,6 +185,12 @@ class MidiGPTServer:
                 "max_polyphony":     "MaxPolyphony"    in td_types,
                 "min_note_duration": "MinNoteDuration" in td_types,
                 "max_note_duration": "MaxNoteDuration" in td_types,
+                # Mask-mode availability: token-based masking needs MaskBar in
+                # vocab; attention-based masking is always supported (it's a
+                # model.forward feature, vocab-independent). Yellow lacks
+                # MaskBar → token mode unavailable.
+                "supports_token_mask":     "MaskBar"   in td_types,
+                "supports_attention_mask": True,
             }
             self._send("/midigpt/capabilities", _json.dumps(attr_caps))
         except Exception as exc:  # noqa: BLE001
@@ -360,7 +366,7 @@ class MidiGPTServer:
             return
         name = str(args[0])
         value = _coerce_param(name, args[1])
-        err = validate_param(name, value)
+        err = validate_param(name, value) or self._check_mask_mode_capability(name, value)
         if err:
             self._error(ERR_INVALID_PARAM, err)
             return
@@ -375,13 +381,30 @@ class MidiGPTServer:
             return
         name = str(args[0])
         value = _coerce_param(name, args[1])
-        err = validate_param(name, value)
+        err = validate_param(name, value) or self._check_mask_mode_capability(name, value)
         if err:
             self._error(ERR_INVALID_PARAM, err)
             return
         with self._params_lock:
             self._once_params[name] = value
         log.debug("param set_once %s = %r", name, value)
+
+    def _check_mask_mode_capability(self, name: str, value) -> Optional[str]:
+        """Reject mask_mode='token' if the loaded checkpoint's vocab has no
+        MaskBar token. Attention mode is always available."""
+        if name != "mask_mode" or value != "token":
+            return None
+        try:
+            import json as _json
+            ec = self._engine._tokenizer._vocab.config()
+            td_types = {d.get("type") for d in
+                        _json.loads(ec.to_json()).get("token_domains", [])}
+            if "MaskBar" not in td_types:
+                return ("mask_mode='token' unavailable: this checkpoint has no "
+                        "MaskBar token; use mask_mode='attention'")
+        except Exception:  # noqa: BLE001
+            pass
+        return None
 
     def handle_param_reset(self, client_addr, _address, *args) -> None:
         self._update_client(client_addr)
@@ -723,7 +746,7 @@ def _coerce_param(name: str, value):
     bool_params   = {"mask_gap", "adapt_buffer"}
     int_params    = {"lookahead_bars", "buffer_bars", "num_anticipated_bars",
                      "model_dim", "sampling_seed", "max_attempts"}
-    string_params = {"warmup_policy"}
+    string_params = {"warmup_policy", "mask_mode"}
     if name in bool_params:
         return bool(value)
     if name in int_params:

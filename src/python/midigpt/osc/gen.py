@@ -6,6 +6,7 @@ from .piece_state import bar_ticks
 log = logging.getLogger(__name__)
 
 WARMUP_POLICIES = ("a_empty", "a_masked", "b", "b_collapse")
+MASK_MODES      = ("token", "attention")
 
 PARAM_DEFAULTS: dict = {
     "lookahead_bars":       1,
@@ -20,6 +21,7 @@ PARAM_DEFAULTS: dict = {
     "gen_timeout":          0.0,
     "max_attempts":         3,
     "warmup_policy":        "a_empty",
+    "mask_mode":            "token",
 }
 
 PARAM_RANGES: dict = {
@@ -35,6 +37,7 @@ PARAM_RANGES: dict = {
     "gen_timeout":          (0, None),
     "max_attempts":         (1, 10),
     "warmup_policy":        (None, None),
+    "mask_mode":            (None, None),
 }
 
 
@@ -44,6 +47,10 @@ def validate_param(name: str, value) -> Optional[str]:
     if name == "warmup_policy":
         if value not in WARMUP_POLICIES:
             return f"warmup_policy={value!r} not in {WARMUP_POLICIES}"
+        return None
+    if name == "mask_mode":
+        if value not in MASK_MODES:
+            return f"mask_mode={value!r} not in {MASK_MODES}"
         return None
     lo, hi = PARAM_RANGES[name]
     if lo is not None and value < lo:

@@ -323,6 +323,7 @@ class PieceState:
             bars_per_step=num_anticipation,
             tracks_per_step=1,
             model_dim=int(params.get("model_dim", 4)),
+            use_span_masks=(str(params.get("mask_mode", "token")) == "attention"),
         )
         req = GenerationRequest(
             tracks=track_prompts,
