@@ -16,9 +16,14 @@ class SamplingConfig:
 @dataclass
 class TrackPrompt:
     id:             int
+    # Bars to GENERATE (AR targets when autoregressive=True, infill targets otherwise).
     bars:           list[int]
     autoregressive: bool          = False
     ignore:         bool          = False
+    # Bars to MASK (encoded as TOKEN_MASK_BAR — "unknown / hidden"). Disjoint
+    # from `bars`. Any bar in the step window not listed in either becomes
+    # CONTEXT (its actual notes, including silent if empty).
+    mask_bars:      list[int]     = field(default_factory=list)
     attributes:     dict[str,int] = field(default_factory=dict)
     # keys = attribute names (e.g. "note_density"), values = quantized levels
 

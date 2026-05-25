@@ -14,6 +14,14 @@ import time # Moved from _sample_step
 log = logging.getLogger(__name__)
 
 
+class _ContextOverflow(Exception):
+    """Raised when an encoded step exceeds the model's context length."""
+    def __init__(self, ctx_len: int, model_max: int):
+        super().__init__(f"context_len={ctx_len} >= model max {model_max}")
+        self.ctx_len   = ctx_len
+        self.model_max = model_max
+
+
 class SamplingSession:
     def __init__(self, engine, score: Score, request: GenerationRequest):
         self._engine  = engine
@@ -24,6 +32,11 @@ class SamplingSession:
         self.decode_time: float = 0.0
         self.enable_profiling: bool = False
         self.gen_count: int = 0
+        # Optional callback fired once per run() with a per-bar snapshot of
+        # the first step's prompt state (CONTEXT/MASKED/TO_GENERATE per
+        # (track, bar)). Used for client-side comparison/debug; pure read-only.
+        self.prompt_state_sink = None
+        self._snapshot_sent = False
 
     def __enter__(self): return self
     def __exit__(self, *_): pass
@@ -33,24 +46,53 @@ class SamplingSession:
         self.model_forward_time = 0.0
         self.encode_time = 0.0
         self.decode_time = 0.0
+        self._snapshot_sent = False
 
         mask    = self._build_selection_mask()
         cfg     = self._request.config
         enc_cfg = self._engine._tokenizer._vocab.config()
-        cfg = self._adapt_model_dim(cfg, enc_cfg)
-        enc_cfg.model_dim = cfg.model_dim  # context window bars, not vocab size
-        planner = _core.StepPlanner(
-            mask, enc_cfg,
-            cfg.bars_per_step, cfg.tracks_per_step
+        import json as _json
+        try:
+            dims = sorted(
+                set(_json.loads(enc_cfg.to_json()).get("num_bars_map") or []),
+                reverse=True,
+            )
+        except Exception:
+            dims = []
+        # Candidate model_dims to try, largest-first, capped at the requested
+        # value. If num_bars_map is unavailable, just try the requested dim.
+        candidates = [d for d in dims if d <= cfg.model_dim] or [cfg.model_dim]
+
+        last_exc = None
+        for d in candidates:
+            cfg_try = replace_cfg(cfg, model_dim=d) if d != cfg.model_dim else cfg
+            enc_cfg.model_dim = d
+            planner = _core.StepPlanner(
+                mask, enc_cfg,
+                cfg_try.bars_per_step, cfg_try.tracks_per_step
+            )
+            score = copy.deepcopy(self._score)
+            try:
+                self._snapshot_sent = False
+                for step in tqdm(planner.plan()):
+                    score = self._run_step(score, step, cfg_try)
+                return score
+            except _ContextOverflow as exc:
+                last_exc = exc
+                log.warning(
+                    "context overflow at model_dim=%d (ctx=%d, max=%d); "
+                    "stepping down", d, exc.ctx_len, exc.model_max,
+                )
+                continue
+        raise RuntimeError(
+            f"no model_dim in {candidates} fits the model "
+            f"(last: {last_exc})"
         )
-        score   = copy.deepcopy(self._score)
 
-        for step in tqdm(planner.plan()):
-            score = self._run_step(score, step)
-        return score
-
-    def _run_step(self, score: Score, step: GenerationStep) -> Score:
-        cfg = self._request.config
+    def _run_step(self, score: Score, step: GenerationStep,
+                  cfg: SamplingConfig | None = None) -> Score:
+        if cfg is None:
+            cfg = self._request.config
         original_score = score # Keep original score for _is_acceptable comparison
 
         for i in range(cfg.max_attempts):
@@ -104,6 +146,42 @@ class SamplingSession:
             if tp.id < len(score.tracks) and tp.id not in full_ar_ids:
                 score.tracks[tp.id].attributes.update(tp.attributes)
 
+        # Classify every bar in the step window per the request: a bar is
+        # CONTEXT unless it is a generation target (step.bars_to_generate) or
+        # listed in tp.mask_bars. The C++ planner's AR branch sets ctx=False
+        # for every non-yet-generated bar on AR tracks (so suffix-AR prefix
+        # bars would otherwise be encoded as MASK_BAR); this enforces the
+        # correct semantic: not-marked = not-masked.
+        gen_set  = set(step.bars_to_generate)  # {(track_id, bar_abs), …}
+        new_ctx  = [list(row) for row in step.context]
+        ctx_dirty = False
+        req_ids  = {tp.id: set(tp.mask_bars) for tp in self._request.tracks}
+        for t_idx, row in enumerate(new_ctx):
+            if t_idx not in req_ids:
+                continue
+            masked = req_ids[t_idx]
+            for b_abs in range(step.start_bar, step.end_bar):
+                if b_abs >= len(row):
+                    continue
+                want_ctx = ((t_idx, b_abs) not in gen_set
+                            and b_abs not in masked)
+                if row[b_abs] != want_ctx:
+                    row[b_abs] = want_ctx
+                    ctx_dirty = True
+        if ctx_dirty:
+            step.context = new_ctx
+
+        # Emit the prompt-state snapshot ONCE per run() — first step only.
+        # During AR later steps would flip T→C as bars get committed; the
+        # caller (e.g. studio) has a single static prediction to compare
+        # against, so later snapshots would never line up.
+        if self.prompt_state_sink is not None and not self._snapshot_sent:
+            self._snapshot_sent = True
+            try:
+                self.prompt_state_sink(self._snapshot_prompt_state(step))
+            except Exception as exc:  # noqa: BLE001
+                log.warning("prompt_state_sink failed: %s", exc)
+
         # Window size flows via EncodeOptions.window_bars, set inside
         # SessionState from the step. Nothing to plumb through attributes.
         t_enc = time.perf_counter()
@@ -120,11 +198,7 @@ class SamplingSession:
             self.encode_time += time.perf_counter() - t_enc
         model_max_ctx = self._model_max_context()
         if context_len >= model_max_ctx:
-            raise RuntimeError(
-                f"context_len={context_len} >= model max context {model_max_ctx}; "
-                f"try a smaller model_dim, fewer tracks, or set ignore=True on "
-                f"some tracks"
-            )
+            raise _ContextOverflow(context_len, model_max_ctx)
         max_gen_tokens = model_max_ctx - context_len - 1
 
         # Pre-allocate mask buffer once for this step (reused every token)
@@ -217,6 +291,34 @@ class SamplingSession:
             self.decode_time += time.perf_counter() - t_dec
         return result
 
+    def _snapshot_prompt_state(self, step) -> dict:
+        """Per-bar prompt state for the current step, post-mask_bars patch.
+
+        Each entry is "C" (CONTEXT), "M" (MASKED), or "T" (TO_GENERATE).
+        """
+        ar_ids = {tp.id for tp in self._request.tracks if tp.autoregressive}
+        btg    = set(step.bars_to_generate)
+        tracks = []
+        for t_idx, row in enumerate(step.context):
+            states = []
+            for b_abs in range(step.start_bar, step.end_bar):
+                if (t_idx, b_abs) in btg:
+                    states.append("T")
+                elif b_abs < len(row) and row[b_abs]:
+                    states.append("C")
+                else:
+                    states.append("M")
+            tracks.append({
+                "id":       t_idx,
+                "is_agent": t_idx in ar_ids,
+                "states":   states,
+            })
+        return {
+            "start_bar": int(step.start_bar),
+            "end_bar":   int(step.end_bar),
+            "tracks":    tracks,
+        }
+
     def _is_acceptable(self, original: Score, candidate: Score, cfg: SamplingConfig, step: GenerationStep) -> bool:
         logging.debug(f"Checking acceptability: silence_check={cfg.silence_check}, novelty_check={cfg.novelty_check}")
 
@@ -279,48 +381,6 @@ class SamplingSession:
                    sorted((n.pitch, n.onset_ticks) for n in tb.notes):
                     return False
         return True
-
-    def _adapt_model_dim(self, cfg: SamplingConfig, enc_cfg) -> SamplingConfig:
-        """If the dry-run encoded context would overflow the model, step
-        model_dim down through the configured num_bars_map. If even the
-        smallest model_dim overflows, the error is raised inside _sample_step.
-        """
-        import json as _json
-        try:
-            dims = sorted(set(_json.loads(enc_cfg.to_json()).get("num_bars_map") or []))
-        except Exception:
-            return cfg
-        if not dims:
-            return cfg
-        model_max = self._model_max_context()
-        chosen = cfg.model_dim
-        for d in [dd for dd in dims if dd <= cfg.model_dim][::-1]:
-            est = self._estimate_max_context(d)
-            if est < model_max:
-                chosen = d
-                break
-            log.warning(
-                "estimated context %d exceeds model max %d at model_dim=%d; "
-                "stepping down",
-                est, model_max, d,
-            )
-        if chosen != cfg.model_dim:
-            return replace_cfg(cfg, model_dim=chosen)
-        return cfg
-
-    def _estimate_max_context(self, model_dim: int) -> int:
-        """Cheap upper-bound estimate: tokens grow with bars × tracks × notes.
-        Picks the worst-case window over the current score."""
-        n_tracks = len(self._score.tracks)
-        max_notes = 0
-        for ti in range(n_tracks):
-            bars = self._score.tracks[ti].bars
-            for start in range(0, max(1, len(bars) - model_dim + 1)):
-                window = bars[start:start + model_dim]
-                notes = sum(len(b.notes) for b in window)
-                max_notes = max(max_notes, notes)
-        # rough: ~6 tokens/note + ~20 tokens/bar overhead + per-track header
-        return n_tracks * (model_dim * 20 + max_notes * 6 + 16)
 
     def _model_max_context(self) -> int:
         """Read the model's positional context length.
@@ -388,7 +448,13 @@ class SamplingSession:
         # with exactly step.end_bar Bar tokens. (Infill is bounded by FillIn
         # block count instead, so leave the grammar unconstrained.)
         if step.is_autoregressive:
-            grammar.set_exact_bars(step.end_bar)
+            # Window length — SessionState trims the prompt to this many bars
+            # and bar_count_ resets per Track, so the AR grammar should expect
+            # exactly window_len Bar tokens. Passing the absolute end_bar would
+            # force the model to emit (end_bar - window_len) extra Bar tokens
+            # of fake notes per generation, scaling cost with the absolute
+            # playhead (O(N²) over a session).
+            grammar.set_exact_bars(step.end_bar - step.start_bar)
             grammar.set_autoregressive_mode(True)
         grammar.set_max_tracks(len(self._score.tracks))
         grammar.set_require_notes(True)

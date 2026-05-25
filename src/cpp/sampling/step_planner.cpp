@@ -64,13 +64,23 @@ void StepPlanner::find_steps_inner(std::vector<GenerationStep>& steps,
             std::vector<std::vector<bool>> kernel(num_tracks, std::vector<bool>(model_dim, false));
 
             if (autoregressive) {
-                // Position window so generation bars are right-aligned (maximize past context)
-                int target_end_bar = j + bps - 1;
-                t = std::clamp(target_end_bar - model_dim + 1, 0, std::max(0, nb - model_dim));
-                int local_start = j - t;
-                int local_end = std::min(model_dim, local_start + bps);
+                // Match the reference (MIDI-GPT-STEPS, findStepsInner):
+                //   t            = min(j, nb - model_dim)
+                //   right_offset = max(j + model_dim - nb, 0)
+                //   kernel_start = (j > 0 ? 1 : 0) * (num_context + right_offset)
+                //   kernel       = local bars [kernel_start, model_dim)
+                //
+                // j==0: kernel covers the entire window — the first AR step
+                //   fills every selected bar (no prior context exists).
+                // j>0:  kernel = right portion of the window. Earlier bars in
+                //   the sliding window are already in `generated`, so they're
+                //   subtracted from step_matrix and the only thing actually
+                //   produced is the newly-exposed rightmost bar(s).
+                int right_offset = std::max(j + model_dim - nb, 0);
+                t = std::min(j, std::max(0, nb - model_dim));
+                int kernel_start = (j > 0 ? 1 : 0) * (num_context + right_offset);
                 for (int ti = 0; ti < num_tracks; ++ti) {
-                    for (int bi = local_start; bi < local_end; ++bi) {
+                    for (int bi = kernel_start; bi < model_dim; ++bi) {
                         kernel[ti][bi] = true;
                     }
                 }

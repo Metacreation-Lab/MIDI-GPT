@@ -259,6 +259,28 @@ def validate_request(request: GenerationRequest, score, encoder_config,
                     f"track_id={tp.id}: bar {b} out of range (track has {nb_track} bars)"
                 )
 
+        # mask_bars validation: in-range, disjoint from `bars`, not on an
+        # ignored track. Masking + generation cannot overlap — TOKEN_MASK_BAR
+        # and the generation target encoding are mutually exclusive.
+        if tp.mask_bars:
+            if tp.ignore:
+                raise RequestValidationError(
+                    f"track_id={tp.id}: ignored tracks must not specify mask_bars"
+                )
+            for b in tp.mask_bars:
+                if b < 0 or b >= nb_track:
+                    raise RequestValidationError(
+                        f"track_id={tp.id}: mask_bar {b} out of range "
+                        f"(track has {nb_track} bars)"
+                    )
+            overlap = sorted(set(tp.mask_bars) & set(tp.bars))
+            if overlap:
+                raise RequestValidationError(
+                    f"track_id={tp.id}: bars {overlap} appear in both `bars` "
+                    f"(generation targets) and `mask_bars` — these states are "
+                    f"mutually exclusive"
+                )
+
         # AR bar-selection shape: must be a right-suffix of the track
         # (or the full track, which is a right-suffix with k=0).
         if tp.autoregressive and tp.bars:
