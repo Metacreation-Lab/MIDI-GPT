@@ -1,5 +1,8 @@
+import logging
 import threading
 from typing import Dict, List, Optional, Tuple
+
+log = logging.getLogger(__name__)
 
 from midigpt._types import Score, Track, Bar, Note
 from midigpt.inference.config import GenerationRequest, TrackPrompt, SamplingConfig
@@ -171,18 +174,34 @@ class PieceState:
         with self._lock:
             self._extend_all_to_locked(needed)
 
-    def to_score(self) -> Score:
-        """Build a Score from current state (thread-safe snapshot)."""
+    def to_score(self, max_bars: Optional[int] = None,
+                 start_bar: int = 0) -> Score:
+        """Build a Score from current state (thread-safe snapshot).
+
+        If max_bars is given, all tracks are truncated/padded to exactly max_bars.
+        If start_bar > 0, the first `start_bar` bars are dropped from every
+        track (collapsed-bootstrap window shift).
+
+        Masking is NOT applied here — pass `mask_bars` on each TrackPrompt in
+        the GenerationRequest instead (see build_generation_request).
+        """
         with self._lock:
+            sorted_tracks = self._sorted_tracks()
+            tracks_max = max((len(t.bars) for t in sorted_tracks), default=0)
+            target = tracks_max if max_bars is None else max_bars
+            ts_n_def, ts_d_def = self._last_ts()
+
             tracks_out: List[Track] = []
-            for info in self._sorted_tracks():
+            for info in sorted_tracks:
                 track_type = "drum" if info.track_type == 11 else "melodic"
                 bars_out: List[Bar] = []
-                for bar in info.bars:
-                    ts_n = bar.get("ts_numerator", 4)
-                    ts_d = bar.get("ts_denominator", 4)
+                truncated = info.bars[start_bar:target]
+                pad_bars = list(truncated) + [None] * (target - start_bar - len(truncated))
+                for bar in pad_bars:
+                    ts_n = bar.get("ts_numerator", ts_n_def) if bar else ts_n_def
+                    ts_d = bar.get("ts_denominator", ts_d_def) if bar else ts_d_def
                     notes: List[Note] = []
-                    for ev in bar.get("events", []):
+                    for ev in (bar.get("events", []) if bar else []):
                         if ev.get("velocity", 0) > 0:
                             notes.append(Note(
                                 pitch=ev["pitch"],
@@ -202,36 +221,98 @@ class PieceState:
                 ))
             return Score(tracks=tracks_out, resolution=self.resolution)
 
+    def agent_has_history(self, before_bar: int) -> bool:
+        """True if the agent track has any non-empty bar strictly before `before_bar`."""
+        with self._lock:
+            if self._agent_track_id is None:
+                return False
+            agent = self._tracks[self._agent_track_id]
+            for b in range(min(before_bar, len(agent.bars))):
+                if agent.bars[b].get("events"):
+                    return True
+        return False
+
+    def agent_piece_idx(self) -> Optional[int]:
+        with self._lock:
+            if self._agent_track_id is None:
+                return None
+            return self._tracks[self._agent_track_id].piece_idx
+
     def build_generation_request(
         self,
         target_bar: int,
         num_anticipation: int,
         params: dict,
+        *,
+        bootstrap: bool = False,
+        score_len: int | None = None,
+        bar_offset: int = 0,
+        cond_mask_from_bar: int | None = None,
+        mask_agent_empty_before: int | None = None,
+        agent_attrs: Optional[dict] = None,
     ) -> GenerationRequest:
         """Build GenerationRequest for the inference engine.
 
-        Agent track: autoregressive=True, bars=list(range(target_bar, target_bar+num_anticipation))
-        Conditioning tracks: bars=[], ignore=bool(params.get("ignore", 0))
-        SamplingConfig: temperature, seed (from sampling_seed, -1=random), max_attempts,
-                        bars_per_step=num_anticipation, tracks_per_step=1,
-                        model_dim from params
+        `bootstrap=True` (policy b, first warmup tick): agent AR bars span
+        [0, target_bar+num_anticipation) so the agent autoregresses its full
+        prefix in one shot. `merge_generated` must be called with the same flag.
+
+        All masking (human bars past playhead, agent pre-target unknown bars
+        for `a_masked`) is applied via `Bar.future` on the score by the caller
+        through `to_score(mask_human_from=…, mask_agent_empty_before=…)`.
         """
         with self._lock:
             track_prompts: List[TrackPrompt] = []
+            # Bar indices in the (possibly trimmed) score are GLOBAL minus
+            # bar_offset. Shift caller-provided GLOBAL bar indices accordingly.
+            cond_mask_shifted = (
+                cond_mask_from_bar - bar_offset
+                if cond_mask_from_bar is not None else None
+            )
+            agent_mask_shifted = (
+                mask_agent_empty_before - bar_offset
+                if mask_agent_empty_before is not None else None
+            )
+            end = score_len if score_len is not None else target_bar + num_anticipation
             for info in self._sorted_tracks():
                 if info.is_agent:
+                    # Right-suffix that the AR model must fill.
+                    if bootstrap:
+                        bars = list(range(0, end))
+                    else:
+                        bars = list(range(target_bar - bar_offset, end))
+                    # Agent mask: empty pre-target bars (for `a_masked`).
+                    mask_bars: List[int] = []
+                    if agent_mask_shifted is not None and not bootstrap:
+                        gen_set = set(bars)
+                        for b in range(0, min(agent_mask_shifted, end)):
+                            if b in gen_set:
+                                continue
+                            global_b = b + bar_offset
+                            if (global_b < len(info.bars)
+                                    and info.bars[global_b].get("events")):
+                                continue  # has notes → CONTEXT, not MASK
+                            mask_bars.append(b)
                     track_prompts.append(TrackPrompt(
                         id=info.piece_idx,
-                        bars=list(range(target_bar, target_bar + num_anticipation)),
+                        bars=bars,
                         autoregressive=True,
                         ignore=False,
+                        mask_bars=mask_bars,
+                        attributes=dict(agent_attrs or {}),
                     ))
                 else:
+                    # Human (conditioning) mask: bars at/after playhead.
+                    mask_bars = []
+                    if cond_mask_shifted is not None:
+                        for b in range(max(0, cond_mask_shifted), end):
+                            mask_bars.append(b)
                     track_prompts.append(TrackPrompt(
                         id=info.piece_idx,
                         bars=[],
                         autoregressive=False,
                         ignore=bool(info.params.get("ignore", 0)),
+                        mask_bars=mask_bars,
                     ))
 
         raw_seed = int(params.get("sampling_seed", -1))
@@ -243,7 +324,16 @@ class PieceState:
             tracks_per_step=1,
             model_dim=int(params.get("model_dim", 4)),
         )
-        return GenerationRequest(tracks=track_prompts, config=config)
+        req = GenerationRequest(
+            tracks=track_prompts,
+            config=config,
+        )
+        log.info(
+            "gen_req target=%d j=%d bootstrap=%s agent_bars=%s",
+            target_bar, num_anticipation, bootstrap,
+            next((tp.bars for tp in track_prompts if tp.autoregressive), None),
+        )
+        return req
 
     def merge_generated(
         self,
@@ -251,6 +341,9 @@ class PieceState:
         target_bar: int,
         num_anticipation: int,
         result_resolution: int,
+        *,
+        bootstrap: bool = False,
+        bar_offset: int = 0,
     ) -> List[Tuple[int, List[dict], Tuple[int, int]]]:
         """Extract generated bars from result Score back into agent track state.
 
@@ -268,9 +361,22 @@ class PieceState:
             res_track = result.tracks[agent.piece_idx]
             window_size = len(res_track.bars)
 
-            for b_off in range(num_anticipation):
-                b_global = target_bar + b_off
-                res_idx = window_size - num_anticipation + b_off
+            # The AR model fills a right-suffix of the (right-padded) window.
+            # We keep only the bars positionally aligned to piece bars
+            # [target..target+num_anticipation-1]; everything generated past
+            # target+num_anticipation is "wasted" warmup tail and discarded.
+            # Bootstrap (policy b) additionally absorbs the prefix [0..target-1]
+            # because that was AR-generated in the same pass.
+            if bootstrap:
+                first_global = bar_offset
+                num_to_pull = target_bar + num_anticipation - bar_offset
+            else:
+                first_global = target_bar
+                num_to_pull = num_anticipation
+
+            for b_off in range(num_to_pull):
+                b_global = first_global + b_off
+                res_idx = b_global - bar_offset
                 if res_idx < 0 or res_idx >= window_size:
                     break
                 while len(agent.bars) <= b_global:

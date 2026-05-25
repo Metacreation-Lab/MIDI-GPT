@@ -5,18 +5,21 @@ from .piece_state import bar_ticks
 
 log = logging.getLogger(__name__)
 
+WARMUP_POLICIES = ("a_empty", "a_masked", "b", "b_collapse")
+
 PARAM_DEFAULTS: dict = {
-    "lookahead_bars":       2,
+    "lookahead_bars":       1,
     "buffer_bars":          4,
     "num_anticipated_bars": 1,
     "temperature":          1.0,
-    "model_dim":            4,
+    "model_dim":            8,
     "mask_top_k":           0.0,
     "sampling_seed":       -1,
     "mask_gap":             False,
-    "adapt_buffer":         False,
+    "adapt_buffer":         True,
     "gen_timeout":          0.0,
     "max_attempts":         3,
+    "warmup_policy":        "a_empty",
 }
 
 PARAM_RANGES: dict = {
@@ -31,12 +34,17 @@ PARAM_RANGES: dict = {
     "adapt_buffer":         (None, None),
     "gen_timeout":          (0, None),
     "max_attempts":         (1, 10),
+    "warmup_policy":        (None, None),
 }
 
 
 def validate_param(name: str, value) -> Optional[str]:
     if name not in PARAM_RANGES:
         return f"Unknown global parameter: {name!r}"
+    if name == "warmup_policy":
+        if value not in WARMUP_POLICIES:
+            return f"warmup_policy={value!r} not in {WARMUP_POLICIES}"
+        return None
     lo, hi = PARAM_RANGES[name]
     if lo is not None and value < lo:
         return f"Parameter {name!r} = {value} below minimum {lo}"
@@ -73,21 +81,28 @@ def compute_bar_features(events: list, ts_num: int, ts_den: int,
     velocities = [e["velocity"] for e in note_ons]
     durations_norm = [e.get("internal_duration", 1) / ticks for e in note_ons]
 
-    intervals = [
-        (e["time"], e["time"] + e.get("internal_duration", 1))
-        for e in note_ons
-    ]
-    max_poly = 0
-    for i, (start, _) in enumerate(intervals):
-        poly = sum(1 for (s, e) in intervals if s <= start < e)
-        max_poly = max(max_poly, poly)
+    # Per-onset polyphony: simultaneous-onset count is the model's notion
+    # ("OnsetPolyphony" attribute). Bar-level min/max bracket the sampled
+    # track-level min_polyphony / max_polyphony tokens.
+    onsets: dict[int, int] = {}
+    for e in note_ons:
+        onsets[e["time"]] = onsets.get(e["time"], 0) + 1
+    onset_polys = list(onsets.values())
+
+    # Raw durations (in ticks). The sampled MinNoteDuration / MaxNoteDuration
+    # tokens are quantized into 6 levels — the realized values are in raw ticks
+    # here; comparison is order-of-magnitude only.
+    raw_durations = [e.get("internal_duration", 1) for e in note_ons]
 
     return {
-        "note_density":  len(note_ons) / max(ts_num, 1),
-        "mean_pitch":    sum(pitches) / len(pitches),
-        "mean_velocity": sum(velocities) / len(velocities),
-        "max_polyphony": max_poly,
-        "mean_duration": sum(durations_norm) / len(durations_norm),
+        "note_density":      len(note_ons) / max(ts_num, 1),
+        "mean_pitch":        sum(pitches) / len(pitches),
+        "mean_velocity":     sum(velocities) / len(velocities),
+        "min_polyphony":     min(onset_polys),
+        "max_polyphony":     max(onset_polys),
+        "mean_duration":     sum(durations_norm) / len(durations_norm),
+        "min_note_duration": min(raw_durations),
+        "max_note_duration": max(raw_durations),
     }
 
 
