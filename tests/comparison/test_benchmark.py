@@ -186,7 +186,7 @@ def test_full_generation_speed(yellow_orig_encoder, yellow_ref_components, capsy
     import midigpt._core as _core
     from midigpt._converters import from_cpp
     from midigpt.inference.engine import InferenceEngine
-    from midigpt.inference.config import GenerationRequest, TrackPrompt, SamplingConfig
+    from midigpt.inference.config import GenerationRequest, TrackPrompt, InferenceConfig
     from midigpt.tokenizer.tokenizer import Tokenizer
     from midigpt.attributes import AttributeAnalyzer
 
@@ -282,7 +282,7 @@ def test_full_generation_speed(yellow_orig_encoder, yellow_ref_components, capsy
     def _run_session(score_prompt, track_id, gen_bars):
         request = GenerationRequest(
             tracks=[TrackPrompt(id=track_id, bars=gen_bars)],
-            config=SamplingConfig(
+            config=InferenceConfig(
                 max_attempts=1,
                 silence_check=False,
                 novelty_check=False,

@@ -318,7 +318,7 @@ class TestExtensiveGeneration:
         }
         orig._params.update(params)
         ref._params.update(params)
-        # Also update the refactored server default SamplingConfig model_dim via params
+        # Also update the refactored server default InferenceConfig model_dim via params
         ref._params["model_dim"] = model_dim
 
         results: list[RunResult] = []

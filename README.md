@@ -67,7 +67,7 @@ curl -L https://github.com/DaoTwenty/MIDI-GPT/releases/latest/download/yellow.pt
 ```python
 from midigpt.inference.model import GPT2LMHeadModel
 from midigpt.inference.engine import InferenceEngine
-from midigpt.inference.config import GenerationRequest, TrackPrompt, SamplingConfig
+from midigpt.inference.config import GenerationRequest, TrackPrompt, InferenceConfig
 from midigpt.tokenizer.tokenizer import Tokenizer
 from midigpt.attributes import AttributeAnalyzer
 from midigpt import _core
@@ -87,7 +87,7 @@ request = GenerationRequest(
     midi_path="path/to/input.mid",
     tracks=[TrackPrompt(index=0)],
     bars_to_generate=[3, 4],
-    sampling=SamplingConfig(temperature=1.0, max_attempts=1),
+    sampling=InferenceConfig(temperature=1.0, max_attempts=1),
 )
 
 result = engine.generate(request)
