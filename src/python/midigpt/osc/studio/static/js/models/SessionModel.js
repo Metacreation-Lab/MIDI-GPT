@@ -8,12 +8,20 @@ export const PARAM_DEFAULTS = {
   buffer_bars:           4,
   lookahead_bars:        1,
   num_anticipated_bars:  1,
-  mask_gap:              false,
   adapt_buffer:          true,
   warmup_policy:         'a_empty',
   sampling_seed:         -1,
   gen_timeout:           0,
   mask_mode:             'token',
+  top_p:                 1.0,
+  top_k:                 0,
+  mask_p:                0.0,
+  mask_k:                0,
+  temperature_escalation: 1.0,
+  novelty_check:         true,
+  silence_check:         true,
+  polyphony_hard_limit:  0,
+  density_hard_limit:    0,
 };
 
 // `structural: true` params shape the generation window/buffer and are locked
@@ -28,7 +36,6 @@ export const PARAM_META = {
   buffer_bars:          { type: 'int',   min: 2,   max: 15,   step: 1,    structural: true },
   lookahead_bars:       { type: 'int',   min: 1,   max: 4,    step: 1,    structural: true },
   num_anticipated_bars: { type: 'int',   min: 1,   max: 4,    step: 1,    structural: true },
-  mask_gap:             { type: 'bool'                                    },
   adapt_buffer:         { type: 'bool',                                   structural: true },
   warmup_policy:        { type: 'enum',  options: [
       ['a_empty',  'a · empty context'],
@@ -39,9 +46,21 @@ export const PARAM_META = {
   sampling_seed:        { type: 'int',   min: -1,  max: 9999, step: 1    },
   gen_timeout:          { type: 'float', min: 0,   max: 60,   step: 0.5  },
   mask_mode:            { type: 'enum',  options: [
-                            ['token',     'token (MaskBar)'],
-                            ['attention', 'attention (span mask)'],
+                            ['token',            'token (MaskBar)'],
+                            ['attention',        'attention (exact)'],
+                            ['attention_approx', 'attention (approx, fast)'],
+                            ['attention_skip',   'attention (skip-pos, exact+fast)'],
+                            ['remove',           'remove (omit future)'],
                           ] },
+  top_p:                { type: 'float', min: 0.1, max: 1.0,  step: 0.05 },
+  top_k:                { type: 'int',   min: 0,   max: 1000, step: 1    },
+  mask_p:               { type: 'float', min: 0.0, max: 0.95, step: 0.05 },
+  mask_k:               { type: 'int',   min: 0,   max: 1000, step: 1    },
+  temperature_escalation: { type: 'float', min: 1.0, max: 3.0,  step: 0.1 },
+  novelty_check:        { type: 'bool' },
+  silence_check:        { type: 'bool' },
+  polyphony_hard_limit: { type: 'int',   min: 0,   max: 32,   step: 1    },
+  density_hard_limit:   { type: 'int',   min: 0,   max: 128,  step: 1    },
 };
 
 export const ATTR_DEFAULTS = {

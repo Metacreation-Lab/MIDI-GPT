@@ -25,7 +25,7 @@ Packed checkpoint format (format_version 1):
     }
 """
 from __future__ import annotations
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Callable
 import math
 import torch
@@ -33,9 +33,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from midigpt.inference.model.registry import register
-
-
-PACKED_FORMAT_VERSION = 1
+from midigpt.inference.model.transformer_lm_base import TransformerLMBase
 
 
 # --------------------------------------------------------------------------- #
@@ -52,28 +50,6 @@ class GPT2Config:
     @property
     def head_dim(self) -> int:
         return self.n_embd // self.n_head
-
-
-# --------------------------------------------------------------------------- #
-#  Device resolution (module-level utility, re-exported via model/__init__)
-# --------------------------------------------------------------------------- #
-def resolve_device(device: str | torch.device | None) -> torch.device:
-    if device is None or device == "auto":
-        if torch.cuda.is_available():
-            return torch.device("cuda")
-        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            return torch.device("mps")
-        return torch.device("cpu")
-    dev = torch.device(device) if not isinstance(device, torch.device) else device
-    if dev.type == "mps":
-        if not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
-            raise RuntimeError(
-                "device='mps' requested but MPS is unavailable "
-                "(requires Apple Silicon + macOS 12.3+ + PyTorch with MPS support)"
-            )
-    if dev.type == "cuda" and not torch.cuda.is_available():
-        raise RuntimeError("device='cuda' requested but CUDA is unavailable")
-    return dev
 
 
 # --------------------------------------------------------------------------- #
@@ -223,8 +199,9 @@ class GPT2Transformer(nn.Module):
 #  Top-level model
 # --------------------------------------------------------------------------- #
 @register("gpt2")
-class GPT2LMHeadModel(nn.Module):
+class GPT2LMHeadModel(TransformerLMBase):
     arch = "gpt2"
+    Config = GPT2Config
 
     def __init__(self, cfg: GPT2Config):
         super().__init__()
@@ -241,10 +218,14 @@ class GPT2LMHeadModel(nn.Module):
         input_ids: torch.Tensor,
         past_kv: tuple[tuple[torch.Tensor, torch.Tensor], ...] | None = None,
         key_mask: torch.Tensor | None = None,
+        position_ids: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, tuple]:
         B, T = input_ids.shape
         past_len = past_kv[0][0].shape[2] if past_kv is not None and past_kv[0][0].shape[2] > 0 else 0
-        pos = torch.arange(past_len, past_len + T, device=input_ids.device).unsqueeze(0)
+        if position_ids is None:
+            pos = torch.arange(past_len, past_len + T, device=input_ids.device).unsqueeze(0)
+        else:
+            pos = position_ids.to(input_ids.device)
 
         x = self.transformer.wte(input_ids) + self.transformer.wpe(pos)
         presents = []
@@ -268,6 +249,23 @@ class GPT2LMHeadModel(nn.Module):
             )
             for _ in range(cfg.n_layer)
         )
+
+    def kv_length(self, past_kv) -> int:
+        if past_kv is None or len(past_kv) == 0:
+            return 0
+        return int(past_kv[0][0].shape[2])
+
+    def kv_null_positions(
+        self,
+        past_kv,
+        spans: list[tuple[int, int]],
+    ) -> None:
+        if past_kv is None or not spans:
+            return
+        for k_c, v_c in past_kv:
+            for s, e in spans:
+                k_c[:, :, s:e, :] = -1e4
+                v_c[:, :, s:e, :] = 0.0
 
     def max_context(self) -> int:
         return self.cfg.n_positions
@@ -314,46 +312,5 @@ class GPT2LMHeadModel(nn.Module):
 
         return logits, tuple(presents), hook_outputs
 
-    # ------------------------------------------------------------------- #
-    #  Checkpoint I/O
-    # ------------------------------------------------------------------- #
-    @classmethod
-    def from_pretrained(
-        cls,
-        path: str,
-        device: str | torch.device | None = "cpu",
-        dtype: torch.dtype | None = None,
-    ) -> "GPT2LMHeadModel":
-        dev = resolve_device(device)
-        ckpt = torch.load(path, map_location="cpu", weights_only=False)
-        if not (isinstance(ckpt, dict) and ckpt.get("format_version") == PACKED_FORMAT_VERSION):
-            raise ValueError(
-                f"{path} is not a packed bundle. "
-                "Convert old checkpoints first with save_pretrained()."
-            )
-        cfg = GPT2Config(**ckpt["config"])
-        model = cls(cfg)
-        model.load_state_dict(ckpt["state_dict"], strict=True)
-        model.encoder_config = ckpt.get("encoder_config")
-        model.eval()
-        if dtype is not None:
-            model = model.to(dtype=dtype)
-        return model.to(dev)
-
-    def save_pretrained(
-        self,
-        path: str,
-        encoder_config: dict | None = None,
-    ) -> None:
-        if encoder_config is None:
-            encoder_config = self.encoder_config
-        torch.save(
-            {
-                "format_version": PACKED_FORMAT_VERSION,
-                "arch": self.arch,
-                "config": asdict(self.cfg),
-                "encoder_config": encoder_config,
-                "state_dict": {k: v.detach().cpu() for k, v in self.state_dict().items()},
-            },
-            path,
-        )
+    # Checkpoint I/O (from_pretrained / save_pretrained) is inherited from
+    # TransformerLMBase — the packed bundle format is architecture-agnostic.

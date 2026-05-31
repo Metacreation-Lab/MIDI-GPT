@@ -85,6 +85,36 @@ class PolyphonyQuantile(BaseAttribute):
         v = max(1, min(v, 10))
         return v - 1
 
+    def value_labels(self) -> list[str]:
+        # quantize maps polyphony N (1..10) → bin N-1. So bin i = N voices
+        # sounding simultaneously (the {mode}-15/85th percentile across the
+        # track's piano roll, considering only non-silent timesteps).
+        return [f"{i+1} voice" if i == 0 else f"{i+1} voices" for i in range(9)] + ["10+ voices"]
+
+    def achievable_range(self, fixed_score, track_idx, generated_bars):
+        # Fixed bars' polyphony is locked. Realized track-level value:
+        #   max mode → max(F, G)  → override v feasible iff v ≥ F_q
+        #   min mode → min(F, G)  → override v feasible iff v ≤ F_q
+        # F_q is computed by re-quantizing the attribute over a score copy
+        # whose `generated_bars` have been emptied (so they contribute nothing).
+        if not fixed_score.tracks or track_idx >= len(fixed_score.tracks):
+            return (0, self.size - 1)
+        import copy
+        s = copy.deepcopy(fixed_score)
+        track = s.tracks[track_idx]
+        gen_set = set(generated_bars)
+        for b_idx, bar in enumerate(track.bars):
+            if b_idx in gen_set:
+                if hasattr(bar, "notes") and not hasattr(bar, "note_indices"):
+                    bar.notes = []
+                else:
+                    bar.note_indices = []
+        f_q = self.quantize(self.compute(s, track_idx))
+        if self.mode == "max":
+            return (f_q, self.size - 1)
+        else:
+            return (0, f_q)
+
 class NoteDurationQuantile(BaseAttribute):
     level = "track"
     track_type = "melodic"
@@ -119,6 +149,31 @@ class NoteDurationQuantile(BaseAttribute):
 
     def quantize(self, value: float | int) -> int:
         return int(value)
+
+    def value_labels(self) -> list[str]:
+        # level = clip(log2(d/3) + 1, 0, 5), so each bin roughly doubles in
+        # duration relative to the previous one. Approximate musical labels.
+        return ["32nd", "16th", "8th", "quarter", "half", "whole"]
+
+    def achievable_range(self, fixed_score, track_idx, generated_bars):
+        # Same min/max(F, G) monotonicity as PolyphonyQuantile.
+        if not fixed_score.tracks or track_idx >= len(fixed_score.tracks):
+            return (0, self.size - 1)
+        import copy
+        s = copy.deepcopy(fixed_score)
+        track = s.tracks[track_idx]
+        gen_set = set(generated_bars)
+        for b_idx, bar in enumerate(track.bars):
+            if b_idx in gen_set:
+                if hasattr(bar, "notes") and not hasattr(bar, "note_indices"):
+                    bar.notes = []
+                else:
+                    bar.note_indices = []
+        f_q = self.quantize(self.compute(s, track_idx))
+        if self.mode == "max":
+            return (f_q, self.size - 1)
+        else:
+            return (0, f_q)
 
 # Load DENSITY_QUANTILES from JSON
 _qpath = os.path.join(os.path.dirname(__file__), "density_quantiles.json")
@@ -161,4 +216,51 @@ class NoteDensityQuantile(BaseAttribute):
 
     def quantize(self, value: float | int) -> int:
         return int(value)
+
+    def value_labels(self) -> list[str]:
+        # 10 per-instrument density quantile bins. Bin 0 = sparsest, bin 9 =
+        # densest (thresholds in density_quantiles.json vary by instrument).
+        return ["sparsest (Q0)"] + [f"Q{i}" for i in range(1, 9)] + ["densest (Q9)"]
+
+    def achievable_range(self, fixed_score, track_idx, generated_bars):
+        # Density is the mean note-count over bars-with-notes, quantized via
+        # per-instrument thresholds. Bound the realized value by:
+        #   lower = quantize(prefix_avg) — generated bars contribute nothing
+        #   upper = quantize((prefix_notes + max_per_bar * |G|) / |G_with_notes|)
+        # We approximate max_per_bar with the largest threshold in the
+        # instrument's quantile vector (saturates the densest bin).
+        if not fixed_score.tracks or track_idx >= len(fixed_score.tracks):
+            return (0, self.size - 1)
+        track = fixed_score.tracks[track_idx]
+        gen_set = set(generated_bars)
+        prefix_notes = 0
+        prefix_bars_with_notes = 0
+        for b_idx, bar in enumerate(track.bars):
+            if b_idx in gen_set:
+                continue
+            nc = _bar_note_count(bar)
+            if nc:
+                prefix_notes += nc
+                prefix_bars_with_notes += 1
+        n_gen = max(len(gen_set), 0)
+        if hasattr(track, "track_type"):
+            is_melodic = track.track_type == "melodic"
+        else:
+            is_melodic = track.type == TrackType.Melodic
+        qindex = track.instrument if is_melodic else 128
+        qs = DENSITY_QUANTILES.get(qindex, DENSITY_QUANTILES[0])
+        max_per_bar = qs[-1] if qs else 0
+
+        def _to_bin(av_notes):
+            av_notes = int(round(av_notes))
+            b = 0
+            while b < len(qs) - 1 and av_notes > qs[b]:
+                b += 1
+            return b
+
+        lower_div = max(prefix_bars_with_notes, 1)
+        lower = _to_bin(prefix_notes / lower_div) if prefix_bars_with_notes else 0
+        upper_div = max(prefix_bars_with_notes + n_gen, 1)
+        upper = _to_bin((prefix_notes + max_per_bar * n_gen) / upper_div)
+        return (lower, max(lower, upper))
 

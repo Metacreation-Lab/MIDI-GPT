@@ -48,7 +48,7 @@ def _load_bundle_file(p: pathlib.Path) -> CheckpointBundle:
             f"{p} is not a packed bundle (format_version + state_dict missing). "
             "Convert it first with GPT2LMHeadModel.from_torchscript(...).save_pretrained(...)."
         )
-    arch = ckpt.get("arch", "gpt2")
+    arch = ckpt.get("arch") or "gpt2"
     model_cls = get_model_class(arch)
     model = model_cls.from_pretrained(str(p), device="cpu")
 

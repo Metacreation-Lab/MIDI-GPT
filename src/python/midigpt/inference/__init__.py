@@ -1,4 +1,4 @@
-from midigpt.inference.config import SamplingConfig, TrackPrompt, GenerationRequest
+from midigpt.inference.config import InferenceConfig, TrackPrompt, GenerationRequest
 from midigpt.inference.engine import InferenceEngine
 from midigpt.inference.session import SamplingSession
 from midigpt.inference.validation import (
@@ -6,7 +6,7 @@ from midigpt.inference.validation import (
 )
 
 __all__ = [
-    "SamplingConfig",
+    "InferenceConfig",
     "TrackPrompt",
     "GenerationRequest",
     "InferenceEngine",

@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Tuple
 log = logging.getLogger(__name__)
 
 from midigpt._types import Score, Track, Bar, Note
-from midigpt.inference.config import GenerationRequest, TrackPrompt, SamplingConfig
+from midigpt.inference.config import GenerationRequest, TrackPrompt, InferenceConfig
 
 _AGENT_PARAM_DEFAULTS: Dict = {
     "temperature": 1.0,
@@ -316,14 +316,24 @@ class PieceState:
                     ))
 
         raw_seed = int(params.get("sampling_seed", -1))
-        config = SamplingConfig(
+        mask_mode = str(params.get("mask_mode", "token"))
+        config = InferenceConfig(
             temperature=float(params.get("temperature", 1.0)),
             seed=raw_seed,
             max_attempts=int(params.get("max_attempts", 3)),
             bars_per_step=num_anticipation,
             tracks_per_step=1,
             model_dim=int(params.get("model_dim", 4)),
-            use_span_masks=(str(params.get("mask_mode", "token")) == "attention"),
+            mask_mode=mask_mode,
+            top_p=float(params.get("top_p", 1.0)),
+            top_k=int(params.get("top_k", 0)),
+            mask_p=float(params.get("mask_p", 0.0)),
+            mask_k=int(params.get("mask_k", 0)),
+            temperature_escalation=float(params.get("temperature_escalation", 1.0)),
+            novelty_check=bool(params.get("novelty_check", True)),
+            silence_check=bool(params.get("silence_check", True)),
+            polyphony_hard_limit=int(params.get("polyphony_hard_limit", 0)),
+            density_hard_limit=int(params.get("density_hard_limit", 0)),
         )
         req = GenerationRequest(
             tracks=track_prompts,

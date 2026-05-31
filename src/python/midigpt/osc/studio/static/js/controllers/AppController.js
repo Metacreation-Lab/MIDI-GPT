@@ -223,9 +223,11 @@ export class AppController {
     for (const [k, v] of Object.entries(params)) {
       this._osc.paramSet(k, v);
     }
-    // Push current attrs (server filters -1 = "off")
+    // Push current attrs — skip any the checkpoint doesn't support.
     const attrs = this._session.get('attrs');
+    const caps  = this._session.get('attrCaps');
     for (const [k, v] of Object.entries(attrs)) {
+      if (caps && caps[k] === false) continue;
       this._osc.attrSet(k, v);
     }
     this._osc.sessionStart();
