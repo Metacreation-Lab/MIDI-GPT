@@ -26,9 +26,10 @@ struct EncoderConfig {
     int  note_duration_max_beats = 8;     // max NoteDuration in beats (domain = max_beats * resolution)
 
     // Capability flags
-    bool emit_delta_tokens = false;  // emit Delta / DeltaDirection (microtiming via Δ tokens)
-    bool supports_infill   = false;  // model can do FILL_IN_* tokens
-    bool velocity_sticky   = true;   // emit VELOCITY only when it changes (else per-note)
+    bool emit_delta_tokens      = false;  // emit Delta / DeltaDirection (microtiming via Δ tokens)
+    bool supports_infill        = false;  // model can do FILL_IN_* tokens
+    bool supports_mask_bar_token = false; // vocab includes MaskBar token (one of several bar-masking methods)
+    bool velocity_sticky        = true;   // emit VELOCITY only when it changes (else per-note)
 
     // Structured list of attribute controls this encoder exposes, as a
     // raw JSON fragment (default "[]"). The Python AttributeAnalyzer reads

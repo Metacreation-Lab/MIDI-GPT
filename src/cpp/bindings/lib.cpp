@@ -9,6 +9,7 @@
 #include "../io/midi_reader.h"
 #include "../io/midi_writer.h"
 #include "../masking/attribute_value_constraint.h"
+#include "../masking/bar_attribute_value_constraint.h"
 #include "../masking/constraint.h"
 #include "../masking/constraint_graph.h"
 #include "../masking/density_constraint.h"
@@ -202,6 +203,7 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("model_dim",                &EncoderConfig::model_dim)
       .def_readwrite("emit_delta_tokens",        &EncoderConfig::emit_delta_tokens)
       .def_readwrite("supports_infill",          &EncoderConfig::supports_infill)
+      .def_readwrite("supports_mask_bar_token",  &EncoderConfig::supports_mask_bar_token)
       .def_readwrite("velocity_sticky",          &EncoderConfig::velocity_sticky)
       .def_readwrite("pitch_min",                &EncoderConfig::pitch_min)
       .def_readwrite("pitch_max",                &EncoderConfig::pitch_max)
@@ -219,7 +221,8 @@ PYBIND11_MODULE(_core, m) {
                      &EncodeOptions::partial_encode_track_bars)
       .def_readwrite("multi_fill", &EncodeOptions::multi_fill)
       .def_readwrite("window_bars", &EncodeOptions::window_bars)
-      .def_readwrite("use_span_masks", &EncodeOptions::use_span_masks);
+      .def_readwrite("use_span_masks", &EncodeOptions::use_span_masks)
+      .def_readwrite("remove_future_bars", &EncodeOptions::remove_future_bars);
 
   py::class_<Vocabulary>(m, "Vocabulary")
       .def(py::init<const EncoderConfig &>())
@@ -276,6 +279,11 @@ PYBIND11_MODULE(_core, m) {
       m, "AttributeValueConstraint")
       .def(py::init<::midigpt::TokenType, int>());
 
+  py::class_<BarAttributeValueConstraint, Constraint,
+             std::shared_ptr<BarAttributeValueConstraint>>(
+      m, "BarAttributeValueConstraint")
+      .def(py::init<::midigpt::TokenType, int, int, int>());
+
   py::class_<ConstraintGraph>(m, "ConstraintGraph")
       .def(py::init<>())
       .def("add_constraint", &ConstraintGraph::add_constraint)
@@ -309,10 +317,11 @@ PYBIND11_MODULE(_core, m) {
       .def(
           py::init<Score, const GenerationStep &, const Vocabulary &,
                    const ConstraintGraph &, const Encoder &, const Decoder &,
-                   bool>(),
+                   bool, bool>(),
           py::arg("context"), py::arg("step"), py::arg("vocab"),
           py::arg("constraints"), py::arg("encoder"), py::arg("decoder"),
-          py::arg("use_span_masks") = false)
+          py::arg("use_span_masks") = false,
+          py::arg("remove_future_bars") = false)
       .def("complete", &SessionState::complete)
       .def("context_tokens", &SessionState::context_tokens)
       .def("hidden_spans", &SessionState::hidden_spans)

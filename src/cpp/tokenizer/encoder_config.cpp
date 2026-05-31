@@ -175,6 +175,7 @@ EncoderConfig EncoderConfig::from_json(const std::string& json_str) {
     if (j.contains("decode_resolution")) c.decode_resolution = j["decode_resolution"];
     if (j.contains("emit_delta_tokens")) c.emit_delta_tokens = j["emit_delta_tokens"];
     if (j.contains("supports_infill")) c.supports_infill = j["supports_infill"];
+    if (j.contains("supports_mask_bar_token")) c.supports_mask_bar_token = j["supports_mask_bar_token"];
     if (j.contains("velocity_sticky")) c.velocity_sticky = j["velocity_sticky"];
     if (j.contains("pitch_range")) {
         auto pr = j["pitch_range"];
@@ -278,6 +279,13 @@ void EncoderConfig::derive_token_domains() {
         token_domains.push_back({TokenType::FillInEnd,         1});
     }
 
+    // MaskBar token — one of several ways to mask a bar (alternatives:
+    // attention masking, omission). Only encoders whose vocab includes
+    // this token can mask bars via the token method.
+    if (supports_mask_bar_token) {
+        token_domains.push_back({TokenType::MaskBar, 1});
+    }
+
     // NOTE: attribute-control token domains are NOT derived here. They are
     // appended later by Python (which is the source of truth for attribute
     // class → token_type + size) via add_attribute_token_domains().
@@ -304,6 +312,7 @@ std::string EncoderConfig::to_json() const {
     j["decode_resolution"]        = decode_resolution;
     j["emit_delta_tokens"]        = emit_delta_tokens;
     j["supports_infill"]          = supports_infill;
+    j["supports_mask_bar_token"]  = supports_mask_bar_token;
     j["velocity_sticky"]          = velocity_sticky;
     j["pitch_range"]              = {pitch_min, pitch_max};
     j["velocity_levels"]          = velocity_levels;

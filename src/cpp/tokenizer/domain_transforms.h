@@ -91,13 +91,13 @@ public:
         if (num_levels_ < 2) {
             throw std::runtime_error("VelocityQuantizer requires at least 2 levels");
         }
-        // Pre-compute the decode table: pick the MAX MIDI velocity in each bin.
-        // Matches original enums::DEFAULT_VELOCITY_MAP inverse (each level maps
-        // back to the highest MIDI velocity that quantized into it).
+        // Pre-compute the decode table: the second MIDI velocity in each bin.
+        // Matches original enums::DEFAULT_VELOCITY_MAP inverse exactly.
         decode_table_.assign(num_levels_, 0);
+        std::vector<int> count(num_levels_, 0);
         for (int v = 1; v < 128; ++v) {
             int level = encode(v);
-            decode_table_[level] = v; // overwrite — final iteration wins (max)
+            if (++count[level] == 2) decode_table_[level] = v;
         }
     }
 

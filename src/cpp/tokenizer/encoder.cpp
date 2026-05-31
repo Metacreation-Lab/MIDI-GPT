@@ -183,6 +183,11 @@ EncodeResult Encoder::encode_full(const Score& score,
             // be a span-masked future bar, we close the span at end-of-bar.
             int span_start = static_cast<int>(tokens.size());
 
+            // Remove mode: skip future bars entirely — no tokens emitted.
+            if (bar.future && opts.remove_future_bars) {
+                continue;
+            }
+
             if (vocab_.has(TokenType::Bar)) {
                 tokens.push_back(vocab_.encode(TokenType::Bar, 0));
             }

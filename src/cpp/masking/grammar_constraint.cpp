@@ -131,6 +131,13 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             allow(TokenType::PitchClassSet);
             allow(TokenType::MaskBar);
             allow(TokenType::TimeAbsolutePos);
+            // Encoder skips TimeAbsolutePos when onset==0, so allow direct
+            // entry into the note tokens at bar start (position 0).
+            allow(TokenType::VelocityLevel);
+            allow(TokenType::NoteOnset);
+            allow(TokenType::NotePitch);
+            allow(TokenType::DeltaDirection);
+            allow(TokenType::Delta);
             if (!require_notes_ || has_notes_in_block_) allow(TokenType::BarEnd);
             allow(TokenType::FillInPlaceholder);
             break;
@@ -140,6 +147,11 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             allow(TokenType::PitchClassSet);
             allow(TokenType::MaskBar);
             allow(TokenType::TimeAbsolutePos);
+            allow(TokenType::VelocityLevel);
+            allow(TokenType::NoteOnset);
+            allow(TokenType::NotePitch);
+            allow(TokenType::DeltaDirection);
+            allow(TokenType::Delta);
             if (!require_notes_ || has_notes_in_block_) allow(TokenType::BarEnd);
             allow(TokenType::FillInPlaceholder);
             break;
@@ -150,6 +162,11 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             allow(TokenType::PitchClassSet);
             allow(TokenType::MaskBar);
             allow(TokenType::TimeAbsolutePos);
+            allow(TokenType::VelocityLevel);
+            allow(TokenType::NoteOnset);
+            allow(TokenType::NotePitch);
+            allow(TokenType::DeltaDirection);
+            allow(TokenType::Delta);
             if (!require_notes_ || has_notes_in_block_) allow(TokenType::BarEnd);
             break;
 
