@@ -6,7 +6,7 @@ from .piece_state import bar_ticks
 log = logging.getLogger(__name__)
 
 WARMUP_POLICIES = ("a_empty", "a_masked", "b", "b_collapse")
-MASK_MODES      = ("token", "attention")
+MASK_MODES      = ("token", "attention", "attention_approx", "attention_skip", "remove")
 
 PARAM_DEFAULTS: dict = {
     "lookahead_bars":       1,
@@ -14,30 +14,44 @@ PARAM_DEFAULTS: dict = {
     "num_anticipated_bars": 1,
     "temperature":          1.0,
     "model_dim":            8,
-    "mask_top_k":           0.0,
+    "top_p":                1.0,
+    "top_k":                0,
+    "mask_p":               0.0,
+    "mask_k":               0,
+    "temperature_escalation": 1.0,
+    "novelty_check":        True,
+    "silence_check":        True,
     "sampling_seed":       -1,
-    "mask_gap":             False,
     "adapt_buffer":         True,
     "gen_timeout":          0.0,
     "max_attempts":         3,
     "warmup_policy":        "a_empty",
     "mask_mode":            "token",
+    "polyphony_hard_limit": 0,
+    "density_hard_limit":   0,
 }
 
 PARAM_RANGES: dict = {
     "lookahead_bars":       (1, 8),
     "buffer_bars":          (2, 64),
     "num_anticipated_bars": (1, 8),
-    "temperature":          (0.5, 2.0),
+    "temperature":          (0.1, 5.0),
     "model_dim":            (1, 16),
-    "mask_top_k":           (0.0, 1.0),
+    "top_p":                (0.0, 1.0),
+    "top_k":                (0, 10000),
+    "mask_p":               (0.0, 1.0),
+    "mask_k":               (0, 10000),
+    "temperature_escalation": (1.0, 3.0),
+    "novelty_check":        (None, None),
+    "silence_check":        (None, None),
     "sampling_seed":        (None, None),
-    "mask_gap":             (None, None),
     "adapt_buffer":         (None, None),
     "gen_timeout":          (0, None),
     "max_attempts":         (1, 10),
     "warmup_policy":        (None, None),
     "mask_mode":            (None, None),
+    "polyphony_hard_limit": (0, 128),
+    "density_hard_limit":   (0, 1000),
 }
 
 

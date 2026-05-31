@@ -7,12 +7,17 @@ from midigpt.attributes.base import BaseAttribute
 import numpy as np
 import symusic
 
-# Add tension_model to sys.path
-tension_model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../tension_model"))
-if tension_model_path not in sys.path:
-    sys.path.append(tension_model_path)
+# tension_model lives in a sibling repo. Import lazily so this module loads
+# (and the Tension class can be registered) even when tension_model is not
+# installed — only `.compute()` actually requires it.
+_TENSION_MODEL_PATH = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "../../../../../tension_model"))
 
-import testTensionModel as ttm
+def _ttm():
+    if _TENSION_MODEL_PATH not in sys.path:
+        sys.path.append(_TENSION_MODEL_PATH)
+    import testTensionModel as ttm
+    return ttm
 
 # Cache to avoid re-evaluating the whole track for every bar
 _TENSION_CACHE = {}
@@ -51,7 +56,7 @@ def score_to_temp_midi(score: Score) -> str:
     return path
 
 def get_bar_starts_seconds(midi_path: str):
-    tpq, tempo_ticks, mspq, ts_ticks, nums, dens, end_tick = ttm._load_symusic_maps(midi_path)
+    tpq, tempo_ticks, mspq, ts_ticks, nums, dens, end_tick = _ttm()._load_symusic_maps(midi_path)
     bar_ticks = []
     for i in range(len(ts_ticks)):
         start = int(ts_ticks[i])
@@ -66,13 +71,14 @@ def get_bar_starts_seconds(midi_path: str):
             bar_ticks.append(t)
             t += ticks_per_bar
     bar_ticks = np.unique(np.asarray(bar_ticks, dtype=np.int64))
-    return ttm._ticks_to_seconds(bar_ticks, tempo_ticks, mspq, tpq)
+    return _ttm()._ticks_to_seconds(bar_ticks, tempo_ticks, mspq, tpq)
 
 class Tension(BaseAttribute):
     name       = "tension"
     token_type = "Tension"
     level      = "bar"
     track_type = "melodic"
+    size       = 10
 
     def compute(self, score: Score, track_idx: int, bar_idx: Optional[int] = None) -> float | int:
         if bar_idx is None:
@@ -84,14 +90,14 @@ class Tension(BaseAttribute):
             track = score.tracks[track_idx]
             try:
                 is_drum_track = (track.track_type == "drum")
-                t_sec, tension = ttm.compute_track_tension(midi_path, track_idx, is_drum_track)
+                t_sec, tension = _ttm().compute_track_tension(midi_path, track_idx, is_drum_track)
                 if t_sec.size > 0 and tension.size > 0:
                     bar_starts_sec = get_bar_starts_seconds(midi_path)
                     if bar_starts_sec.size > 0:
                         max_t = float(t_sec[-1])
                         bar_starts_sec = bar_starts_sec[bar_starts_sec <= max_t + 1e-9]
                         if bar_starts_sec.size >= 2:
-                            _, bar_tension = ttm.interval_level_average(tension, t_sec, bar_starts_sec)
+                            _, bar_tension = _ttm().interval_level_average(tension, t_sec, bar_starts_sec)
                             _TENSION_CACHE[cache_key] = bar_tension.tolist()
                         else:
                             _TENSION_CACHE[cache_key] = []
@@ -112,3 +118,11 @@ class Tension(BaseAttribute):
         # Assuming tension roughly spans [-2, 2], map to [0, 9]
         norm_val = (value + 2.0) / 4.0
         return max(0, min(9, int(norm_val * 10)))
+
+
+class TensionDrum(Tension):
+    """Drum-track variant of Tension. Same computation; distinct token
+    type so the model can specialize attention separately for drum tracks."""
+    name       = "tension_drum"
+    token_type = "TensionDrum"
+    track_type = "drum"

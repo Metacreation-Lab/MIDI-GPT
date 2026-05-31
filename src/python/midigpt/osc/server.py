@@ -171,26 +171,34 @@ class MidiGPTServer:
             self._once_params.clear()
 
         # Publish which attribute controls this checkpoint actually supports
-        # so the studio can hide ones the model doesn't tokenize (e.g. Tension
-        # is absent from the ghost bundle).
+        # so the studio can hide ones the model doesn't tokenize and never
+        # send attr names the validator will reject.
+        # Source of truth: attribute_controls_json (the API names the encoder
+        # and validator both use), not the token domain type strings.
         try:
             import json as _json
             ec = self._engine._tokenizer._vocab.config()
             td_types = {d.get("type") for d in
                         _json.loads(ec.to_json()).get("token_domains", [])}
+            
+            # Use the analyzer as the source of truth for supported attributes
+            # (handles both explicit attribute_controls and auto-inferred domains).
+            ac_names = set(self._engine._analyzer.attribute_sizes().keys())
+            
             attr_caps = {
-                "tension":           "Tension"         in td_types,
-                "note_density":      "NoteDensity"     in td_types,
-                "min_polyphony":     "MinPolyphony"    in td_types,
-                "max_polyphony":     "MaxPolyphony"    in td_types,
-                "min_note_duration": "MinNoteDuration" in td_types,
-                "max_note_duration": "MaxNoteDuration" in td_types,
+                "tension":           "tension"           in ac_names,
+                "note_density":      "note_density"      in ac_names,
+                "min_polyphony":     "min_polyphony"     in ac_names,
+                "max_polyphony":     "max_polyphony"     in ac_names,
+                "min_note_duration": "min_note_duration" in ac_names,
+                "max_note_duration": "max_note_duration" in ac_names,
                 # Mask-mode availability: token-based masking needs MaskBar in
-                # vocab; attention-based masking is always supported (it's a
-                # model.forward feature, vocab-independent). Yellow lacks
-                # MaskBar → token mode unavailable.
-                "supports_token_mask":     "MaskBar"   in td_types,
-                "supports_attention_mask": True,
+                # vocab; attention-based modes are always supported (vocab-independent).
+                "supports_token_mask":       "MaskBar" in td_types,
+                "supports_attention_mask":   True,
+                "supports_attention_approx": True,
+                "supports_attention_skip":   True,
+                "supports_remove":           True,
             }
             self._send("/midigpt/capabilities", _json.dumps(attr_caps))
         except Exception as exc:  # noqa: BLE001
@@ -366,7 +374,8 @@ class MidiGPTServer:
             return
         name = str(args[0])
         value = _coerce_param(name, args[1])
-        err = validate_param(name, value) or self._check_mask_mode_capability(name, value)
+        value = self._coerce_mask_mode(name, value)
+        err = validate_param(name, value)
         if err:
             self._error(ERR_INVALID_PARAM, err)
             return
@@ -381,7 +390,8 @@ class MidiGPTServer:
             return
         name = str(args[0])
         value = _coerce_param(name, args[1])
-        err = validate_param(name, value) or self._check_mask_mode_capability(name, value)
+        value = self._coerce_mask_mode(name, value)
+        err = validate_param(name, value)
         if err:
             self._error(ERR_INVALID_PARAM, err)
             return
@@ -389,22 +399,26 @@ class MidiGPTServer:
             self._once_params[name] = value
         log.debug("param set_once %s = %r", name, value)
 
-    def _check_mask_mode_capability(self, name: str, value) -> Optional[str]:
-        """Reject mask_mode='token' if the loaded checkpoint's vocab has no
-        MaskBar token. Attention mode is always available."""
+    def _coerce_mask_mode(self, name: str, value):
+        """If the checkpoint lacks MaskBar, silently coerce mask_mode='token'
+        to 'attention_skip' (fastest exact mode; logged once). Other modes are
+        passed through unchanged — they are all vocab-independent."""
         if name != "mask_mode" or value != "token":
-            return None
+            return value
         try:
             import json as _json
             ec = self._engine._tokenizer._vocab.config()
             td_types = {d.get("type") for d in
                         _json.loads(ec.to_json()).get("token_domains", [])}
             if "MaskBar" not in td_types:
-                return ("mask_mode='token' unavailable: this checkpoint has no "
-                        "MaskBar token; use mask_mode='attention'")
+                if not getattr(self, "_warned_mask_coerce", False):
+                    log.warning("mask_mode='token' unavailable on this checkpoint "
+                                "(no MaskBar); coercing to 'attention_skip'")
+                    self._warned_mask_coerce = True
+                return "attention_skip"
         except Exception:  # noqa: BLE001
             pass
-        return None
+        return value
 
     def handle_param_reset(self, client_addr, _address, *args) -> None:
         self._update_client(client_addr)
@@ -743,9 +757,10 @@ class MidiGPTServer:
 # ---------------------------------------------------------------------------
 
 def _coerce_param(name: str, value):
-    bool_params   = {"mask_gap", "adapt_buffer"}
+    bool_params   = {"adapt_buffer", "novelty_check", "silence_check"}
     int_params    = {"lookahead_bars", "buffer_bars", "num_anticipated_bars",
-                     "model_dim", "sampling_seed", "max_attempts"}
+                     "model_dim", "sampling_seed", "max_attempts", "top_k", "mask_k",
+                     "polyphony_hard_limit", "density_hard_limit"}
     string_params = {"warmup_policy", "mask_mode"}
     if name in bool_params:
         return bool(value)

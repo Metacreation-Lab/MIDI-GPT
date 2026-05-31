@@ -27,6 +27,24 @@ class ModelBase(Protocol):
         """Return a zero-length past_kv suitable as the first call's past_kv."""
         ...
 
+    def kv_length(self, past_kv) -> int:
+        """Number of cached positions in past_kv (0 for empty)."""
+        ...
+
+    def kv_null_positions(
+        self,
+        past_kv,
+        spans: "list[tuple[int, int]]",
+    ) -> None:
+        """In-place: neutralize positions in [s, e) for each (s, e) in spans.
+
+        Used by attention_approx masking — the cache stays the same shape but
+        the listed positions should contribute nothing to subsequent attention.
+        The exact "neutralize" semantics are architecture-defined (e.g. for
+        standard attention: set K to a large negative sentinel and V to zero).
+        """
+        ...
+
     def max_context(self) -> int:
         """Maximum number of tokens the model can attend to (positional budget)."""
         ...

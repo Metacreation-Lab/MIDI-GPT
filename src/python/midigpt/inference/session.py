@@ -5,7 +5,7 @@ from tqdm import tqdm
 import midigpt._core as _core
 from midigpt._types import Score
 from midigpt._converters import to_cpp, from_cpp
-from midigpt.inference.config import GenerationRequest, SamplingConfig
+from midigpt.inference.config import GenerationRequest, InferenceConfig
 import midigpt._core as _core # Import _core here
 from midigpt._core import GenerationStep # Import GenerationStep directly from _core
 import time # Moved from _sample_step
@@ -20,6 +20,54 @@ class _ContextOverflow(Exception):
         super().__init__(f"context_len={ctx_len} >= model max {model_max}")
         self.ctx_len   = ctx_len
         self.model_max = model_max
+
+
+class _KVRunner:
+    """Owns the KV cache across a single sampling step.
+
+    Hides past_kv bookkeeping from the main sampling loop. Tracks whether the
+    next forward() is the prefill (no cache yet) or a decode step (cache
+    populated). Delegates cache surgery to the model's ModelBase methods so the
+    session code stays architecture-agnostic.
+    """
+
+    def __init__(self, model, initial_kv):
+        self._model      = model
+        self._initial_kv = initial_kv   # cached empty-kv from engine.warmup()
+        self._past_kv    = None
+
+    @property
+    def is_prefill(self) -> bool:
+        return self._past_kv is None
+
+    def forward(self, ctx_t, key_mask=None, position_ids=None):
+        """Run one model call. Returns logits tensor (full output[0]).
+
+        On the first call past_kv is sourced from the cached empty-kv (avoids
+        a redundant make_empty_kv() per step). On subsequent calls the cache
+        from the previous step is reused.
+        """
+        kwargs = {}
+        if key_mask    is not None: kwargs["key_mask"]     = key_mask
+        if position_ids is not None: kwargs["position_ids"] = position_ids
+        pkv = self._past_kv if self._past_kv is not None else self._initial_kv
+        try:
+            outputs = (self._model(ctx_t, pkv, **kwargs) if pkv is not None
+                       else self._model(ctx_t, **kwargs))
+        except Exception:
+            # TorchScript callables with strict signatures may reject kwargs
+            # or kv on certain code paths — fall back to positional-only.
+            outputs = self._model(ctx_t)
+        if not isinstance(outputs, tuple):
+            outputs = (outputs,)
+        self._past_kv = outputs[1] if len(outputs) > 1 else None
+        return outputs[0]
+
+    def null_positions(self, spans):
+        """Neutralize KV at the given (s, e) spans (attention_approx)."""
+        if self._past_kv is None or not spans:
+            return
+        self._model.kv_null_positions(self._past_kv, spans)
 
 
 class SamplingSession:
@@ -90,28 +138,77 @@ class SamplingSession:
         )
 
     def _run_step(self, score: Score, step: GenerationStep,
-                  cfg: SamplingConfig | None = None) -> Score:
+                  cfg: InferenceConfig | None = None) -> Score:
         if cfg is None:
             cfg = self._request.config
-        original_score = score # Keep original score for _is_acceptable comparison
+        original_score = score  # baseline for novelty comparison
 
+        errors = []
+        base_seed = getattr(cfg, "seed", -1)
+        last_candidate = None
+        last_diagnostics = None
         for i in range(cfg.max_attempts):
             temperature = cfg.temperature * (cfg.temperature_escalation ** i)
-            candidate = self._sample_step(score, step, temperature)
-            
-            if self._is_acceptable(original_score, candidate, cfg, step):
+            # Bump the seed per retry when the user pinned one — otherwise all
+            # attempts would resample the same tokens deterministically and
+            # max_attempts would be a no-op. seed<0 keeps the RNG free-running.
+            attempt_seed = (base_seed + i) if base_seed is not None and base_seed >= 0 else -1
+            candidate = self._sample_step(score, step, temperature, attempt_seed)
+            last_candidate = candidate
+
+            # Always evaluate BOTH checks. Whether a failure is an error or just
+            # a warning depends on whether the corresponding check is enabled.
+            silence_failed = self._note_count(candidate, step) <= 0
+            novelty_failed = self._is_identical(original_score, candidate)
+            last_diagnostics = (silence_failed, novelty_failed)
+
+            attempt_errors = []
+            attempt_warnings = []
+            if silence_failed:
+                msg = "silence_check (no notes generated in target bars)"
+                (attempt_errors if cfg.silence_check else attempt_warnings).append(msg)
+            if novelty_failed:
+                msg = "novelty_check (candidate identical to original)"
+                (attempt_errors if cfg.novelty_check else attempt_warnings).append(msg)
+
+            for w in attempt_warnings:
+                log.warning("attempt %d/%d accepted with warning: %s "
+                            "(check disabled)", i + 1, cfg.max_attempts, w)
+            if not attempt_errors:
                 return candidate
-            
-            logging.debug(f"Attempt {i+1}/{cfg.max_attempts} failed, retrying with temp={temperature*cfg.temperature_escalation:.2f}")
 
-        # If max attempts reached and no acceptable candidate found, raise an error
-        raise RuntimeError(f"Max attempts ({cfg.max_attempts}) reached, no acceptable candidate found. Last candidate had {self._note_count(candidate, step)} notes in generated bars.")
+            errors.extend(attempt_errors)
+            log.info("attempt %d/%d rejected (%s); retrying with temp=%.2f, seed=%s",
+                     i + 1, cfg.max_attempts, "; ".join(attempt_errors),
+                     temperature * cfg.temperature_escalation, attempt_seed)
 
-    def _sample_step(self, score: Score, step, temperature: float) -> Score:
+        from collections import Counter
+        reason_summary = ", ".join(
+            f"{r}×{c}" for r, c in Counter(errors).most_common()
+        )
+        raise RuntimeError(
+            f"Max attempts ({cfg.max_attempts}) reached, no acceptable candidate "
+            f"found. Rejection reasons: {reason_summary}. "
+            f"Last candidate had {self._note_count(last_candidate, step)} notes in "
+            f"generated bars. "
+            f"(Hints: vary retries with temperature_escalation > 1, raise "
+            f"max_attempts, disable the failing check, or relax top_p/mask_p "
+            f"for broader sampling.)"
+        )
+
+    def _sample_step(self, score: Score, step, temperature: float, seed: int = -1) -> Score:
         try:
             import torch
         except ImportError:
             raise ImportError("pip install midigpt[inference]")
+
+        # Seed the global torch RNG so torch.multinomial below is reproducible
+        # when the user pins a seed. seed<0 means "leave the RNG state alone"
+        # — i.e. continue from wherever the global generator currently is.
+        if seed is not None and seed >= 0:
+            torch.manual_seed(int(seed))
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(int(seed))
 
         # Three attribute regimes:
         #  - Full AR  (tp.autoregressive, no prefix bars): skip analyzer; user
@@ -145,6 +242,35 @@ class SamplingSession:
         for tp in self._request.tracks:
             if tp.id < len(score.tracks) and tp.id not in full_ar_ids:
                 score.tracks[tp.id].attributes.update(tp.attributes)
+
+        # Per-bar overrides: write bar_{TokenType}_{bar_idx} keys directly into
+        # the prompt, overwriting analyzer-derived values. For infill and
+        # partial-AR (suffix bars), the encoder reads these straight from
+        # `track.attributes`. For full-AR, per-bar overrides require a C++
+        # BarAttributeValueConstraint (Phase 2) — emit a one-time warning and
+        # ignore them here so the request still runs.
+        for tp in self._request.tracks:
+            if tp.id >= len(score.tracks):
+                continue
+            track_attrs = score.tracks[tp.id].attributes
+            if tp.id in full_ar_ids:
+                # Full-AR per-bar overrides flow through
+                # BarAttributeValueConstraint in _build_constraints, not the
+                # prompt. Skip the prompt-write path here.
+                continue
+            # Resolve attribute name -> token_type via analyzer (the same
+            # key shape used by compute_bar_tokens above).
+            for bar_idx, bar_dict in (tp.bar_attributes or {}).items():
+                for attr_name, val in (bar_dict or {}).items():
+                    attr_obj = analyzer.get(attr_name) if (analyzer and hasattr(analyzer, "get")) else None
+                    if attr_obj is None:
+                        continue
+                    track_attrs[f"bar_{attr_obj.token_type}_{int(bar_idx)}"] = int(val)
+            # Per-bar controls — map control name to its token-type string.
+            for bar_idx, bar_dict in (tp.bar_controls or {}).items():
+                for ctrl_name, val in (bar_dict or {}).items():
+                    if ctrl_name == "time_signature":
+                        track_attrs[f"bar_TimeSig_{int(bar_idx)}"] = int(val)
 
         # Classify every bar in the step window per the request: a bar is
         # CONTEXT unless it is a generation target (step.bars_to_generate) or
@@ -185,27 +311,58 @@ class SamplingSession:
         # Window size flows via EncodeOptions.window_bars, set inside
         # SessionState from the step. Nothing to plumb through attributes.
         t_enc = time.perf_counter()
+        mask_mode = getattr(self._request.config, "mask_mode", "token")
+        use_span_masks = mask_mode in ("attention", "attention_approx", "attention_skip")
         state = _core.SessionState(
             to_cpp(score), step,
             self._engine._tokenizer._vocab,
             self._build_constraints(step),
             self._engine._tokenizer._encoder,
             self._engine._tokenizer._decoder,
-            getattr(self._request.config, "use_span_masks", False),
+            use_span_masks,
+            mask_mode == "remove",   # remove_future_bars
         )
 
         context_len = len(state.context_tokens())
-        # Encoder-driven span mask: bool tensor of shape (T,) where True = key
-        # position is visible to attention. Built once per step; SDPA combines
-        # this with the causal mask. Only non-None when use_span_masks is set
-        # AND the encoder produced spans (no spans => fast unmasked path).
-        spans = state.hidden_spans() if getattr(self._request.config, "use_span_masks", False) else []
-        if spans:
-            key_visible = torch.ones(context_len, dtype=torch.bool)
+        spans = state.hidden_spans() if use_span_masks else []
+
+        # ── attention: pre-allocate bool buffer on model device (no per-token cat) ──
+        if spans and mask_mode == "attention":
+            _kv_dev = next(self._engine._model.parameters()).device
+            _kv_cap = self._model_max_context()
+            _kv_buf = torch.ones(_kv_cap, dtype=torch.bool, device=_kv_dev)
             for s, e in spans:
-                key_visible[s:e] = False
+                _kv_buf[s:e] = False
+            _kv_len = context_len
         else:
-            key_visible = None
+            _kv_buf = None
+            _kv_len = 0
+
+        # ── attention_approx: one-shot prefill mask (CPU, single use) ──
+        if spans and mask_mode == "attention_approx":
+            _prefill_mask = torch.ones(context_len, dtype=torch.bool)
+            for s, e in spans:
+                _prefill_mask[s:e] = False
+        else:
+            _prefill_mask = None
+        _approx_surgery_done = False
+
+        # ── attention_skip: build filtered token sequence and skip position_ids ──
+        if spans and mask_mode == "attention_skip":
+            _all_ctx = state.context_tokens()
+            _keep = [True] * len(_all_ctx)
+            for s, e in spans:
+                for i in range(s, e):
+                    _keep[i] = False
+            _skip_ids   = [t for t, k in zip(_all_ctx, _keep) if k]
+            _skip_pos   = [i for i, k in enumerate(_keep) if k]
+            _next_pos   = _skip_pos[-1] + 1 if _skip_pos else context_len
+            _skip_ctx   = torch.tensor([_skip_ids], dtype=torch.long)
+            _skip_pos_t = torch.tensor([_skip_pos], dtype=torch.long)
+        else:
+            _skip_ctx = _skip_pos_t = None
+            _next_pos = 0
+
         if self.enable_profiling:
             self.encode_time += time.perf_counter() - t_enc
         model_max_ctx = self._model_max_context()
@@ -217,47 +374,40 @@ class SamplingSession:
         vocab_size = self._engine._tokenizer.vocab_size()
         mask_buf = torch.empty(vocab_size, dtype=torch.bool)
 
-        initial_kv = self._engine._initial_kv  # cached — no model call
-
+        kv = _KVRunner(self._engine._model, self._engine._initial_kv)
         with torch.no_grad():
-            past_kv = None
             while not state.complete() and self.gen_count < max_gen_tokens:
-                if past_kv is None:
-                    ctx = torch.tensor([state.context_tokens()], dtype=torch.long)
+                is_prefill = kv.is_prefill
+
+                # Build ctx and determine key_mask / position_ids for this step
+                if is_prefill:
+                    if mask_mode == "attention_skip" and _skip_ctx is not None:
+                        ctx      = _skip_ctx
+                        km       = None
+                        pos_ids  = _skip_pos_t
+                    else:
+                        ctx      = torch.tensor([state.context_tokens()], dtype=torch.long)
+                        km       = (_kv_buf[:_kv_len] if mask_mode == "attention" and _kv_buf is not None
+                                    else _prefill_mask if mask_mode == "attention_approx" and _prefill_mask is not None
+                                    else None)
+                        pos_ids  = None
                 else:
-                    ctx = torch.tensor([[state.context_tokens()[-1]]], dtype=torch.long)
+                    ctx      = torch.tensor([[state.context_tokens()[-1]]], dtype=torch.long)
+                    km       = _kv_buf[:_kv_len] if mask_mode == "attention" and _kv_buf is not None else None
+                    pos_ids  = (torch.tensor([[_next_pos]], dtype=torch.long)
+                                if mask_mode == "attention_skip" and _skip_ctx is not None else None)
 
                 t_fwd = time.perf_counter()
-                # Pass key_mask only on the production path. Stubs / TorchScript
-                # callables may not accept kwargs, so fall back without it.
-                model_call = self._engine._model
-                try:
-                    if past_kv is None and initial_kv is not None:
-                        if key_visible is not None:
-                            outputs = model_call(ctx, initial_kv, key_mask=key_visible)
-                        else:
-                            outputs = model_call(ctx, initial_kv)
-                    elif past_kv is None:
-                        if key_visible is not None:
-                            outputs = model_call(ctx, key_mask=key_visible)
-                        else:
-                            outputs = model_call(ctx)
-                    else:
-                        if key_visible is not None:
-                            outputs = model_call(ctx, past_kv, key_mask=key_visible)
-                        else:
-                            outputs = model_call(ctx, past_kv)
-                except Exception:
-                    outputs = model_call(ctx)
-                    past_kv = None
+                logits_seq = kv.forward(ctx, key_mask=km, position_ids=pos_ids)
                 if self.enable_profiling:
                     self.model_forward_time += time.perf_counter() - t_fwd
 
-                if not isinstance(outputs, tuple):
-                    outputs = (outputs,)
+                # attention_approx: KV surgery after prefill — null masked positions
+                if mask_mode == "attention_approx" and is_prefill and not _approx_surgery_done and spans:
+                    kv.null_positions(spans)
+                    _approx_surgery_done = True
 
-                logits  = outputs[0][0, -1]
-                past_kv = outputs[1] if len(outputs) > 1 else None
+                logits  = logits_seq[0, -1]
 
                 # Reuse pre-allocated bool buffer for grammar mask
                 mask_buf.copy_(torch.as_tensor(state.logit_mask(), dtype=torch.bool))
@@ -282,6 +432,8 @@ class SamplingSession:
                     probs = mask_buf.to(torch.float32)
                     probs = probs / probs.sum()
 
+                probs = self._apply_sampling_filters(probs)
+
                 token = torch.multinomial(probs, 1).item()
                 # Diagnostic: when we just sampled a melodic NoteOnset, check
                 # whether the very next mask permits non-NoteDuration tokens
@@ -305,18 +457,21 @@ class SamplingSession:
                         f"  after NoteOnset({token}) n_legal={sum(nxt_mask)} "
                         f"legal_types={sorted(legal_types)}")
                     self.gen_count += 1
-                    if key_visible is not None:
-                        key_visible = torch.cat(
-                            [key_visible, torch.ones(1, dtype=torch.bool)]
-                        )
+                    # attention: extend buffer pointer for generated token
+                    if mask_mode == "attention" and _kv_buf is not None:
+                        _kv_len += 1
+                    # attention_skip: advance next position_id
+                    elif mask_mode == "attention_skip" and _skip_ctx is not None:
+                        _next_pos += 1
                     continue
                 state.advance(token)
                 self.gen_count += 1
-                if key_visible is not None:
-                    # Generated tokens are always visible to subsequent queries.
-                    key_visible = torch.cat(
-                        [key_visible, torch.ones(1, dtype=torch.bool)]
-                    )
+                # attention: extend buffer pointer for generated token
+                if mask_mode == "attention" and _kv_buf is not None:
+                    _kv_len += 1
+                # attention_skip: advance next position_id
+                elif mask_mode == "attention_skip" and _skip_ctx is not None:
+                    _next_pos += 1
 
         t_dec = time.perf_counter()
         result = from_cpp(state.result())
@@ -329,12 +484,13 @@ class SamplingSession:
 
         Each entry is "C" (CONTEXT), "M" (MASKED via MaskBar token),
         "A" (MASKED via attention span-mask), or "T" (TO_GENERATE).
-        "A" only appears when SamplingConfig.use_span_masks is True — purely
-        a visualization label; the bar classification is identical to "M".
+        "A" only appears when mask_mode is one of "attention*" — purely a
+        visualization label; the bar classification is identical to "M".
         """
         ar_ids = {tp.id for tp in self._request.tracks if tp.autoregressive}
         btg    = set(step.bars_to_generate)
-        masked_label = "A" if getattr(self._request.config, "use_span_masks", False) else "M"
+        mask_mode = getattr(self._request.config, "mask_mode", "token")
+        masked_label = "A" if mask_mode in ("attention", "attention_approx", "attention_skip") else "M"
         tracks = []
         for t_idx, row in enumerate(step.context):
             states = []
@@ -356,7 +512,84 @@ class SamplingSession:
             "tracks":    tracks,
         }
 
-    def _is_acceptable(self, original: Score, candidate: Score, cfg: SamplingConfig, step: GenerationStep) -> bool:
+    def _apply_sampling_filters(self, probs):
+        """Apply top_k → top_p → mask_k → mask_p in that fixed order.
+
+        Pipeline reasoning: k-filters are rank-based; p-filters are mass-based.
+        Applying top filters first narrows the pool to the model's preferred
+        region; mask filters then carve out the most-obvious tokens *within*
+        that pool — useful for novelty (force the model off its top picks
+        while staying inside its high-confidence region).
+
+        All filters mutate a local `keep` boolean mask and return a
+        renormalized probability vector. If the pool would become empty, the
+        offending filter is skipped (validation catches impossible combos at
+        config time; this is a runtime safety net for edge distributions).
+        """
+        import torch
+        cfg = self._request.config
+        top_p = float(getattr(cfg, "top_p", 1.0) or 1.0)
+        top_k = int(getattr(cfg, "top_k", 0) or 0)
+        mask_p = float(getattr(cfg, "mask_p", 0.0) or 0.0)
+        mask_k = int(getattr(cfg, "mask_k", 0) or 0)
+        if top_p >= 1.0 and top_k <= 0 and mask_p <= 0.0 and mask_k <= 0:
+            return probs
+
+        keep = probs > 0
+        sorted_probs, sorted_idx = torch.sort(probs, descending=True)
+        cumsum = torch.cumsum(sorted_probs, dim=0)
+        # number of currently-positive (i.e. legal & non-filtered) tokens, used
+        # to size rank-based filters relative to the remaining pool
+        legal_n = int(keep.sum().item())
+
+        # top_k: keep only the top_k highest-prob tokens
+        if 0 < top_k < legal_n:
+            cutoff = sorted_idx[:top_k]
+            new_keep = torch.zeros_like(keep)
+            new_keep[cutoff] = True
+            keep = keep & new_keep
+
+        # top_p: nucleus — keep smallest descending-prob set with cumsum ≥ top_p
+        if 0.0 < top_p < 1.0:
+            # rank at which cumsum first ≥ top_p (inclusive)
+            nucleus_rank = int(torch.searchsorted(cumsum, torch.tensor(top_p)).item()) + 1
+            nucleus_rank = max(1, min(nucleus_rank, sorted_idx.numel()))
+            nucleus = sorted_idx[:nucleus_rank]
+            new_keep = torch.zeros_like(keep)
+            new_keep[nucleus] = True
+            keep = keep & new_keep
+
+        # Re-sort over the surviving pool for mask_* (mass/rank measured on the
+        # POST-top distribution, otherwise mask_p semantics shift with top_p).
+        survivor_probs = probs * keep.to(probs.dtype)
+        s_total = float(survivor_probs.sum().item())
+        if s_total <= 0:
+            return probs / probs.sum()
+        survivor_norm = survivor_probs / s_total
+        sorted_probs2, sorted_idx2 = torch.sort(survivor_norm, descending=True)
+        cumsum2 = torch.cumsum(sorted_probs2, dim=0)
+        survivors_n = int(keep.sum().item())
+
+        # mask_k: remove the top mask_k highest-prob (within survivors) tokens
+        if 0 < mask_k < survivors_n:
+            drop = sorted_idx2[:mask_k]
+            keep[drop] = False
+
+        # mask_p: remove most-likely tokens summing (cumulative) to ≥ mask_p
+        if 0.0 < mask_p < 1.0 and survivors_n > 0:
+            drop_rank = int(torch.searchsorted(cumsum2, torch.tensor(mask_p)).item()) + 1
+            drop_rank = min(drop_rank, survivors_n - 1)  # never empty the pool
+            if drop_rank > 0:
+                drop = sorted_idx2[:drop_rank]
+                keep[drop] = False
+
+        filtered = probs * keep.to(probs.dtype)
+        total = float(filtered.sum().item())
+        if total <= 0:
+            return probs / probs.sum()
+        return filtered / total
+
+    def _is_acceptable(self, original: Score, candidate: Score, cfg: InferenceConfig, step: GenerationStep) -> bool:
         logging.debug(f"Checking acceptability: silence_check={cfg.silence_check}, novelty_check={cfg.novelty_check}")
 
         # Dump request vs. step alignment + per-track/bar note counts.
@@ -420,36 +653,12 @@ class SamplingSession:
         return True
 
     def _model_max_context(self) -> int:
-        """Read the model's positional context length.
+        """Read the model's positional context length via the ModelBase protocol.
 
-        Prefers model.max_context() (ModelBase protocol). Falls back to
-        attribute probing for TorchScript / legacy callables, then 2048.
+        TorchScript checkpoints are wrapped in TorchScriptAdapter at load time,
+        so every model surfaces max_context().
         """
-        m = self._engine._model
-        if hasattr(m, "max_context"):
-            return m.max_context()
-        for path in (
-            ("config", "n_positions"),
-            ("config", "n_ctx"),
-            ("config", "max_position_embeddings"),
-        ):
-            obj = m
-            try:
-                for attr in path:
-                    obj = getattr(obj, attr)
-                v = int(obj)
-                if v > 0:
-                    return v
-            except Exception:
-                continue
-        try:
-            wpe = m.transformer.wpe.weight
-            v = int(wpe.shape[0])
-            if v > 0:
-                return v
-        except Exception:
-            pass
-        return 2048
+        return self._engine._model.max_context()
 
     def _build_selection_mask(self) -> _core.SelectionMask:
         n_tracks = len(self._score.tracks)
@@ -477,10 +686,21 @@ class SamplingSession:
     def _build_constraints(self, step) -> _core.ConstraintGraph:
         graph = _core.ConstraintGraph()
         grammar = _core.GrammarConstraint()
-        if len(self._request.tracks) <= 1:
-            grammar.set_mask_track_start(True)
-            grammar.set_mask_track_end(True)
-            
+
+        # `Track` (TrackStart) and `TrackEnd` tokens are NEVER masked here. The
+        # grammar FSM and `set_max_tracks(N)` (below) already decide when they
+        # are syntactically legal:
+        #   - AR, tracks_per_step=1:  model must sample TrackEnd to terminate.
+        #   - AR, tracks_per_step>1:  model samples Track between consecutive
+        #                             AR tracks and TrackEnd to close each.
+        #   - Infill (any track count): model is in FillInStart→…→FillInEnd
+        #                             states; Track/TrackEnd are never visited
+        #                             during sampling — they live in the prompt
+        #                             only.
+        # Hard-masking these tokens for `len(request.tracks) <= 1` removed the
+        # exit transition that AR needs and was the cause of the "zero legal
+        # tokens" crash on single-track generation.
+
         # Exact bar count enforcement for autoregressive: each track must end
         # with exactly step.end_bar Bar tokens. (Infill is bounded by FillIn
         # block count instead, so leave the grammar unconstrained.)
@@ -493,12 +713,28 @@ class SamplingSession:
             # playhead (O(N²) over a session).
             grammar.set_exact_bars(step.end_bar - step.start_bar)
             grammar.set_autoregressive_mode(True)
-        grammar.set_max_tracks(len(self._score.tracks))
+        # Ignored tracks are omitted from the token sequence by the encoder,
+        # so the grammar's track_count_ only ever reaches (n_tracks - n_ignored).
+        # Using len(score.tracks) here would force the model to emit extra
+        # phantom tracks to satisfy max_tracks.
+        ignored_ids = {tp.id for tp in self._request.tracks if tp.ignore}
+        grammar.set_max_tracks(len(self._score.tracks) - len(ignored_ids))
         grammar.set_require_notes(True)
-        
+
         graph.add_constraint(grammar)
 
+        # Global hard cap on simultaneous note onsets — applies to every step
+        # regardless of attribute controls. 0 = off.
+        hard_limit = int(getattr(self._request.config, "polyphony_hard_limit", 0) or 0)
+        if hard_limit > 0:
+            graph.add_constraint(_core.PolyphonyConstraint(hard_limit))
+        density_limit = int(getattr(self._request.config, "density_hard_limit", 0) or 0)
+        if density_limit > 0:
+            graph.add_constraint(_core.DensityConstraint(density_limit))
+
         attr_to_token = {
+            "note_density":       _core.TokenType.NoteDensity,
+            "onset_polyphony":    _core.TokenType.OnsetPolyphony,
             "pitch_range":        _core.TokenType.PitchRange,
             "key_signature":      _core.TokenType.KeySignature,
             "note_duration_dist": _core.TokenType.NoteDurationDist,
@@ -510,22 +746,80 @@ class SamplingSession:
             "min_polyphony":      _core.TokenType.MinPolyphony,
             "max_polyphony":      _core.TokenType.MaxPolyphony,
         }
+        # First-class non-attribute controls. These don't flow through the
+        # AttributeAnalyzer (no per-bar/per-track computation); they just pin a
+        # token to a specific value when generated. Live on tp.controls.
+        control_to_token = {
+            "time_signature": _core.TokenType.TimeSig,
+        }
 
         full_ar_ids = getattr(self, "_full_ar_ids", set())
+        # Ordinal of each generating track in this step (position among the
+        # step's track_indices in emit order). Used by per-bar constraints
+        # which need to know "are we currently inside the target track?".
+        track_ordinal = {tid: i for i, tid in enumerate(step.track_indices)}
+        # Analyzer (for bar-level attr_name -> token_type lookup).
+        analyzer = self._engine._analyzer
+        # Bar attribute name -> TokenType (resolved via analyzer so we don't
+        # hardcode the bar-level attribute schema here).
+        def _bar_attr_token(name):
+            if analyzer is None:
+                return None
+            obj = analyzer.get(name) if hasattr(analyzer, "get") else None
+            if obj is None or getattr(obj, "level", "track") != "bar":
+                return None
+            tt_name = getattr(obj, "token_type", None)
+            return getattr(_core.TokenType, tt_name, None) if tt_name else None
+        # Bar control name -> TokenType.
+        bar_control_to_token = {
+            "time_signature": _core.TokenType.TimeSig,
+        }
         for tp in self._request.tracks:
             # Attribute constraints only apply to full-AR tracks; infill and
             # partial-AR pin attributes through the encoded prompt.
             if tp.id not in full_ar_ids:
                 continue
             if tp.id in step.track_indices:
-                if "note_density" in tp.attributes:
-                    graph.add_constraint(_core.DensityConstraint(tp.attributes["note_density"]))
-                if "onset_polyphony" in tp.attributes:
-                    graph.add_constraint(_core.PolyphonyConstraint(tp.attributes["onset_polyphony"]))
-
                 for attr_name, token_type in attr_to_token.items():
                     if attr_name in tp.attributes:
                         val = tp.attributes[attr_name]
                         graph.add_constraint(_core.AttributeValueConstraint(token_type, val))
+
+                # Non-attribute controls: same constraint mechanism, separate
+                # source dict to keep the attribute pipeline analyzer-pure.
+                controls = getattr(tp, "controls", {}) or {}
+                for ctrl_name, token_type in control_to_token.items():
+                    if ctrl_name in controls:
+                        graph.add_constraint(_core.AttributeValueConstraint(
+                            token_type, int(controls[ctrl_name])))
+
+                # Per-bar overrides — only meaningful for full-AR since
+                # infill/partial-AR pin per-bar values via the prompt.
+                # Bar-index is RELATIVE to step.start_bar (the grammar
+                # resets bar_count_ at each Track token). For full-AR the
+                # whole track is generated, so start_bar==0 and absolute
+                # == relative.
+                t_ord = track_ordinal.get(tp.id, 0)
+                start_bar = int(step.start_bar)
+                for bar_idx, bar_dict in (tp.bar_attributes or {}).items():
+                    rel = int(bar_idx) - start_bar
+                    if rel < 0:
+                        continue
+                    for attr_name, val in (bar_dict or {}).items():
+                        tok = _bar_attr_token(attr_name)
+                        if tok is None:
+                            continue
+                        graph.add_constraint(_core.BarAttributeValueConstraint(
+                            tok, t_ord, rel, int(val)))
+                for bar_idx, bar_dict in (tp.bar_controls or {}).items():
+                    rel = int(bar_idx) - start_bar
+                    if rel < 0:
+                        continue
+                    for ctrl_name, val in (bar_dict or {}).items():
+                        tok = bar_control_to_token.get(ctrl_name)
+                        if tok is None:
+                            continue
+                        graph.add_constraint(_core.BarAttributeValueConstraint(
+                            tok, t_ord, rel, int(val)))
 
         return graph

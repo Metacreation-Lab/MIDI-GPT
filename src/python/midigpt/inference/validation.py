@@ -129,6 +129,34 @@ def validate_request(request: GenerationRequest, score, encoder_config,
         )
         cfg = replace(cfg, temperature_escalation=_TEMP_ESC_MAX)
 
+    # ---------------- sampling filters ----------------
+    # top_p ∈ (0, 1] : 1.0 = off (keep all). 0.0 would mean "keep nothing".
+    if not (0.0 < cfg.top_p <= 1.0):
+        raise RequestValidationError(
+            f"top_p must be in (0, 1] (got {cfg.top_p}); use 1.0 to disable"
+        )
+    # mask_p ∈ [0, 1) : 0.0 = off. 1.0 would mask the entire distribution.
+    if not (0.0 <= cfg.mask_p < 1.0):
+        raise RequestValidationError(
+            f"mask_p must be in [0, 1) (got {cfg.mask_p}); use 0.0 to disable"
+        )
+    if cfg.top_k < 0:
+        raise RequestValidationError(f"top_k must be >= 0 (got {cfg.top_k}); use 0 to disable")
+    if cfg.mask_k < 0:
+        raise RequestValidationError(f"mask_k must be >= 0 (got {cfg.mask_k}); use 0 to disable")
+    # Pool-emptiness guards (only when BOTH sides are active).
+    if cfg.mask_p > 0.0 and cfg.top_p < 1.0 and cfg.mask_p >= cfg.top_p:
+        raise RequestValidationError(
+            f"mask_p ({cfg.mask_p}) must be < top_p ({cfg.top_p}); "
+            f"mask_p chops the most-likely mass *within* the top_p nucleus, so "
+            f"mask_p ≥ top_p empties the sampling pool"
+        )
+    if cfg.mask_k > 0 and cfg.top_k > 0 and cfg.mask_k >= cfg.top_k:
+        raise RequestValidationError(
+            f"mask_k ({cfg.mask_k}) must be < top_k ({cfg.top_k}); "
+            f"mask_k removes the most-likely ranks *within* the top_k pool"
+        )
+
     # ---------------- score shape ----------------
     if not score.tracks:
         raise RequestValidationError("score has 0 tracks")
@@ -150,16 +178,17 @@ def validate_request(request: GenerationRequest, score, encoder_config,
             "Pad the score or pick a smaller model_dim."
         )
 
-    # ---------------- mask bar support ----------------
-    has_masked_bars = any(
-        getattr(b, "future", False)
-        for t in score.tracks
-        for b in t.bars
-    )
-    if has_masked_bars and not _supports_mask_bar(cfg_dict):
+    # ---------------- mask_mode vs encoder vocab ----------------
+    # Bar masking is universal; the encoder chooses *how* to represent a
+    # masked bar based on cfg.mask_mode. Only "token" mode needs the MaskBar
+    # vocab entry — attention* / remove modes work on any encoder.
+    mask_mode = getattr(cfg, "mask_mode", "token")
+    if mask_mode == "token" and not _supports_mask_bar(cfg_dict):
         raise RequestValidationError(
-            "score contains bars with future=True (MASK_BAR) but the encoder "
-            "config does not include a MaskBar token domain"
+            "config.mask_mode='token' requires the encoder vocab to include "
+            "a MaskBar token domain (set supports_mask_bar_token=true in the "
+            "encoder config, or pick mask_mode='attention'/'attention_approx'"
+            "/'attention_skip'/'remove')."
         )
 
     # ---------------- time signatures ----------------
@@ -227,11 +256,41 @@ def validate_request(request: GenerationRequest, score, encoder_config,
     if not request.tracks:
         raise RequestValidationError("request.tracks is empty — nothing to generate")
 
+    prompt_ids = {tp.id for tp in request.tracks}
+    missing = sorted(set(range(len(score.tracks))) - prompt_ids)
+    if missing:
+        raise RequestValidationError(
+            f"score has {len(score.tracks)} tracks but request is missing prompts "
+            f"for track_id(s) {missing}; every score track requires an explicit "
+            f"TrackPrompt (use ignore=True to skip)"
+        )
+
     seen_ids: set[int] = set()
     has_infill = False
     has_anything_to_generate = False
-    attr_names = _attribute_control_names(encoder_config)
     attr_sizes = analyzer.attribute_sizes() if analyzer is not None else {}
+    # The analyzer exposes attributes under their *instance* names (e.g.
+    # PolyphonyQuantile(mode="min") → "min_polyphony"), and that's the name the
+    # rest of the pipeline keys on (encoder prompt overrides + constraint
+    # builder). Fall back to the registry-key names from the encoder config
+    # only when no analyzer is present.
+    if attr_sizes:
+        attr_names = set(attr_sizes.keys())
+    else:
+        attr_names = _attribute_control_names(encoder_config)
+    attr_track_types = analyzer.attribute_track_types() if analyzer is not None else {}
+    attr_levels = analyzer.attribute_levels() if analyzer is not None else {}
+    # Non-attribute controls live on tp.controls. Each entry has its own
+    # validator below; the names here are just the dispatch table.
+    KNOWN_CONTROLS = {"time_signature"}
+    _cfg_dict = _config_dict(encoder_config)
+    _ts_count = len(_cfg_dict.get("time_signatures") or [])
+    _ts_list = list(_cfg_dict.get("time_signatures") or [])
+
+    # Cross-track time-signature coherence accumulator: bar_idx -> (ts_value, source_track_id).
+    # Populated as each track's bar_controls is validated, then cross-checked
+    # at the end of the per-track loop.
+    ts_per_bar: dict[int, tuple[int, int]] = {}
 
     for tp in request.tracks:
         if tp.id in seen_ids:
@@ -329,21 +388,216 @@ def validate_request(request: GenerationRequest, score, encoder_config,
         elif tp.bars:
             has_infill = True
             has_anything_to_generate = True
-        else:
-            log.warning("track_id=%d: not ignored, not autoregressive, no bars selected — no-op", tp.id)
 
-        # Attribute name + value range
+        # Attribute name + value range + track-type compatibility
+        track = score.tracks[tp.id] if tp.id < len(score.tracks) else None
+        is_drum_track = None
+        if track is not None:
+            tt = getattr(track, "track_type", None)
+            if tt is None:
+                from midigpt._core import TrackType
+                tt = "drum" if track.type == TrackType.Drum else "melodic"
+            is_drum_track = (tt == "drum")
+
         for k, v in tp.attributes.items():
             if attr_names and k not in attr_names:
                 raise RequestValidationError(
                     f"track_id={tp.id}: unknown attribute '{k}' "
-                    f"(known: {sorted(attr_names)})"
+                    f"(known: {sorted(attr_names)}); "
+                    f"non-attribute controls (e.g. time_signature) live on tp.controls"
+                )
+            # Level-correctness: bar-level attributes must go in
+            # `bar_attributes`, not `attributes`.
+            if attr_levels.get(k) == "bar":
+                raise RequestValidationError(
+                    f"track_id={tp.id}: attribute '{k}' is bar-level — "
+                    f"set it via tp.bar_attributes[bar_idx]['{k}'], "
+                    f"not tp.attributes"
                 )
             sz = attr_sizes.get(k)
             if sz is not None and not (0 <= int(v) < sz):
                 raise RequestValidationError(
                     f"track_id={tp.id}: attribute '{k}'={v} out of range [0, {sz})"
                 )
+            req_tt = attr_track_types.get(k, "both")
+            if is_drum_track is not None and req_tt != "both":
+                if req_tt == "melodic" and is_drum_track:
+                    raise RequestValidationError(
+                        f"track_id={tp.id}: attribute '{k}' is melodic-only "
+                        f"but track is a drum track"
+                    )
+                if req_tt == "drum" and not is_drum_track:
+                    raise RequestValidationError(
+                        f"track_id={tp.id}: attribute '{k}' is drum-only "
+                        f"but track is a melodic track"
+                    )
+            # Achievability (warning only): in partial-AR / infill, a
+            # track-level override is computed over the full track. Fixed
+            # bars may already preclude the requested value.
+            is_partial_ar = tp.autoregressive and tp.bars and min(tp.bars) > 0
+            is_infill = not tp.autoregressive and tp.bars
+            if (is_partial_ar or is_infill) and analyzer is not None:
+                attr_obj = analyzer.get(k) if hasattr(analyzer, "get") else None
+                if attr_obj is not None:
+                    try:
+                        lo, hi = attr_obj.achievable_range(
+                            score, tp.id, list(tp.bars))
+                    except Exception:
+                        lo, hi = (0, (sz or 1) - 1)
+                    if not (lo <= int(v) <= hi):
+                        log.warning(
+                            "track_id=%d: attribute '%s'=%d is outside "
+                            "achievable range [%d, %d] given the fixed "
+                            "bars — request accepted, but the realized "
+                            "attribute will not match (try a value in range, "
+                            "or switch to full AR to regenerate the whole "
+                            "track)",
+                            tp.id, k, int(v), lo, hi,
+                        )
+
+        # ---------- per-bar attribute overrides ----------
+        gen_bars_set = set(tp.bars or [])
+        # Suffix-only rule for partial-AR is structurally equivalent to
+        # "bar_idx ∈ tp.bars" (the suffix). For full-AR with no prefix,
+        # tp.bars may be empty meaning "the whole track"; in that case any
+        # in-range bar idx is allowed.
+        full_track_ar = tp.autoregressive and not tp.bars
+        nb_track_ref = nb_track  # for use in lambdas below
+        for bar_idx, bar_dict in (tp.bar_attributes or {}).items():
+            bar_idx_i = int(bar_idx)
+            if bar_idx_i < 0 or bar_idx_i >= nb_track_ref:
+                raise RequestValidationError(
+                    f"track_id={tp.id}: bar_attributes key {bar_idx_i} out "
+                    f"of range (track has {nb_track_ref} bars)"
+                )
+            if not full_track_ar and bar_idx_i not in gen_bars_set:
+                raise RequestValidationError(
+                    f"track_id={tp.id}: bar_attributes references bar "
+                    f"{bar_idx_i}, which is not in tp.bars "
+                    f"(generation targets); per-bar overrides must apply to "
+                    f"bars being generated"
+                )
+            for k, v in (bar_dict or {}).items():
+                if attr_names and k not in attr_names:
+                    raise RequestValidationError(
+                        f"track_id={tp.id} bar {bar_idx_i}: unknown attribute "
+                        f"'{k}' (known: {sorted(attr_names)})"
+                    )
+                if attr_levels.get(k, "track") != "bar":
+                    raise RequestValidationError(
+                        f"track_id={tp.id} bar {bar_idx_i}: attribute '{k}' "
+                        f"is track-level — set it via tp.attributes, not "
+                        f"tp.bar_attributes"
+                    )
+                sz = attr_sizes.get(k)
+                if sz is not None and not (0 <= int(v) < sz):
+                    raise RequestValidationError(
+                        f"track_id={tp.id} bar {bar_idx_i}: attribute '{k}'"
+                        f"={v} out of range [0, {sz})"
+                    )
+                req_tt = attr_track_types.get(k, "both")
+                if is_drum_track is not None and req_tt != "both":
+                    if req_tt == "melodic" and is_drum_track:
+                        raise RequestValidationError(
+                            f"track_id={tp.id} bar {bar_idx_i}: attribute "
+                            f"'{k}' is melodic-only but track is a drum track"
+                        )
+                    if req_tt == "drum" and not is_drum_track:
+                        raise RequestValidationError(
+                            f"track_id={tp.id} bar {bar_idx_i}: attribute "
+                            f"'{k}' is drum-only but track is a melodic track"
+                        )
+
+        # ---------- per-bar non-attribute controls ----------
+        for bar_idx, bar_dict in (tp.bar_controls or {}).items():
+            bar_idx_i = int(bar_idx)
+            if bar_idx_i < 0 or bar_idx_i >= nb_track_ref:
+                raise RequestValidationError(
+                    f"track_id={tp.id}: bar_controls key {bar_idx_i} out "
+                    f"of range (track has {nb_track_ref} bars)"
+                )
+            if not full_track_ar and bar_idx_i not in gen_bars_set:
+                raise RequestValidationError(
+                    f"track_id={tp.id}: bar_controls references bar "
+                    f"{bar_idx_i}, which is not in tp.bars"
+                )
+            for k, v in (bar_dict or {}).items():
+                if k not in KNOWN_CONTROLS:
+                    raise RequestValidationError(
+                        f"track_id={tp.id} bar {bar_idx_i}: unknown control "
+                        f"'{k}' (known: {sorted(KNOWN_CONTROLS)})"
+                    )
+                if k == "time_signature":
+                    if _ts_count == 0:
+                        raise RequestValidationError(
+                            f"track_id={tp.id} bar {bar_idx_i}: encoder has "
+                            f"no time_signatures configured"
+                        )
+                    if not (0 <= int(v) < _ts_count):
+                        raise RequestValidationError(
+                            f"track_id={tp.id} bar {bar_idx_i}: "
+                            f"time_signature index {v} out of range "
+                            f"[0, {_ts_count})"
+                        )
+                    # Cross-track coherence: same bar_idx must agree across
+                    # generating tracks.
+                    if bar_idx_i in ts_per_bar:
+                        prev_v, prev_tid = ts_per_bar[bar_idx_i]
+                        if prev_v != int(v):
+                            raise RequestValidationError(
+                                f"bar {bar_idx_i}: time_signature mismatch "
+                                f"between track_id={prev_tid} (={prev_v}) "
+                                f"and track_id={tp.id} (={int(v)}); "
+                                f"a bar must have one time signature across "
+                                f"all tracks"
+                            )
+                    else:
+                        ts_per_bar[bar_idx_i] = (int(v), tp.id)
+                    # Cross-check against any context-bar TS already in the
+                    # score: every track has a bar at this index, and they
+                    # must already agree (validated earlier in the score
+                    # shape block). Just check track 0's bar TS for this
+                    # index against the override.
+                    if _ts_list and tp.id < len(score.tracks):
+                        sb = score.tracks[tp.id].bars[bar_idx_i]
+                        tsn = getattr(sb, "ts_numerator", None)
+                        tsd = getattr(sb, "ts_denominator", None)
+                        entry = _ts_list[int(v)] if int(v) < len(_ts_list) else None
+                        if tsn and tsd and entry:
+                            if isinstance(entry, str) and "/" in entry:
+                                en, ed = entry.split("/")
+                                en, ed = int(en), int(ed)
+                            elif isinstance(entry, (list, tuple)) and len(entry) == 2:
+                                en, ed = int(entry[0]), int(entry[1])
+                            else:
+                                en = ed = None
+                            if en and ed and (en, ed) != (tsn, tsd):
+                                raise RequestValidationError(
+                                    f"track_id={tp.id} bar {bar_idx_i}: "
+                                    f"time_signature override {en}/{ed} "
+                                    f"conflicts with existing bar TS "
+                                    f"{tsn}/{tsd}"
+                                )
+
+        # Non-attribute controls (tp.controls). Each has its own validator.
+        controls = getattr(tp, "controls", {}) or {}
+        for k, v in controls.items():
+            if k not in KNOWN_CONTROLS:
+                raise RequestValidationError(
+                    f"track_id={tp.id}: unknown control '{k}' "
+                    f"(known: {sorted(KNOWN_CONTROLS)})"
+                )
+            if k == "time_signature":
+                if _ts_count == 0:
+                    raise RequestValidationError(
+                        f"track_id={tp.id}: encoder has no time_signatures "
+                        f"configured — cannot lock time_signature"
+                    )
+                if not (0 <= int(v) < _ts_count):
+                    raise RequestValidationError(
+                        f"track_id={tp.id}: time_signature index {v} out of "
+                        f"range [0, {_ts_count})"
+                    )
 
     if not has_anything_to_generate:
         raise RequestValidationError(

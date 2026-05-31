@@ -18,12 +18,14 @@ class InferenceEngine:
         except ImportError:
             raise ImportError("pip install midigpt[inference]")
         from midigpt.tokenizer.checkpoint import load_checkpoint
-        bundle    = load_checkpoint(path)
+        from midigpt.inference.model.torchscript_adapter import TorchScriptAdapter
+        bundle = load_checkpoint(path)
         if bundle.model is not None:
             model = bundle.model
         else:
-            model = torch.jit.load(bundle.model_path, map_location="cpu")
-            model.eval()
+            scripted = torch.jit.load(bundle.model_path, map_location="cpu")
+            scripted.eval()
+            model = TorchScriptAdapter(scripted)
         tokenizer = Tokenizer(bundle.encoder_config, analyzer)
         engine    = cls(model, tokenizer,
                         analyzer or AttributeAnalyzer.from_config(bundle.encoder_config))
@@ -40,43 +42,16 @@ class InferenceEngine:
     def _compute_initial_kv(self):
         """Build an empty past_kv for the first model call.
 
-        Prefers model.make_empty_kv() when the model satisfies the ModelBase
-        protocol. Falls back to a probe loop for TorchScript or other callables.
+        Requires ``model.make_empty_kv()`` (ModelBase protocol). Legacy
+        TorchScript modules are wrapped in TorchScriptAdapter before reaching
+        here, so every model has the method.
         """
         import torch
         model = self._model
-
-        # Fast path: model implements ModelBase
-        if hasattr(model, "make_empty_kv"):
-            kv = model.make_empty_kv()
-            with torch.no_grad():
-                model(torch.tensor([[0]], dtype=torch.long), kv)
-            return kv
-
-        # Slow path: TorchScript or opaque callable — probe n_head
-        try:
-            trf    = model.transformer
-            n_embd = trf.wte.weight.shape[1]
-            n_layer = sum(1 for _ in trf.h.children())
-        except Exception:
-            return None
-
-        for n_head in (8, 16, 12, 4):
-            if n_embd % n_head != 0:
-                continue
-            head_dim = n_embd // n_head
-            kv = tuple(
-                (torch.zeros(1, n_head, 0, head_dim),
-                 torch.zeros(1, n_head, 0, head_dim))
-                for _ in range(n_layer)
-            )
-            try:
-                with torch.no_grad():
-                    model(torch.tensor([[0]], dtype=torch.long), kv)
-                return kv
-            except Exception:
-                continue
-        return None
+        kv = model.make_empty_kv()
+        with torch.no_grad():
+            model(torch.tensor([[0]], dtype=torch.long), kv)
+        return kv
 
     def session(self, score: "Score",
                 request: "GenerationRequest") -> "SamplingSession":
