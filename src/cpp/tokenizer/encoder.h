@@ -34,6 +34,11 @@ struct EncodeOptions {
     // to the empty shell — used to run yellow-style checkpoints (no MaskBar
     // token in vocab) on the realtime lookahead path.
     bool use_span_masks = false;
+
+    // If true, future bars are omitted entirely from the token sequence
+    // (no tokens emitted at all). Used by the "remove" and "attention_skip"
+    // mask modes where the caller builds a filtered token sequence directly.
+    bool remove_future_bars = false;
 };
 
 struct EncodeResult {

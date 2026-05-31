@@ -26,36 +26,23 @@ target_include_directories(midigpt_core PUBLIC
 target_link_libraries(midigpt_core PUBLIC symusic)
 
 # Tests
-add_executable(test_score tests/cpp/test_score.cpp)
-target_include_directories(test_score PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp)
+enable_testing()
 
-add_executable(test_io tests/cpp/test_io.cpp)
-target_include_directories(test_io PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp)
-target_link_libraries(test_io PRIVATE midigpt_core)
+function(midigpt_add_test name)
+    add_executable(${name} tests/cpp/${name}.cpp)
+    target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp)
+    target_link_libraries(${name} PRIVATE midigpt_core)
+    add_test(NAME ${name} COMMAND ${name})
+endfunction()
 
-add_executable(test_vocabulary tests/cpp/test_vocabulary.cpp)
-target_include_directories(test_vocabulary PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp)
-target_link_libraries(test_vocabulary PRIVATE midigpt_core)
-
-add_executable(test_tokenizer tests/cpp/test_tokenizer.cpp)
-target_include_directories(test_tokenizer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp)
-target_link_libraries(test_tokenizer PRIVATE midigpt_core)
-
-add_executable(test_constraint_graph tests/cpp/test_constraint_graph.cpp)
-target_include_directories(test_constraint_graph PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp)
-target_link_libraries(test_constraint_graph PRIVATE midigpt_core)
-
-add_executable(test_step_planner tests/cpp/test_step_planner.cpp)
-target_include_directories(test_step_planner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp)
-target_link_libraries(test_step_planner PRIVATE midigpt_core)
-
-add_executable(test_session_state tests/cpp/test_session_state.cpp)
-target_include_directories(test_session_state PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp)
-target_link_libraries(test_session_state PRIVATE midigpt_core)
-
-add_executable(test_domain_transforms tests/cpp/test_domain_transforms.cpp)
-target_include_directories(test_domain_transforms PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp)
-target_link_libraries(test_domain_transforms PRIVATE midigpt_core)
+midigpt_add_test(test_score)
+midigpt_add_test(test_io)
+midigpt_add_test(test_vocabulary)
+midigpt_add_test(test_tokenizer)
+midigpt_add_test(test_constraints)
+midigpt_add_test(test_step_planner)
+midigpt_add_test(test_session_state)
+midigpt_add_test(test_domain_transforms)
 
 pybind11_add_module(_core MODULE src/cpp/bindings/lib.cpp)
 target_link_libraries(_core PRIVATE midigpt_core)

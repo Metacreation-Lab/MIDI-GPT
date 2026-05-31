@@ -19,7 +19,8 @@ public:
         const masking::ConstraintGraph&           constraints,
         const tokenizer::Encoder&                 encoder,
         const tokenizer::Decoder&                 decoder,
-        bool                                      use_span_masks = false
+        bool                                      use_span_masks = false,
+        bool                                      remove_future_bars = false
     );
 
     bool              complete()       const; // all bars_to_generate are done
@@ -70,6 +71,8 @@ private:
     // Token-index ranges within context_cache_ that should be attention-masked.
     // Populated by the encoder when use_span_masks is enabled.
     std::vector<std::pair<int,int>> hidden_spans_;
+
+    bool               remove_future_bars_ = false;
 };
 
 } // namespace midigpt::sampling

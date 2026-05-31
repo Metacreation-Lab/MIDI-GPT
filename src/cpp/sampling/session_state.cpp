@@ -10,9 +10,11 @@ SessionState::SessionState(
     const masking::ConstraintGraph&           constraints,
     const tokenizer::Encoder&                 encoder,
     const tokenizer::Decoder&                 decoder,
-    bool                                      use_span_masks
+    bool                                      use_span_masks,
+    bool                                      remove_future_bars
 ) : context_(std::move(context)), step_(step), vocab_(vocab),
-    constraints_(constraints), encoder_(encoder), decoder_(decoder)
+    constraints_(constraints), encoder_(encoder), decoder_(decoder),
+    remove_future_bars_(remove_future_bars)
 {
     // Snapshot bars OUTSIDE the step window before any trim/shift, so result()
     // can splice them back and return a Score with absolute bar indices.
@@ -73,6 +75,7 @@ SessionState::SessionState(
     tokenizer::EncodeOptions encode_opts;
     encode_opts.window_bars = step_.end_bar - step_.start_bar;
     encode_opts.use_span_masks = use_span_masks;
+    encode_opts.remove_future_bars = remove_future_bars_;
 
     if (step_.is_autoregressive) {
         // --- Autoregressive step: suffix-AR encoding ---
