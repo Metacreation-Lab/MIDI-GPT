@@ -3,30 +3,17 @@
   "decode_resolution": 1920,
   "model_dim": 840,
   "use_microtiming": true,
-  "token_domains": [
-    {"type": "PieceStart", "domain_size": 2},
-    {"type": "NumBars", "domain_size": 2},
-    {"type": "Bar", "domain_size": 1},
-    {"type": "BarEnd", "domain_size": 1},
-    {"type": "TimeSig", "domain_size": 36},
-    {"type": "Track", "domain_size": 2},
-    {"type": "TrackEnd", "domain_size": 1},
-    {"type": "Instrument", "domain_size": 109},
-    {"type": "NoteOnset", "domain_size": 128},
-    {"type": "NoteDuration", "domain_size": 96},
-    {"type": "TimeAbsolutePos", "domain_size": 192},
-    {"type": "FillInPlaceholder", "domain_size": 1},
-    {"type": "FillInStart", "domain_size": 1},
-    {"type": "FillInEnd", "domain_size": 1},
-    {"type": "Delta", "domain_size": 96},
-    {"type": "DeltaDirection", "domain_size": 1},
-    {"type": "VelocityLevel", "domain_size": 128},
-    {"type": "MinNoteDuration", "domain_size": 6},
-    {"type": "MaxNoteDuration", "domain_size": 6},
-    {"type": "MinPolyphony", "domain_size": 10},
-    {"type": "MaxPolyphony", "domain_size": 10},
-    {"type": "NoteDensity", "domain_size": 10}
-  ],
+
+  "pitch_range": [0, 127],
+  "velocity_levels": 128,
+  "note_duration_max_beats": 8,
+
+  "emit_delta_tokens": true,
+  "supports_infill": true,
+  "velocity_sticky": true,
+
+  "num_bars_map": [4, 8],
+
   "time_signatures": [
     "4/4", "3/4", "2/4", "6/8", "2/2", "1/4", "6/4",
     "3/8", "5/4", "4/2", "1/8", "3/2", "9/8", "5/8",
@@ -47,5 +34,13 @@
     [50, 51],
     [62, 63],
     [88, 89, 90, 91, 92, 93, 94, 95]
+  ],
+
+  "attribute_controls": [
+    {"name": "note_density_quantile"},
+    {"name": "polyphony_quantile",     "params": {"mode": "min"}},
+    {"name": "polyphony_quantile",     "params": {"mode": "max"}},
+    {"name": "note_duration_quantile", "params": {"mode": "min"}},
+    {"name": "note_duration_quantile", "params": {"mode": "max"}}
   ]
 }

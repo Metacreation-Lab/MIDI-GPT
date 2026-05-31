@@ -42,7 +42,7 @@ def test_full_generation_speed_extensive(yellow_orig_encoder, yellow_ref_compone
     from midigpt._converters import from_cpp
     from midigpt.inference.engine import InferenceEngine
     from midigpt.inference.config import (
-        GenerationRequest, TrackPrompt, SamplingConfig,
+        GenerationRequest, TrackPrompt, InferenceConfig,
     )
     from midigpt.tokenizer.tokenizer import Tokenizer
     from midigpt.attributes import AttributeAnalyzer
@@ -153,7 +153,7 @@ def test_full_generation_speed_extensive(yellow_orig_encoder, yellow_ref_compone
         ]
         request = GenerationRequest(
             tracks=tracks,
-            config=SamplingConfig(
+            config=InferenceConfig(
                 max_attempts=1,
                 silence_check=False,
                 novelty_check=False,
