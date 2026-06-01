@@ -489,6 +489,22 @@ via `midigpt._core.set_verbosity`.
 
 ---
 
+## Citation
+
+```bibtex
+@misc{pasquier2025midigptcontrollablegenerativemodel,
+      title={MIDI-GPT: A Controllable Generative Model for Computer-Assisted Multitrack Music Composition}, 
+      author={Philippe Pasquier and Jeff Ens and Nathan Fradet and Paul Triana and Davide Rizzotti and Jean-Baptiste Rolland and Maryam Safi},
+      year={2025},
+      eprint={2501.17011},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2501.17011}, 
+}
+```
+
+---
+
 ## License
 
 MIT License. Copyright (c) 2026 Metacreation Lab. See [LICENSE](LICENSE).
