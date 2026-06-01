@@ -1,17 +1,17 @@
 [![Metacreation Lab](https://drive.google.com/uc?export=view&id=1aCMgI91K3ik2rp17pM7cOOUi6wUbw-GZ)](https://metacreation.net/category/projects/)
 
-# midigpt
+# MIDI-GPT
 
-**midigpt** is a GPT-2 transformer for symbolic music generation. It ships a
+**MIDI-GPT** is a GPT-2 transformer for symbolic music generation. It ships a
 C++ tokenizer, encoder, and decoder (exposed to Python via pybind11 as
 `midigpt._core`) alongside a pure-PyTorch GPT-2 implementation with SDPA
 attention and a KV cache. The library supports bar-level infill (filling in
 masked bars given surrounding context), autoregressive track generation from
 scratch, and attribute-conditioned generation (note density, polyphony, note
 duration). A real-time OSC server integrates with DAWs and live-performance
-environments via the `midigpt-studio` entry point. The package is distributed
-on PyPI and built with `scikit-build-core` for CPython 3.10, 3.11, and 3.12 on
-Linux, macOS, and Windows.
+environments via the `midigpt-studio` entry point. The Python package (`midigpt`)
+is distributed on PyPI and built with `scikit-build-core` for CPython 3.10,
+3.11, and 3.12 on Linux, macOS, and Windows.
 
 Paper: <https://arxiv.org/abs/2501.17011>  
 Repository: <https://github.com/Metacreation-Lab/MIDI-GPT>
@@ -283,11 +283,11 @@ shipped in this repository. Packed `.pt` bundles embed the encoder config
 alongside the model weights; the configs below describe the tokenizer and
 capability set.
 
-| Config | Encoder | `num_bars_map` | Infill | `MaskBar` token | Microtiming | Velocity bins | Attributes |
+| Model | `num_bars_map` | Infill | `MaskBar` | Microtiming | Velocity bins | Attributes | Download |
 |---|---|---|---|---|---|---|---|
-| `yellow_config.json` | `yellow_encoder.json` | 4, 8 | yes | no | no | 32 | note density (10), min/max polyphony (10 each), min/max note duration (6 each) |
-| `ghost_config.json` | embedded in bundle | 4, 8, 12, 16 | yes | yes | yes | 32 | note density (10), min/max polyphony (10 each), min/max note duration (6 each) |
-| `expressive_config.json` | embedded in bundle | 4, 8 | yes | no | yes | 128 | note density (10), min/max polyphony (10 each), min/max note duration (6 each) |
+| Yellow | 4, 8 | yes | no | no | 32 | note density, min/max polyphony, min/max note duration | coming soon |
+| Ghost | 4, 8, 12, 16 | yes | yes | yes | 32 | note density, min/max polyphony, min/max note duration | coming soon |
+| Expressive | 4, 8 | yes | no | yes | 128 | note density, min/max polyphony, min/max note duration | coming soon |
 
 **`model_dim`** in `InferenceConfig` is the context window length in bars, not a
 vocabulary dimension. Pass a value from the checkpoint's `num_bars_map`. The
