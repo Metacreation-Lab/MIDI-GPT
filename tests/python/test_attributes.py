@@ -41,8 +41,6 @@ from midigpt.attributes import (
     PitchRange,
     PolyphonyQuantile,
     SilenceProportion,
-    Tension,
-    TensionDrum,
 )
 
 from conftest import make_bar, make_note, melodic_track, drum_track
@@ -104,14 +102,6 @@ def test_note_duration_quantile_metadata(mode):
     assert d.level == "track" and d.size == 6
 
 
-@pytest.mark.parametrize("cls", [Tension, TensionDrum])
-def test_tension_metadata(cls):
-    t = cls()
-    assert t.level == "bar"
-    assert t.size == 10
-    assert t.token_type in ("Tension", "TensionDrum")
-
-
 # --------------------------------------------------------------------------- #
 # 2. Public-API discovery / registry
 # --------------------------------------------------------------------------- #
@@ -120,7 +110,6 @@ def test_attribute_registry_contains_expected_keys():
         "note_density", "onset_polyphony", "pitch_range", "key_signature",
         "note_duration_dist", "silence_proportion", "pitch_class_set",
         "note_density_quantile", "polyphony_quantile", "note_duration_quantile",
-        "tension", "tension_drum",
     }
     assert set(ATTRIBUTE_REGISTRY.keys()) == expected
     # Every value is a BaseAttribute subclass
@@ -358,34 +347,6 @@ def test_note_density_quantile_achievable_range_lower_le_upper():
     ndq = NoteDensityQuantile()
     lo, hi = ndq.achievable_range(s, 0, generated_bars=[2, 3])
     assert 0 <= lo <= hi < ndq.size
-
-
-# --------------------------------------------------------------------------- #
-# 5. Tension / TensionDrum — metadata-only (heavy external dep otherwise)
-# --------------------------------------------------------------------------- #
-def test_tension_compute_without_bar_idx_returns_zero():
-    score = _single_track_score(
-        [make_note(pitch=60, onset=0, dur=12)], res=12, n_bars=1)
-    assert Tension().compute(score, 0, bar_idx=None) == 0.0
-    assert TensionDrum().compute(score, 0, bar_idx=None) == 0.0
-
-
-def test_tension_quantize_maps_into_bins():
-    t = Tension()
-    # The quantize() formula maps value [-2, 2] → bins [0, 9] inclusive.
-    assert t.quantize(-2.0) == 0
-    assert t.quantize(2.0) == 9
-    # Out-of-range clamps:
-    assert t.quantize(-100.0) == 0
-    assert t.quantize(100.0) == 9
-    # Midpoint:
-    assert 4 <= t.quantize(0.0) <= 6
-
-
-def test_tension_drum_subclasses_tension():
-    assert issubclass(TensionDrum, Tension)
-    assert TensionDrum().name == "tension_drum"
-    assert TensionDrum().track_type == "drum"
 
 
 # --------------------------------------------------------------------------- #

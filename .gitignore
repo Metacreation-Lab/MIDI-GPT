@@ -62,6 +62,12 @@ docs/
 # Cluster-specific SLURM scripts and configs
 slurm/
 
+# HuggingFace model card (uploaded separately to HF Hub)
+hf_model_card.md
+
+# SoundFont files (large binaries — see src/python/midigpt/osc/studio/static/sf2/SOUNDFONTS.md)
+*.sf2
+
 # Legacy code
 legacy/
 

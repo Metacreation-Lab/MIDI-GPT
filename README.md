@@ -9,7 +9,7 @@ attention and a KV cache. The library supports bar-level infill (filling in
 masked bars given surrounding context), autoregressive track generation from
 scratch, and attribute-conditioned generation (note density, polyphony, note
 duration). A real-time OSC server integrates with DAWs and live-performance
-environments via the `midigpt-studio` entry point. The Python package (`midigpt`)
+environments via the `midigpt-server` entry point. The Python package (`midigpt`)
 is distributed on PyPI and built with `scikit-build-core` for CPython 3.10,
 3.11, and 3.12 on Linux, macOS, and Windows.
 
@@ -326,7 +326,7 @@ src/
     training/              TrainConfig, MidiGPTDataset, train()
     augmentation/          MaskBar, Transpose, VelocityScale
     attributes/            AttributeAnalyzer, BaseAttribute, ATTRIBUTE_REGISTRY
-    osc/                   MidiGPTServer, studio app
+    osc/                   MidiGPTServer (studio excluded from wheel)
 ```
 
 Token IDs, vocabularies, constraint graphs, and the step planner all live
@@ -389,17 +389,13 @@ containing `config.json` + `model.pt`.
 
 ---
 
-## OSC Studio
+## OSC Server
 
-The `midigpt[realtime]` extra adds a real-time OSC server and a browser-based
-studio for DAW integration.
+The `midigpt[realtime]` extra adds a real-time OSC server for DAW integration.
 
 ```bash
-# Start the low-latency OSC server (receives notes, sends generated bars)
-midigpt-server --ckpt models/ghost_500_bundle.pt --port 7400
-
-# Start the full browser-based studio (wraps the server with a web UI)
-midigpt-studio --ckpt models/ghost_500_bundle.pt
+pip install "midigpt[realtime]"
+midigpt-server --ckpt models/yellow.pt --port 7400
 ```
 
 `midigpt-server` runs `MidiGPTServer`, which listens for OSC messages on a UDP
@@ -426,6 +422,16 @@ Selected OSC address map:
 Runtime sampling parameters (`/midigpt/param/set`) include `temperature`,
 `top_p`, `mask_mode`, `model_dim`, `buffer_bars`, `lookahead_bars`, and
 `polyphony_hard_limit`, among others.
+
+> The browser-based studio (`midigpt-studio`) is not included in the PyPI
+> package. Clone the repository and run it directly from source.
+>
+> The studio requires a SoundFont file for audio playback. Download
+> [Arachno SoundFont](https://www.arachnosoft.com/main/soundfont.php),
+> rename it to `arachno.sf2`, and place it in
+> `src/python/midigpt/osc/studio/static/sf2/`. See
+> [`SOUNDFONTS.md`](src/python/midigpt/osc/studio/static/sf2/SOUNDFONTS.md)
+> for details.
 
 ---
 

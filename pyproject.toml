@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name            = "midigpt"
-version         = "0.2.1"
+version         = "0.2.2"
 description     = "GPT-2 transformer for symbolic music generation"
 readme          = "README.md"
 license         = { text = "MIT" }
@@ -37,7 +37,6 @@ all       = ["midigpt[realtime,train]"]
 [project.scripts]
 midigpt-server = "midigpt.osc.server:main"
 midigpt-listen = "midigpt.osc.listen:main"
-midigpt-studio = "midigpt.osc.studio.app:main"
 
 [tool.pytest.ini_options]
 markers = [
@@ -49,6 +48,7 @@ markers = [
 cmake.build-type = "Release"
 cmake.args = ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
 wheel.packages   = ["src/python/midigpt"]
+wheel.exclude    = ["midigpt/osc/studio*"]
 
 [tool.cibuildwheel]
 build         = "cp310-* cp311-* cp312-*"

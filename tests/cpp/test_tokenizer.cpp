@@ -23,6 +23,8 @@
 
 using namespace midigpt;
 using namespace midigpt::tokenizer;
+// Explicitly shadow winnt.h's TokenType enum value (Windows-only collision).
+using TokenType = midigpt::TokenType;
 
 namespace {
 
