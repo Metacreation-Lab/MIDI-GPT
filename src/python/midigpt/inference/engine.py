@@ -2,7 +2,7 @@ import midigpt._core as _core
 from midigpt.tokenizer.tokenizer import Tokenizer
 from midigpt.attributes.base import AttributeAnalyzer
 
-HF_REPO_ID = "Metacreation-Lab/MIDI-GPT"
+HF_REPO_ID = "Metacreation/MIDI-GPT"
 
 _KNOWN_MODELS: dict[str, str] = {
     "yellow":     "yellow.pt",
