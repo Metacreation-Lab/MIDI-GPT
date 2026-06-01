@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIDI-GPT Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2/build/Midi.js"></script>
+</head>
+<body>
+  <header id="topbar"><div id="transport"></div></header>
+  <div id="main-layout">
+    <div id="left-col"><div id="track-headers"></div></div>
+    <div class="splitter splitter-v" data-target="left"></div>
+    <div id="center-col">
+      <div id="context-toolbar">
+        <label><input id="simple-mode-toggle" type="checkbox"> Model view (context / masked / to-gen)</label>
+        <span id="viz-compare-status" class="viz-compare-status"></span>
+      </div>
+      <div id="context-wrap">
+        <canvas id="contextCanvas"></canvas>
+        <div id="server-canvas-label" class="server-canvas-label" hidden>server prompt state (mismatches outlined in red)</div>
+        <canvas id="serverCanvas" hidden></canvas>
+      </div>
+      <div class="splitter splitter-h" data-target="attr"></div>
+      <div id="attr-wrap"><canvas id="attrCanvas"></canvas></div>
+    </div>
+    <div class="splitter splitter-v" data-target="right"></div>
+    <div id="right-col">
+      <div id="timing-panel"></div>
+      <div id="param-panel"></div>
+      <div id="debug-panel"></div>
+    </div>
+  </div>
+  <script type="module" src="/static/js/main.js"></script>
+</body>
+</html>

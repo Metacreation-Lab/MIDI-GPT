@@ -1,176 +1,492 @@
-[![N|Solid](https://drive.google.com/uc?export=view&id=1u4xiWN3s0PAii8zn3-qxJ7wn35tBOypY)](https://metacreation.net/category/projects/)
+[![Metacreation Lab](https://drive.google.com/uc?export=view&id=1aCMgI91K3ik2rp17pM7cOOUi6wUbw-GZ)](https://metacreation.net/category/projects/)
 
-# MIDI-GPT Guide
+# midigpt
 
-This is the repository for MIDI-GPT, a generative system based on the Transformer architecture that is designed for computer-assisted music composition workflows. This work was presented at the 39th Annual AAAI Conference in Philadelphia, USA in this [paper](https://arxiv.org/abs/2501.17011)
+**midigpt** is a GPT-2 transformer for symbolic music generation. It ships a
+C++ tokenizer, encoder, and decoder (exposed to Python via pybind11 as
+`midigpt._core`) alongside a pure-PyTorch GPT-2 implementation with SDPA
+attention and a KV cache. The library supports bar-level infill (filling in
+masked bars given surrounding context), autoregressive track generation from
+scratch, and attribute-conditioned generation (note density, polyphony, note
+duration). A real-time OSC server integrates with DAWs and live-performance
+environments via the `midigpt-studio` entry point. The package is distributed
+on PyPI and built with `scikit-build-core` for CPython 3.10, 3.11, and 3.12 on
+Linux, macOS, and Windows.
 
-# Using MIDI-GPT 
+Paper: <https://arxiv.org/abs/2501.17011>  
+Repository: <https://github.com/Metacreation-Lab/MIDI-GPT>
 
-The model provided is trained on GigaMIDI, and includes the following controls: midi instrument, density (1-10), note duration, and number of polyphony voices. It also allows you to turn on/off velocity and micro-timing (to capture interpretation).
+---
 
 ## Installation
 
-To successfully install the midigpt python library, use the script ```midigpt_setup_helper.sh```. You may first download this script on its own and run it, which will clone the repository and build the library. Below is an example of the usage:
+### Users (inference only)
 
-```sh
-bash midigpt_setup_helper.sh -i -c -d midigpt_dir
+```bash
+pip install "midigpt[inference]"
 ```
 
->**Note:** Python 3.8 is required for the library
->**Note:** If you're building on mac, use the ```-m```argument.
+Pre-built wheels are available for CPython 3.10–3.12 on Linux (x86_64),
+macOS (x86_64, arm64), and Windows (AMD64). No compiler is required.
 
-## Inference
+### Training dependencies
 
-Once downloaded, MIDI-GPT is ready to use. ```python_scripts_for_testing/pythoninferencetest.py``` is an example of using MIDI-GPT. In summary, three objects need to be created before sampling:
-- Piece: Load the MIDI file into a JSON representation of the MIDI piece
-- Status: This dict indicates the sampling process that is desired (on which tracks, continuation/resampling/infilling, etc.) as well as attribute control values
-- Param: This dict indicates sampling parameters such as temperature or number of generated bars per step
-
-You must provide an input MIDI file, the checkpoint model file and an optional output MIDI file. Our model is provided in the ```models/model.zip``` file.
-
-Then, using the ```midigpt``` Python API, call the sample function with these objects as arguments. After sampling, the result can then be converted and saved into a MIDI file.
-
-# Training MIDI-GPT
-
-Training the model was done on computing clusters on Compute Canada, therefore the training scripts are tailored to this platform but may easily be adapted to similar platforms. Training was done using the GigaMIDI dataset, first serialzed into a compressed file using ```create_dataset_compute_canada.sh``` and ```python_scripts/create_dataset.py```. The training was executed using the ```python_scripts/train.py```. Finally, the model weights file is converted from the training checkpoint using ```convert.py```.
-
-If you're unfamiliar with Compute Canada, make sure to check the introductory .md [here]().
-
-## Installation - Cedar and Niagara
-0. You might want to allocate an interactive session with salloc:
-
->**Note:** You DON'T need to do this in Niagara.
-
-```sh
-salloc --time=3:0:0 --nodes 1 --cpus-per-task 32 --mem=128000 --account=user
+```bash
+pip install "midigpt[train]"
 ```
 
-1. First, make sure to clone the MMM_API into a folder in your CC machine:
-```sh
-https://github.com/Metacreation-Lab/MIDI-GPT
-```
-2. Then we must load the standard environments and some dependencies:
+Adds `lightning>=2.2`, `datasets>=2.18`, `pyarrow>=15.0`, and `python-dotenv`.
 
->**Note:** If you're building in Niagara, load this first:
-```sh
-module load CCEnv arch/avx512
-```
-Then proceed to load the rest (If you're in Cedar, start from here):
-```sh
-module load StdEnv/2020
-module load cmake/3.23.1
-module load gcc/11.3.0
-module load protobuf/3.12.3
-module load python/3.8.2
-```
-3. Then we must create an environment and activate it:
-```sh
-virtualenv --no-download ./ENV                # ENV is the name of the environment
-source ./ENV/bin/activate
-pip install --no-index --upgrade pip
+### Real-time OSC server
 
-# For training only
-pip install torch==1.13.0
-pip install transformers==4.26.1         
-```
-4. Finally, just call the bash script with the correct argument:
-```sh
-bash create_python_library.sh --test_build --compute_canada
-```
-Or if you are planning to just train the model, add the argument excluding to torch library required only for inference:
-```sh
-bash create_python_library.sh --no_torch --compute_canada
-```
-5. To test the library imports for training, run the train.py script by importing it:
-```sh
-cd python_scripts
-python3 -c "import train"
-```
-> **Note:** A helper script ```midigpt_setup_helper.sh``` does all these steps autmoatically (for training or inference). Download it individually and run it where you wish to clone the repository.
-> **Note:** If you run the code without the --test_build flag, it will still compile and create the python library but it won't test it with the current model in production.
-> **Note:** The other flag (--compute_canada) is necesary to build the code properly.
-
-That's it!
-
-Everything should get installed correctly in your python environment! If you log out and back in to CC make sure to activate the environment in which you installed the API.
-
-## Training
-
-### Dataset Building
-
-In order to train a new model, you must first build a dataset. You can upload the files you need using Globus (check the CC [guide]()).
-
-> **Note**: Remember that to copy from the shared folder to your own folders you must use absolute paths.
-
-The data should be organized in a way where all midi files are contained within three folders ```train```, ```test```, and ```valid```. Further directories can be used to organize the midi files as long as they are within these three directories.
-
-If your dataset is a single folder containing all the midi files, we provide a helper script that automatically slits the dataset to 80%-10%-10%. Simply modify ```data_split.sh``` to match your cas and run.
-
-Once you have the folder with the data, run the following command
-```sh
-sh create_dataset_compute_canada.sh --root_dir=<root_dir> --encoding=<encoding> --data_dir=<data_dir> --output=<output>
-```
-where:
-- ```<root_dir>``` is the root folder where the midigpt repository folder is located
-- ```<encoding>``` is the conder to use. We suggest using ```EXPRESSIVE_ENCODER```
-- ```<data_dir>``` is the dataset folder containing the three ```train```, ```test```, and ```valid``` folders.
-- ```<output>``` is the location of the ouptt ```.arr``` file. The resulting file while be ```<output>_NUM_BARS=<num_bars>_RESOLUTION_<resolution>.arr```
->**Note:** If you are on Compute Canada, we suggest you run these commands through an sbatch job as they can take some time.
-
-### Training a Model
-
-To train a model, run the train.py file. Different lab members have managed to set the paths differently. What works for me is to use global paths. An example would be:
-```sh
-python train.py --arch gpt2 --config /home/user/scratch/TRAINING-master/config/gpt2_tiny.json --encoding EXPRESSIVE_ENCODER --ngpu 4 --dataset /home/user/scratch/test_NUM_BARS=4_OPZ_False.arr --batch_size 32 --label DELETE_ME
+```bash
+pip install "midigpt[realtime]"
 ```
 
-### Running Jobs
+Adds `python-osc>=1.8`, `flask>=3.0`, and `flask-socketio>=5.3`.
 
-To read the CC documentation, cick [here](https://docs.alliancecan.ca/wiki/Running_jobs). You can run small snippets of code to test things out without allocating any resources. However, to train a model or perform any time/resource consuming task, you must schedule a job. A list of different types of job scheduling will be added here.
+### All extras
 
-#### Interactive Jobs
-You can start an interactive session on a compute node with salloc.
-```sh
-salloc --time=3:0:0 --nodes 1 --cpus-per-task 32 --mem=128000 --account=user
+```bash
+pip install "midigpt[all]"
 ```
 
-#### Scheduled jobs (use this for training)
-For time-expensive tasks it is better to create a bash file and submit a job with sbatch:
-```sh
-sbatch simple_job.sh
+### Developer install (editable + C++ extension)
+
+Prerequisites: Python 3.10+, CMake 3.21+, a C++20 compiler.
+
+```bash
+git clone https://github.com/Metacreation-Lab/MIDI-GPT.git
+cd MIDI-GPT
+pip install -e ".[inference,dev]"
 ```
 
-Here is an example of the contents of a bash file to submit a midigpt training job:
-```sh
-#!/bin/bash
-#SBATCH --gres=gpu:v100l:4
-#SBATCH --cpus-per-task=32
-#SBATCH --exclusive
-#SBATCH --mem=0
-#SBATCH --time=2-23:00
-#SBATCH --account=user
-#SBATCH --mail-user USERNAME@domain.org  <---- MAKE SURE TO PUT YOUR EMAIL
-#SBATCH --mail-type ALL
-#SBATCH --output=CCLOG/FILENAME.out  <---- MAKE SURE TO CHANGE THE NAME OF THE FILE
+`scikit-build-core` compiles the C++ extension and copies `_core*.so` next to
+`src/python/midigpt/__init__.py` so in-tree `pytest` works without
+reinstallation.
 
-source $SCRATCH/PY_3610/bin/activate   <---- THIS IS THE DIRECTORY TO THE ENV WHERE YOU HAVE THE midigpt_api INSTALLED
-cd $SCRATCH/MMM_TRAINING-master
-module load StdEnv/2020 protobuf python/3.6.10
-source $SCRATCH/PY_3610/bin/activate  <---- SAME HERE, MAKE SURE THE DIRECTORY IS PLACED CORRECTLY
-python train.py --arch reformer --config /home/user/scratch/MMM_TRAINING-master/config/reformer.json --encoding EXPRESSIVE_ENCODER --ngpu 4 --dataset /home/user/scratch/dataset_NUM_BARS=4.arr --batch_size 32 --label DELETE_ME
+| Extra | What it adds |
+|---|---|
+| `inference` | `torch>=2.0`, `tqdm>=4.65` |
+| `train` | PyTorch Lightning, HuggingFace `datasets`, `pyarrow`, `python-dotenv` |
+| `realtime` | `python-osc`, Flask, Flask-SocketIO |
+| `dev` | `pytest`, `ruff`, `mypy` |
+| `all` | `realtime` + `train` |
+
+---
+
+## Quickstart: Inference
+
+### Load a checkpoint and run a generation session
+
+`InferenceEngine.from_checkpoint` is the single entry point for loading any
+packed `.pt` bundle. It reads the weights, builds the tokenizer from the
+embedded encoder config, and runs a warmup pass to prime the KV cache.
+
+```python
+from midigpt import Score
+from midigpt.inference.engine import InferenceEngine
+from midigpt.inference.config import GenerationRequest, InferenceConfig, TrackPrompt
+
+# Load a packed .pt bundle (weights + encoder config in one file).
+engine = InferenceEngine.from_checkpoint("models/ghost_500_bundle.pt")
+
+# Read an input MIDI file.
+score = Score.from_midi("my_song.mid")
+
+# Infill bars 4–7 on track 0; leave track 1 untouched.
+request = GenerationRequest(
+    tracks=[
+        TrackPrompt(id=0, bars=[4, 5, 6, 7]),
+        TrackPrompt(id=1, bars=[], ignore=True),
+    ],
+    config=InferenceConfig(
+        temperature=1.0,
+        top_p=0.95,
+        model_dim=8,      # context window in bars — must be in num_bars_map
+        max_attempts=3,
+    ),
+)
+
+result = engine.session(score, request).run()
+result.to_midi("output.mid")
 ```
 
-In this case we are using 4 v1001 GPUs (**gres** argument) and we're asking for 2 days and 23 hours of time to run the job (**time** argument).
+### Autoregressive generation from scratch
 
-#### Check jobs and eliminate session
-To show all the users
-```sh
-who -u
+```python
+request = GenerationRequest(
+    tracks=[
+        TrackPrompt(
+            id=0,
+            bars=[],               # empty = generate the whole track
+            autoregressive=True,
+            attributes={"max_polyphony": 3},
+            controls={"time_signature": 0},   # index into encoder TS list
+        ),
+    ],
+    config=InferenceConfig(
+        temperature=1.0,
+        model_dim=8,
+        polyphony_hard_limit=4,
+    ),
+)
+result = engine.session(score, request).run()
 ```
 
-To kill all the sessions
-```sh
-pkill -u username
+### Key inference types
+
+| Class | Module | Purpose |
+|---|---|---|
+| `InferenceEngine` | `midigpt.inference.engine` | Top-level loader and session factory |
+| `SamplingSession` | `midigpt.inference.session` | Token-level sampling loop |
+| `GenerationRequest` | `midigpt.inference.config` | Bundle of per-track prompts and config |
+| `TrackPrompt` | `midigpt.inference.config` | Per-track bars, mode, attributes, controls |
+| `InferenceConfig` | `midigpt.inference.config` | Temperature, sampling filters, step planner |
+
+### `TrackPrompt` fields
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `id` | int | — | Track index in the score |
+| `bars` | list[int] | — | Bars to generate (infill targets or AR suffix) |
+| `autoregressive` | bool | `False` | Generate from scratch (no per-bar prompt) |
+| `ignore` | bool | `False` | Omit this track from the token stream entirely |
+| `mask_bars` | list[int] | `[]` | Bars hidden with `MASK_BAR` (disjoint from `bars`) |
+| `attributes` | dict[str,int] | `{}` | Quantized attribute overrides (density, polyphony, duration) |
+| `controls` | dict[str,Any] | `{}` | Non-attribute token locks, e.g. `{"time_signature": 0}` |
+| `bar_attributes` | dict[int,dict] | `{}` | Per-bar attribute overrides keyed by absolute bar index |
+| `bar_controls` | dict[int,dict] | `{}` | Per-bar non-attribute overrides keyed by absolute bar index |
+
+### Sampling filters
+
+`InferenceConfig` exposes a four-stage logit-filtering pipeline applied after
+the grammar mask and before `torch.multinomial`. Pipeline order: `top_k` ->
+`top_p` -> `mask_k` -> `mask_p`.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `top_k` | `0` (off) | Keep top-k highest-probability tokens |
+| `top_p` | `1.0` (off) | Nucleus: keep the smallest descending-prob set summing to >= `top_p` |
+| `mask_k` | `0` (off) | Remove the top-k most-likely tokens (novelty pressure) |
+| `mask_p` | `0.0` (off) | Remove tokens summing to >= `mask_p` from the top (anti-nucleus) |
+
+A small `mask_k=1` or `mask_p=0.3` pushes the model off its highest-confidence
+picks, which is the most reliable way to get diverse retries when
+`novelty_check=True`.
+
+### Attribute controls
+
+The attribute controls available depend on the checkpoint. Introspect at
+runtime via the engine's analyzer:
+
+```python
+analyzer = engine._analyzer
+analyzer.attribute_sizes()         # {"note_density": 10, "min_polyphony": 10, ...}
+analyzer.attribute_value_labels()  # {"note_density": ["very sparse", ...], ...}
+analyzer.attribute_track_types()   # {"note_density": "melodic", ...}
 ```
 
+Pass quantized levels (integers in `[0, size)`) in `TrackPrompt.attributes`.
 
+### Mask modes
+
+Control how future (not-yet-generated) bars appear in the context window:
+
+| Mode | Behaviour |
+|---|---|
+| `"token"` | Encoder emits a `MaskBar` token (requires vocab support) |
+| `"attention"` | Future bar positions zeroed in the KV cache via exact span masking |
+| `"attention_approx"` | Single prefill mask + KV surgery after prefill; cheaper than `"attention"` |
+| `"attention_skip"` | Future tokens filtered from input; `position_ids` passed explicitly |
+| `"remove"` | Future bars omitted entirely from the token stream |
+
+Set via `InferenceConfig.mask_mode`.
+
+---
+
+## Quickstart: Training
+
+### 1. Preprocess parquet shards (run once per encoder/dataset combination)
+
+Builds a valid-index cache so dataset initialization is instant on subsequent
+runs. The filter runs a fast metadata check (pure PyArrow, no MIDI parsing),
+then validates each row via an isolated subprocess that bisects on crash.
+
+```bash
+python -m midigpt.training.preprocess \
+    --parquet /data/train/00000.parquet /data/train/00001.parquet \
+    --checkpoint models/yellow.pt
+```
+
+Alternatively, supply a raw encoder config JSON:
+
+```bash
+python -m midigpt.training.preprocess \
+    --parquet /data/train/*.parquet \
+    --encoder-config models/yellow_encoder.json \
+    --min-bars 4 --min-tracks 1
+```
+
+Index files are cached in `~/.midigpt/` (override with `MIDIGPT_CACHE`).
+
+### 2. Launch training
+
+```bash
+python -m midigpt.training.trainer \
+    --config      models/train_config.json \
+    --train-data  /data/train/00000.parquet \
+    --eval-data   /data/valid/00000.parquet \
+    --output-dir  checkpoints/run_001
+```
+
+### 3. Python API
+
+```python
+from midigpt.training.trainer import TrainConfig, train
+
+config = TrainConfig.from_file("models/train_config.json")
+config.output_dir = "checkpoints/run_001"
+
+train(config,
+      train_path="/data/train/00000.parquet",
+      eval_path="/data/valid/00000.parquet")
+```
+
+`train()` uses PyTorch Lightning internally. At the end of training it writes a
+packed `.pt` bundle (`model_final.pt`) containing weights, architecture config,
+and encoder config. Intermediate checkpoints are saved every `save_steps` steps.
+
+### Key `TrainConfig` fields
+
+| Field | Default | Notes |
+|---|---|---|
+| `encoder_config_path` | `""` | Path to an encoder `.json` or a packed `.pt` bundle |
+| `n_embd` / `n_layer` / `n_head` | `512 / 6 / 8` | Model architecture |
+| `max_seq_len` | `2048` | Token sequence cap; must not exceed model `n_positions` |
+| `infill_probability` | `0.75` | Fraction of samples trained with FillIn tokens |
+| `infill_bar_fraction` | `0.5` | Max per-cell infill density (drawn from Uniform(0, this)) |
+| `mask_apply_probability` | `0.5` | Fraction of samples with `MASK_BAR` applied |
+| `mask_mode` | `2` | `MaskMode`: 0=RANDOM, 1=STRUCTURED, 2=MIXED |
+| `precision` | `"fp16"` | `"fp16"`, `"bf16"`, or `"fp32"` |
+| `logger` | `"none"` | `"tensorboard"`, `"wandb"`, or `"none"` |
+| `num_workers` | `0` | Must be 0 — the C++ MIDI parser is not fork-safe |
+
+The reference config is at `models/train_config.json`.
+
+---
+
+## Model Zoo
+
+The `models/` directory contains encoder configs for the checkpoint families
+shipped in this repository. Packed `.pt` bundles embed the encoder config
+alongside the model weights; the configs below describe the tokenizer and
+capability set.
+
+| Config | Encoder | `num_bars_map` | Infill | `MaskBar` token | Microtiming | Velocity bins | Attributes |
+|---|---|---|---|---|---|---|---|
+| `yellow_config.json` | `yellow_encoder.json` | 4, 8 | yes | no | no | 32 | note density (10), min/max polyphony (10 each), min/max note duration (6 each) |
+| `ghost_config.json` | embedded in bundle | 4, 8, 12, 16 | yes | yes | yes | 32 | note density (10), min/max polyphony (10 each), min/max note duration (6 each) |
+| `expressive_config.json` | embedded in bundle | 4, 8 | yes | no | yes | 128 | note density (10), min/max polyphony (10 each), min/max note duration (6 each) |
+
+**`model_dim`** in `InferenceConfig` is the context window length in bars, not a
+vocabulary dimension. Pass a value from the checkpoint's `num_bars_map`. The
+session automatically falls back to the next smaller window when the encoded
+prompt would overflow the model's positional budget (`n_positions`).
+
+**Microtiming** (`use_microtiming: true`) means the encoder emits `delta`
+offset tokens that capture sub-grid note placement. The `expressive` config
+additionally uses `emit_delta_tokens: true` for a dedicated delta token domain.
+
+---
+
+## Architecture
+
+### Two-language layout
+
+```
+src/
+  cpp/                     C++ static library (midigpt_core) + pybind11 module (_core)
+    io/                    MIDI reader / writer (symusic)
+    tokenizer/             EncoderConfig, Vocabulary, Encoder, Decoder
+    masking/               ConstraintGraph, GrammarConstraint,
+                           PolyphonyConstraint, DensityConstraint,
+                           AttributeValueConstraint
+    sampling/              StepPlanner, SessionState
+    bindings/lib.cpp       pybind11 entry point
+
+  python/midigpt/
+    _core*.so              compiled extension (copied here post-build)
+    _types.py              Score, Track, Bar, Note dataclasses
+    inference/             InferenceEngine, SamplingSession, GPT2LMHeadModel,
+                           GenerationRequest, TrackPrompt, InferenceConfig
+    tokenizer/             Tokenizer, load_checkpoint, CheckpointBundle
+    training/              TrainConfig, MidiGPTDataset, train()
+    augmentation/          MaskBar, Transpose, VelocityScale
+    attributes/            AttributeAnalyzer, BaseAttribute, ATTRIBUTE_REGISTRY
+    osc/                   MidiGPTServer, studio app
+```
+
+Token IDs, vocabularies, constraint graphs, and the step planner all live
+exclusively in C++. `EncoderConfig.from_json(str)` is the entry point for
+everything that depends on vocab sizes or token domains. `Tokenizer.vocab_size()`
+is authoritative — do not recompute it from `sum(token_domains[*].domain_size)`.
+
+### Inference data flow
+
+```
+MIDI file ──► Score.from_midi()
+                      |
+                      v
+           _core.Encoder.encode()       (C++ — token IDs)
+                      |
+                      v
+       InferenceEngine.session(score, request)
+                      |
+                      v
+       SamplingSession.run()
+         for each GenerationStep from _core.StepPlanner:
+           1. build ConstraintGraph    (_core C++)
+           2. encode prompt            (_core.SessionState)
+           3. GPT2LMHeadModel.forward  (PyTorch — logits, past_kv)
+           4. apply grammar mask + top_k/top_p/mask_k/mask_p filters
+           5. torch.multinomial        (sample one token)
+           6. _core.SessionState.advance(token)
+           7. repeat until state.complete()
+                      |
+                      v
+           _core.Decoder.decode()      (C++ — Score)
+                      |
+                      v
+               Score ──► to_midi()
+```
+
+`InferenceEngine` accepts any callable with signature
+`(input_ids, past_kv) -> (logits, present_kv)`. `GPT2LMHeadModel` is the
+production implementation; `StubModel` in `tests/python/test_inference.py` is
+the test double.
+
+### Packed checkpoint format (`format_version: 1`)
+
+A single `.pt` file holds:
+
+```python
+{
+    "format_version": 1,
+    "arch":           "gpt2",
+    "config":         {"vocab_size": ..., "n_positions": 2048,
+                       "n_embd": 512, "n_layer": 6, "n_head": 8},
+    "encoder_config": {...},   # full encoder JSON
+    "state_dict":     {...},   # HuggingFace GPT-2 key layout
+}
+```
+
+`GPT2LMHeadModel.from_pretrained(path)` and `load_checkpoint(path)` both
+auto-detect this format. `load_checkpoint` also accepts a legacy directory
+containing `config.json` + `model.pt`.
+
+---
+
+## OSC Studio
+
+The `midigpt[realtime]` extra adds a real-time OSC server and a browser-based
+studio for DAW integration.
+
+```bash
+# Start the low-latency OSC server (receives notes, sends generated bars)
+midigpt-server --ckpt models/ghost_500_bundle.pt --port 7400
+
+# Start the full browser-based studio (wraps the server with a web UI)
+midigpt-studio --ckpt models/ghost_500_bundle.pt
+```
+
+`midigpt-server` runs `MidiGPTServer`, which listens for OSC messages on a UDP
+port and sends generated notes back over the same connection. Generation is
+triggered bar-by-bar via `/midigpt/bar/end` and runs on a dedicated background
+thread so the OSC listener never blocks.
+
+Selected OSC address map:
+
+| Address | Direction | Description |
+|---|---|---|
+| `/midigpt/session/init` | in | Start a new session; server replies with `/midigpt/capabilities` |
+| `/midigpt/session/start` | in | Begin real-time generation |
+| `/midigpt/track/create` | in | Register a track (human or agent) |
+| `/midigpt/note` | in | Push an incoming note event |
+| `/midigpt/bar/end` | in | Signal end of a bar (triggers generation if scheduled) |
+| `/midigpt/param/set` | in | Adjust sampling parameters at runtime |
+| `/midigpt/attr/set` | in | Set agent attribute overrides (quantized levels) |
+| `/midigpt/generated/note` | out | Emit a generated note |
+| `/midigpt/generated/features` | out | Per-bar statistics (density, polyphony, etc.) |
+| `/midigpt/capabilities` | out | Attribute support for the loaded checkpoint |
+| `/midigpt/prompt/state` | out | Per-bar context/mask/generate state snapshot |
+
+Runtime sampling parameters (`/midigpt/param/set`) include `temperature`,
+`top_p`, `mask_mode`, `model_dim`, `buffer_bars`, `lookahead_bars`, and
+`polyphony_hard_limit`, among others.
+
+---
+
+## Development
+
+### Python tests
+
+```bash
+pytest tests/python/                                            # all tests
+pytest tests/python/test_inference.py::test_inference_session  # single test
+pytest tests/python -m "not slow and not inference"            # CI subset
+```
+
+Test markers:
+
+- `slow` — requires real model bundles on disk
+- `inference` — requires `torch` and a real model
+
+### C++ tests
+
+```bash
+cmake -S . -B build_cpp -DCMAKE_BUILD_TYPE=Release
+cmake --build build_cpp -j
+ctest --test-dir build_cpp --output-on-failure
+```
+
+C++ test targets: `test_score`, `test_io`, `test_vocabulary`, `test_tokenizer`,
+`test_constraints`, `test_step_planner`, `test_session_state`,
+`test_domain_transforms`.
+
+### Linting and type checking
+
+```bash
+ruff check src/ tests/
+mypy src/python/midigpt/
+```
+
+### Building wheels
+
+```bash
+pipx run cibuildwheel --platform linux    # or macos / windows
+```
+
+Wheels are built for CPython 3.10, 3.11, and 3.12 on Linux (manylinux_2_28
+x86_64), macOS (x86_64 and arm64), and Windows (AMD64). musllinux and 32-bit
+targets are skipped.
+
+### CI / release
+
+Tagging a commit as `vX.Y.Z` triggers `.github/workflows/wheels.yml`, which
+builds and tests wheels on all platforms, creates a draft GitHub Release, and
+publishes to PyPI via OIDC Trusted Publishing (gated by the `pypi`
+environment).
+
+### Logging verbosity
+
+Set `MIDIGPT_LOG_LEVEL=DEBUG` (or a numeric level) before importing the
+package. The Python side accepts both string names (`DEBUG`, `INFO`,
+`WARNING`) and integer levels. The C++ core uses the same environment variable
+via `midigpt._core.set_verbosity`.
+
+---
+
+## License
+
+MIT License. Copyright (c) 2025 Metacreation Lab. See [LICENSE](LICENSE).
