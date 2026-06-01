@@ -119,7 +119,8 @@ class SamplingSession:
                 mask, enc_cfg,
                 cfg_try.bars_per_step, cfg_try.tracks_per_step
             )
-            score = to_cpp(copy.deepcopy(from_cpp(self._score)))
+            py_score = self._score if isinstance(self._score, Score) else from_cpp(self._score)
+            score = to_cpp(copy.deepcopy(py_score))
             try:
                 self._snapshot_sent = False
                 for step in tqdm(planner.plan()):

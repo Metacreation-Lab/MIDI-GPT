@@ -236,7 +236,8 @@ def validate_request(request: GenerationRequest, score, encoder_config,
     ppq = int(getattr(score, "resolution", 480) or 480)
     for t in score.tracks:
         for b in t.bars:
-            for note in (score.notes[i] for i in b.note_indices):
+            bar_notes = b.notes if hasattr(b, 'notes') else [score.notes[i] for i in b.note_indices]
+            for note in bar_notes:
                 if note.duration_ticks <= 0:
                     zero_dur += 1
                 tsn = getattr(b, "ts_numerator", 4) or 4
