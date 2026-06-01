@@ -1,10 +1,10 @@
 /* ── Brand colours ─────────────────────────────────────────── */
 :root,
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color:        #e31e24;
-  --md-primary-fg-color--light: #ea4347;
-  --md-primary-fg-color--dark:  #c01a1f;
-  --md-accent-fg-color:         #e31e24;
+  --md-primary-fg-color:        #eb1c3b;
+  --md-primary-fg-color--light: #ef4d63;
+  --md-primary-fg-color--dark:  #c4152f;
+  --md-accent-fg-color:         #eb1c3b;
   --md-accent-fg-color--transparent: rgba(227, 30, 36, 0.1);
 
   /* Slightly richer dark background */

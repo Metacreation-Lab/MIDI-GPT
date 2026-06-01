@@ -1,4 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" fill="none">
-  <polyline points="8,8 45,40 8,72" stroke="#e31e24" stroke-width="13" stroke-linecap="square" stroke-linejoin="miter"/>
-  <polyline points="46,8 83,40 46,72" stroke="#e31e24" stroke-width="13" stroke-linecap="square" stroke-linejoin="miter"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 105.63 137.32">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #eb1c3b;
+        stroke-width: 0px;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1-2" data-name="Layer 1">
+    <g>
+      <polygon class="cls-1" points="26.41 10.56 84.51 68.66 26.41 126.76 36.97 137.32 105.63 68.66 36.97 0 26.41 10.56"/>
+      <polygon class="cls-1" points="31.69 36.97 0 68.66 31.69 100.35 42.25 89.79 21.13 68.66 42.25 47.53 31.69 36.97"/>
+    </g>
+  </g>
 </svg>
