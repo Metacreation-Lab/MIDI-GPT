@@ -77,19 +77,21 @@ reinstallation.
 
 ## Quickstart: Inference
 
-### Load a checkpoint and run a generation session
+### Load a model and run a generation session
 
-`InferenceEngine.from_checkpoint` is the single entry point for loading any
-packed `.pt` bundle. It reads the weights, builds the tokenizer from the
-embedded encoder config, and runs a warmup pass to prime the KV cache.
+Use `from_pretrained` to load by name — the model is downloaded from
+HuggingFace Hub and cached locally on first use:
 
 ```python
 from midigpt import Score
 from midigpt.inference.engine import InferenceEngine
 from midigpt.inference.config import GenerationRequest, InferenceConfig, TrackPrompt
 
-# Load a packed .pt bundle (weights + encoder config in one file).
-engine = InferenceEngine.from_checkpoint("models/ghost_500_bundle.pt")
+# Download and cache from HuggingFace Hub (Metacreation-Lab/MIDI-GPT).
+engine = InferenceEngine.from_pretrained("yellow")   # or "ghost", "expressive"
+
+# Load from a local .pt bundle instead.
+# engine = InferenceEngine.from_checkpoint("path/to/model.pt")
 
 # Read an input MIDI file.
 score = Score.from_midi("my_song.mid")
@@ -489,4 +491,4 @@ via `midigpt._core.set_verbosity`.
 
 ## License
 
-MIT License. Copyright (c) 2025 Metacreation Lab. See [LICENSE](LICENSE).
+MIT License. Copyright (c) 2026 Metacreation Lab. See [LICENSE](LICENSE).

@@ -2,6 +2,14 @@ import midigpt._core as _core
 from midigpt.tokenizer.tokenizer import Tokenizer
 from midigpt.attributes.base import AttributeAnalyzer
 
+HF_REPO_ID = "Metacreation-Lab/MIDI-GPT"
+
+_KNOWN_MODELS: dict[str, str] = {
+    "yellow":     "yellow.pt",
+    "ghost":      "ghost.pt",
+    "expressive": "expressive.pt",
+}
+
 
 class InferenceEngine:
     def __init__(self, model, tokenizer: Tokenizer, analyzer: AttributeAnalyzer):
@@ -11,8 +19,52 @@ class InferenceEngine:
         self._initial_kv = None   # cached once by warmup() or first generate
 
     @classmethod
+    def from_pretrained(
+        cls,
+        name_or_repo_id: str,
+        filename: str | None = None,
+        analyzer: "AttributeAnalyzer | None" = None,
+    ) -> "InferenceEngine":
+        """Load a model by name or HuggingFace repo ID.
+
+        Short names resolve to files in the official repo::
+
+            engine = InferenceEngine.from_pretrained("yellow")
+            engine = InferenceEngine.from_pretrained("ghost")
+
+        A full repo ID with an explicit filename also works::
+
+            engine = InferenceEngine.from_pretrained(
+                "Metacreation-Lab/MIDI-GPT", filename="yellow.pt"
+            )
+
+        The file is downloaded once and cached by ``huggingface_hub`` in
+        ``~/.cache/huggingface/hub/``.
+        """
+        try:
+            from huggingface_hub import hf_hub_download
+        except ImportError:
+            raise ImportError("pip install midigpt[inference] to enable HF Hub downloads")
+
+        if name_or_repo_id in _KNOWN_MODELS:
+            repo_id = HF_REPO_ID
+            fname   = filename or _KNOWN_MODELS[name_or_repo_id]
+        else:
+            if filename is None:
+                raise ValueError(
+                    f"Unknown model name {name_or_repo_id!r}. "
+                    f"Known names: {list(_KNOWN_MODELS)}. "
+                    f"For a custom repo pass filename= explicitly."
+                )
+            repo_id = name_or_repo_id
+            fname   = filename
+
+        local_path = hf_hub_download(repo_id=repo_id, filename=fname)
+        return cls.from_checkpoint(local_path, analyzer=analyzer)
+
+    @classmethod
     def from_checkpoint(cls, path: str,
-                        analyzer: AttributeAnalyzer | None = None) -> "InferenceEngine":
+                        analyzer: "AttributeAnalyzer | None" = None) -> "InferenceEngine":
         try:
             import torch
         except ImportError:
