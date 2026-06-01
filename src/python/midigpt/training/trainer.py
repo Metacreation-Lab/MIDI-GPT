@@ -30,6 +30,11 @@ class TrainConfig:
     seed: int = 42
     num_workers: int = 0   # C++ MIDI parser is not fork-safe; must be 0
 
+    # ── Model architecture ────────────────────────────────────────────────
+    n_embd: int = 512
+    n_layer: int = 6
+    n_head: int = 8
+
     # ── Precision ────────────────────────────────────────────────────────
     precision: Literal["fp16", "bf16", "fp32"] = "fp16"
 
@@ -172,6 +177,9 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
     gpt2_cfg = GPT2Config(
         vocab_size=tokenizer.vocab_size(),
         n_positions=config.max_seq_len,
+        n_embd=config.n_embd,
+        n_layer=config.n_layer,
+        n_head=config.n_head,
     )
     model = GPT2LMHeadModel(gpt2_cfg)
     model.encoder_config = encoder_config

@@ -59,6 +59,10 @@ output/
 wandb/
 docs/
 
+# Cluster-specific SLURM launch scripts (configs/ are committed; scripts/ are not)
+slurm/*.sh
+slurm/logs/
+
 # Test MIDI fixtures
 !tests/midi/*.mid
 !tests/comparison/midi/*.mid
