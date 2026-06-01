@@ -1,0 +1,53 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "MIDI-GPT: A Controllable Generative Model for Computer-Assisted Multitrack Music Composition"
+version: 0.2.3
+date-released: 2026-06-01
+url: "https://github.com/Metacreation-Lab/MIDI-GPT"
+repository-code: "https://github.com/Metacreation-Lab/MIDI-GPT"
+license: MIT
+type: software
+
+authors:
+  - family-names: Pasquier
+    given-names: Philippe
+    affiliation: Simon Fraser University
+  - family-names: Ens
+    given-names: Jeff
+    affiliation: Simon Fraser University
+  - family-names: Fradet
+    given-names: Nathan
+  - family-names: Triana
+    given-names: Paul
+    affiliation: Simon Fraser University
+  - family-names: Rizzotti
+    given-names: Davide
+  - family-names: Rolland
+    given-names: Jean-Baptiste
+  - family-names: Safi
+    given-names: Maryam
+
+preferred-citation:
+  type: article
+  title: "MIDI-GPT: A Controllable Generative Model for Computer-Assisted Multitrack Music Composition"
+  authors:
+    - family-names: Pasquier
+      given-names: Philippe
+    - family-names: Ens
+      given-names: Jeff
+    - family-names: Fradet
+      given-names: Nathan
+    - family-names: Triana
+      given-names: Paul
+    - family-names: Rizzotti
+      given-names: Davide
+    - family-names: Rolland
+      given-names: Jean-Baptiste
+    - family-names: Safi
+      given-names: Maryam
+  year: 2025
+  url: "https://arxiv.org/abs/2501.17011"
+  identifiers:
+    - type: other
+      value: "arXiv:2501.17011"
+      description: arXiv preprint
