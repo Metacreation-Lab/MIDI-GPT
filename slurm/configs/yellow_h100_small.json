@@ -1,9 +1,9 @@
 {
     "encoder_config_path": "models/yellow_encoder.json",
 
-    "n_embd": 512,
-    "n_layer": 6,
-    "n_head": 8,
+    "n_embd": 768,
+    "n_layer": 12,
+    "n_head": 12,
 
     "learning_rate": 3e-4,
     "weight_decay": 0.01,
@@ -12,8 +12,8 @@
     "lr_scheduler_type": "cosine",
 
     "num_epochs": 5,
-    "per_device_batch_size": 64,
-    "gradient_accumulation_steps": 2,
+    "per_device_batch_size": 32,
+    "gradient_accumulation_steps": 4,
     "seed": 42,
     "num_workers": 0,
 
