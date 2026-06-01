@@ -11,8 +11,6 @@ from midigpt.attributes.quantile import (
     PolyphonyQuantile,
     NoteDurationQuantile,
 )
-from midigpt.attributes.tension import Tension, TensionDrum
-
 # Name → class registry used by AttributeAnalyzer.from_config().
 # Encoder configs reference these names in the "attribute_controls" list.
 ATTRIBUTE_REGISTRY = {
@@ -26,8 +24,6 @@ ATTRIBUTE_REGISTRY = {
     "note_density_quantile":  NoteDensityQuantile,
     "polyphony_quantile":     PolyphonyQuantile,
     "note_duration_quantile": NoteDurationQuantile,
-    "tension":                Tension,
-    "tension_drum":           TensionDrum,
 }
 
 # TokenType (name) → (registry_key, params) used by AttributeAnalyzer
@@ -40,8 +36,6 @@ TOKEN_TYPE_TO_ATTRIBUTE = {
     "MinNoteDuration": ("note_duration_quantile", {"mode": "min"}),
     "MaxNoteDuration": ("note_duration_quantile", {"mode": "max"}),
     "NoteDensity":     ("note_density_quantile",  {}),
-    "Tension":         ("tension",                {}),
-    "TensionDrum":     ("tension_drum",           {}),
     "PitchClassSet":   ("pitch_class_set",        {}),
     "PitchRange":      ("pitch_range",            {}),
     "KeySignature":    ("key_signature",          {}),
@@ -55,8 +49,6 @@ __all__ = [
     "BaseAttribute",
     "ATTRIBUTE_REGISTRY",
     "TOKEN_TYPE_TO_ATTRIBUTE",
-    "Tension",
-    "TensionDrum",
     "NoteDensity",
     "OnsetPolyphony",
     "PitchRange",
