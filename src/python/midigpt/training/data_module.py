@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class MidiGPTDataModule(L.LightningDataModule):
     def __init__(
         self,
-        train_path: str,
+        train_path: "str | list[str]",
         tokenizer: "Tokenizer",
         # Infill training
         infill_probability: float = 0.75,

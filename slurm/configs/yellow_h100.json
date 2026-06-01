@@ -1,0 +1,32 @@
+{
+    "encoder_config_path": "models/yellow_encoder.json",
+
+    "learning_rate": 3e-4,
+    "weight_decay": 0.01,
+    "max_grad_norm": 1.0,
+    "warmup_steps": 2000,
+    "lr_scheduler_type": "cosine",
+
+    "num_epochs": 5,
+    "per_device_batch_size": 32,
+    "gradient_accumulation_steps": 4,
+    "seed": 42,
+    "num_workers": 0,
+
+    "precision": "bf16",
+    "max_seq_len": 2048,
+
+    "save_steps": 2000,
+    "logging_steps": 50,
+    "logger": "wandb",
+    "wandb_project": "midigpt",
+    "wandb_entity": "",
+
+    "max_tracks": 12,
+    "min_tracks": 1,
+    "min_fill_ratio": 0.75,
+
+    "infill_probability": 0.75,
+    "infill_bar_fraction": 0.5,
+    "mask_apply_probability": 0.0
+}

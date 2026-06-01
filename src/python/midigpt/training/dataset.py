@@ -1,5 +1,6 @@
 from __future__ import annotations
 import copy
+import glob as _glob_mod
 import hashlib
 import json
 import random
@@ -206,6 +207,14 @@ class DatasetBuilder:
         pq.write_table(table, output_path)
 
 
+def _resolve_paths(parquet_path: "str | list[str]") -> list[str]:
+    """Expand a single path, glob pattern, or list to a sorted list of parquet paths."""
+    if isinstance(parquet_path, list):
+        return sorted(parquet_path)
+    expanded = sorted(_glob_mod.glob(parquet_path))
+    return expanded if expanded else [parquet_path]
+
+
 # ── static augments applied once per score before windowing ───────────────────
 
 _TRANSPOSE = Transpose(range(-6, 7))
@@ -235,7 +244,7 @@ class MidiGPTDataset:
 
     def __init__(
         self,
-        parquet_path: str,
+        parquet_path: "str | list[str]",
         tokenizer: Tokenizer,
         # Infill training
         infill_probability: float = 0.75,
@@ -253,7 +262,8 @@ class MidiGPTDataset:
             import datasets as hf
         except ImportError:
             raise ImportError("pip install midigpt[train]")
-        self._data           = hf.load_dataset("parquet", data_files=parquet_path, split="train")
+        paths = _resolve_paths(parquet_path)
+        self._data = hf.load_dataset("parquet", data_files=paths, split="train")
         self._tokenizer      = tokenizer
         self._infill_prob    = infill_probability
         self._infill_frac    = infill_bar_fraction
@@ -286,13 +296,21 @@ class MidiGPTDataset:
         ts_list = cfg_dict.get("time_signatures")
         valid_ts: frozenset[str] | None = frozenset(ts_list) if ts_list else None
 
-        valid = _load_or_build_valid_indices(
-            parquet_path,
-            min_bars=self._num_bars_choices[-1],
-            min_tracks=min_tracks,
-            valid_time_sigs=valid_ts,
-        )
-        self._data = self._data.select(valid)
+        # Per-shard filtering (each shard gets its own cache entry).
+        # Global indices are reconstructed from per-shard row counts.
+        all_valid: list[int] = []
+        offset = 0
+        for path in paths:
+            n = pq.read_metadata(path).num_rows
+            local_valid = _load_or_build_valid_indices(
+                path,
+                min_bars=self._num_bars_choices[-1],
+                min_tracks=min_tracks,
+                valid_time_sigs=valid_ts,
+            )
+            all_valid.extend(i + offset for i in local_valid)
+            offset += n
+        self._data = self._data.select(all_valid)
 
     def __len__(self) -> int:
         return len(self._data)
