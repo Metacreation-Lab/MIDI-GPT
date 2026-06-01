@@ -3,29 +3,28 @@ site_description: GPT-2 transformer for controllable multitrack music generation
 site_url: https://metacreation-lab.github.io/MIDI-GPT/
 repo_url: https://github.com/Metacreation-Lab/MIDI-GPT
 repo_name: Metacreation-Lab/MIDI-GPT
-copyright: Copyright &copy; 2026 Metacreation Lab
+copyright: Copyright &copy; 2026 Metacreation Lab for Creative AI
 
 theme:
   name: material
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  font:
+    text: Space Grotesk
+    code: JetBrains Mono
   palette:
-    - scheme: default
-      primary: deep purple
-      accent: deep purple
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
     - scheme: slate
-      primary: deep purple
-      accent: deep purple
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+      primary: custom
+      accent: custom
   features:
     - navigation.tabs
     - navigation.sections
     - navigation.top
+    - navigation.instant
     - content.code.copy
     - content.code.annotate
+    - search.highlight
+    - search.suggest
 
 nav:
   - Home: index.md
@@ -60,6 +59,9 @@ markdown_extensions:
 
 plugins:
   - search
+
+extra_css:
+  - assets/extra.css
 
 extra_javascript:
   - https://unpkg.com/mermaid@11/dist/mermaid.esm.min.mjs

@@ -1,0 +1,122 @@
+/* ── Brand colours ─────────────────────────────────────────── */
+:root,
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:        #e31e24;
+  --md-primary-fg-color--light: #ea4347;
+  --md-primary-fg-color--dark:  #c01a1f;
+  --md-accent-fg-color:         #e31e24;
+  --md-accent-fg-color--transparent: rgba(227, 30, 36, 0.1);
+
+  /* Slightly richer dark background */
+  --md-default-bg-color:        #0f1117;
+  --md-default-bg-color--light: #161b25;
+  --md-code-bg-color:           #161b25;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.md-header {
+  background-color: #0a0c12;
+  border-bottom: 1px solid rgba(227, 30, 36, 0.35);
+  box-shadow: none;
+}
+
+.md-tabs {
+  background-color: #0a0c12;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Logo ──────────────────────────────────────────────────── */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.6rem;
+  width: auto;
+}
+
+/* Site name — slightly spaced */
+.md-header__title {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+/* ── Navigation ────────────────────────────────────────────── */
+.md-nav__link--active {
+  color: var(--md-primary-fg-color) !important;
+  font-weight: 600;
+}
+
+.md-nav__item--active > .md-nav__link {
+  color: var(--md-primary-fg-color);
+}
+
+/* ── Typography ────────────────────────────────────────────── */
+.md-typeset h1 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.md-typeset h2 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid rgba(227, 30, 36, 0.25);
+  padding-bottom: 0.3em;
+}
+
+.md-typeset h3 {
+  font-weight: 600;
+}
+
+/* ── Inline code ───────────────────────────────────────────── */
+.md-typeset :not(pre) > code {
+  background-color: rgba(227, 30, 36, 0.12);
+  color: #ff8080;
+  border: 1px solid rgba(227, 30, 36, 0.2);
+  border-radius: 3px;
+  padding: 0.05em 0.35em;
+  font-size: 0.88em;
+}
+
+/* ── Code blocks ───────────────────────────────────────────── */
+.md-typeset pre {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+}
+
+.md-typeset pre > code {
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
+/* ── Tables ────────────────────────────────────────────────── */
+.md-typeset table:not([class]) th {
+  background-color: rgba(227, 30, 36, 0.15);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.md-typeset table:not([class]) tr:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Admonitions ───────────────────────────────────────────── */
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 4px;
+  border-left-width: 3px;
+}
+
+/* ── Mermaid diagrams ──────────────────────────────────────── */
+.mermaid {
+  background-color: #161b25;
+  border-radius: 6px;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ── Footer ────────────────────────────────────────────────── */
+.md-footer {
+  background-color: #0a0c12;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}

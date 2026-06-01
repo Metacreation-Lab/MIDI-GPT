@@ -8,6 +8,7 @@
 [![Docs](https://img.shields.io/badge/docs-online-blue)](https://metacreation-lab.github.io/MIDI-GPT/)
 [![License: MIT](https://img.shields.io/github/license/Metacreation-Lab/MIDI-GPT)](LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2501.17011-b31b1b)](https://arxiv.org/abs/2501.17011)
+[![HuggingFace](https://img.shields.io/badge/HuggingFace-Metacreation%2FMIDI--GPT-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/Metacreation/MIDI-GPT)
 
 A transformer model for **computer-assisted multitrack music composition**.
 
