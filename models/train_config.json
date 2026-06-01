@@ -1,0 +1,38 @@
+{
+  "output_dir": "checkpoints",
+  "encoder_config_path": "models/yellow_config.json",
+
+  "learning_rate": 5e-5,
+  "weight_decay": 0.01,
+  "max_grad_norm": 1.0,
+  "warmup_steps": 500,
+  "lr_scheduler_type": "linear",
+
+  "num_epochs": 10,
+  "per_device_batch_size": 4,
+  "gradient_accumulation_steps": 8,
+  "seed": 42,
+  "num_workers": 4,
+
+  "precision": "fp16",
+  "max_seq_len": 2048,
+
+  "save_steps": 1000,
+  "eval_steps": 500,
+  "logging_steps": 50,
+  "logger": "none",
+  "wandb_project": "midigpt",
+  "wandb_entity": "",
+
+  "max_tracks": 12,
+  "min_tracks": 1,
+  "min_fill_ratio": 0.75,
+
+  "infill_probability": 0.75,
+  "infill_bar_fraction": 0.5,
+
+  "mask_apply_probability": 0.0,
+  "mask_mode": 2,
+  "mask_bar_fraction": 0.25,
+  "mask_max_lookahead": 4
+}

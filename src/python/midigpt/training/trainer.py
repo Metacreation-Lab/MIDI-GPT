@@ -67,6 +67,45 @@ class TrainConfig:
     mask_bar_fraction: float = 0.25
     mask_max_lookahead: int = 4
 
+    @classmethod
+    def from_file(cls, path: str) -> "TrainConfig":
+        """Load a TrainConfig from a JSON or YAML file. Unknown keys are ignored."""
+        import json as _json
+        p = Path(path)
+        if p.suffix in (".yaml", ".yml"):
+            try:
+                import yaml
+                data = yaml.safe_load(p.read_text())
+            except ImportError:
+                raise ImportError("pip install pyyaml to load YAML train configs")
+        else:
+            data = _json.loads(p.read_text())
+        import dataclasses
+        valid = {f.name for f in dataclasses.fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in valid})
+
+
+def _validate_train_config(config: "TrainConfig", encoder_config_json: dict) -> None:
+    """Raise ValueError if TrainConfig requests features the encoder doesn't support."""
+    if config.infill_probability > 0 and not encoder_config_json.get("supports_infill", False):
+        raise ValueError(
+            f"infill_probability={config.infill_probability} > 0 but the encoder config "
+            f"has supports_infill=false. Set infill_probability=0.0 or use an "
+            f"infill-capable checkpoint."
+        )
+    if config.mask_apply_probability > 0:
+        import midigpt._core as _core
+        # Build a minimal vocabulary to test for MaskBar token presence.
+        import json as _json
+        cfg = _core.EncoderConfig.from_json(_json.dumps(encoder_config_json))
+        vocab = _core.Vocabulary(cfg)
+        if not vocab.has(_core.TokenType.MaskBar):
+            raise ValueError(
+                f"mask_apply_probability={config.mask_apply_probability} > 0 but the "
+                f"encoder vocab does not include the MaskBar token. "
+                f"Set mask_apply_probability=0.0 or use a masking-capable checkpoint."
+            )
+
 
 def _precision_str(precision: str) -> str:
     return {"fp16": "16-mixed", "bf16": "bf16-mixed", "fp32": "32"}[precision]
@@ -116,9 +155,10 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
 
     L.seed_everything(config.seed, workers=True)
 
-    encoder_config = _core.EncoderConfig.from_json(
-        Path(config.encoder_config_path).read_text()
-    )
+    import json as _json
+    enc_json_str = Path(config.encoder_config_path).read_text()
+    encoder_config = _core.EncoderConfig.from_json(enc_json_str)
+    _validate_train_config(config, _json.loads(enc_json_str))
     tokenizer = Tokenizer(encoder_config)
 
     # Build the model first so we can validate max_seq_len.

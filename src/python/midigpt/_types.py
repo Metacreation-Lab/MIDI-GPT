@@ -37,6 +37,12 @@ class Score:
         import midigpt._core as _core
         return from_cpp(_core.MidiReader().read(path))
 
+    @classmethod
+    def from_bytes(cls, data: bytes) -> "Score":
+        from midigpt._converters import from_cpp
+        import midigpt._core as _core
+        return from_cpp(_core.MidiReader().read_bytes(list(data)))
+
     def to_midi(self, path: str) -> None:
         from midigpt._converters import to_cpp
         import midigpt._core as _core
