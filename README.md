@@ -286,7 +286,7 @@ capability set.
 | Model | `num_bars_map` | Infill | `MaskBar` | Microtiming | Velocity bins | Attributes | Download |
 |---|---|---|---|---|---|---|---|
 | Yellow | 4, 8 | yes | no | no | 32 | note density, min/max polyphony, min/max note duration | coming soon |
-| Ghost | 4, 8, 12, 16 | yes | yes | yes | 32 | note density, min/max polyphony, min/max note duration | coming soon |
+| Ghost | 4, 8, 12, 16 | yes | yes | no | 32 | note density, min/max polyphony, min/max note duration | coming soon |
 | Expressive | 4, 8 | yes | no | yes | 128 | note density, min/max polyphony, min/max note duration | coming soon |
 
 **`model_dim`** in `InferenceConfig` is the context window length in bars, not a
