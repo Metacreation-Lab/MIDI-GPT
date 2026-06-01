@@ -83,30 +83,33 @@ TEST_CASE("Vocabulary: range() for absent type returns (-1,-1)") {
 
 TEST_CASE("Vocabulary: offset(t_{i+1}) == offset(t_i) + domain_size(t_i)") {
     EncoderConfig cfg;
-    std::vector<std::pair<TokenType,int>> ds = {
-        {TokenType::PieceStart, 1},
-        {TokenType::Track,      10},
-        {TokenType::Instrument, 128},
-        {TokenType::Bar,        1},
-        {TokenType::TimeAbsolutePos, 192},
-        {TokenType::VelocityLevel,  32},
-        {TokenType::NoteOnset,  128},
-        {TokenType::NoteDuration, 64},
-        {TokenType::BarEnd,     1},
-        {TokenType::TrackEnd,   1},
-        {TokenType::PieceEnd,   1},
+    // Use midigpt::TokenType explicitly — MSVC resolves bare TokenType as
+    // TOKEN_INFORMATION_CLASS::TokenType (=8) in template args, breaking
+    // std::pair and structured bindings.
+    std::vector<std::pair<midigpt::TokenType,int>> ds = {
+        {midigpt::TokenType::PieceStart, 1},
+        {midigpt::TokenType::Track,      10},
+        {midigpt::TokenType::Instrument, 128},
+        {midigpt::TokenType::Bar,        1},
+        {midigpt::TokenType::TimeAbsolutePos, 192},
+        {midigpt::TokenType::VelocityLevel,  32},
+        {midigpt::TokenType::NoteOnset,  128},
+        {midigpt::TokenType::NoteDuration, 64},
+        {midigpt::TokenType::BarEnd,     1},
+        {midigpt::TokenType::TrackEnd,   1},
+        {midigpt::TokenType::PieceEnd,   1},
     };
-    for (auto& [t, s] : ds) cfg.token_domains.push_back({t, s});
+    for (auto& d : ds) cfg.token_domains.push_back({d.first, d.second});
     Vocabulary vocab(cfg);
 
     int expected = 0;
-    for (auto& [t, s] : ds) {
-        CHECK(vocab.offset(t) == expected);
-        CHECK(vocab.domain_size(t) == s);
-        auto r = vocab.range(t);
+    for (auto& d : ds) {
+        CHECK(vocab.offset(d.first) == expected);
+        CHECK(vocab.domain_size(d.first) == d.second);
+        auto r = vocab.range(d.first);
         CHECK(r.first == expected);
-        CHECK(r.second == expected + s);
-        expected += s;
+        CHECK(r.second == expected + d.second);
+        expected += d.second;
     }
     CHECK(vocab.size() == expected);
 }
