@@ -59,9 +59,14 @@ output/
 wandb/
 docs/
 
-# Cluster-specific SLURM launch scripts (configs/ are committed; scripts/ are not)
-slurm/*.sh
-slurm/logs/
+# Cluster-specific SLURM scripts and configs
+slurm/
+
+# Legacy code
+legacy/
+
+# Project-local Claude instructions
+CLAUDE.md
 
 # Test MIDI fixtures
 !tests/midi/*.mid
