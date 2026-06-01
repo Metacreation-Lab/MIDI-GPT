@@ -28,7 +28,7 @@ class TrainConfig:
     per_device_batch_size: int = 4
     gradient_accumulation_steps: int = 8
     seed: int = 42
-    num_workers: int = 4
+    num_workers: int = 0   # C++ MIDI parser is not fork-safe; must be 0
 
     # ── Precision ────────────────────────────────────────────────────────
     precision: Literal["fp16", "bf16", "fp32"] = "fp16"
@@ -156,7 +156,14 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
     L.seed_everything(config.seed, workers=True)
 
     import json as _json
-    enc_json_str = Path(config.encoder_config_path).read_text()
+    enc_path = Path(config.encoder_config_path)
+    if enc_path.suffix == ".pt":
+        import torch as _torch
+        _bundle = _torch.load(str(enc_path), map_location="cpu", weights_only=False)
+        _enc = _bundle.get("encoder_config", {})
+        enc_json_str = _json.dumps(_enc) if isinstance(_enc, dict) else _enc
+    else:
+        enc_json_str = enc_path.read_text()
     encoder_config = _core.EncoderConfig.from_json(enc_json_str)
     _validate_train_config(config, _json.loads(enc_json_str))
     tokenizer = Tokenizer(encoder_config)
@@ -210,6 +217,7 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
     lit_module = MidiGPTLightningModule(model, config)
     lit_module.total_steps = total_steps
 
+    logger = _build_logger(config)
     callbacks = [
         ModelCheckpoint(
             dirpath=Path(config.output_dir) / "checkpoints",
@@ -217,8 +225,9 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
             save_top_k=-1,
             filename="step={step}",
         ),
-        LearningRateMonitor(logging_interval="step"),
     ]
+    if logger:
+        callbacks.append(LearningRateMonitor(logging_interval="step"))
 
     trainer = L.Trainer(
         max_epochs=config.num_epochs,
@@ -229,7 +238,7 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
         log_every_n_steps=config.logging_steps,
         default_root_dir=config.output_dir,
         callbacks=callbacks,
-        logger=_build_logger(config),
+        logger=logger,
     )
 
     trainer.fit(lit_module, data_module)
@@ -241,3 +250,26 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
     final_path = Path(config.output_dir) / "model_final.pt"
     model.save_pretrained(str(final_path), encoder_config=enc_cfg)
     log.info("Training complete. Final bundle: %s", final_path)
+
+
+if __name__ == "__main__":
+    import argparse, sys
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+    parser = argparse.ArgumentParser(description="Train a MidiGPT model.")
+    parser.add_argument("--config",      required=True, help="Path to TrainConfig JSON/YAML")
+    parser.add_argument("--train-data",  required=True, help="Parquet shard(s): path, list, or glob")
+    parser.add_argument("--eval-data",   default=None,  help="Optional eval parquet shard")
+    parser.add_argument("--output-dir",  default=None,  help="Override output_dir from config")
+    args = parser.parse_args()
+
+    cfg = TrainConfig.from_file(args.config)
+    if args.output_dir:
+        cfg.output_dir = args.output_dir
+
+    train(cfg, args.train_data, args.eval_data)
