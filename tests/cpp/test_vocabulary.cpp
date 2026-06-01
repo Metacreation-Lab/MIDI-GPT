@@ -10,8 +10,7 @@
 
 using namespace midigpt;
 using namespace midigpt::tokenizer;
-// Explicitly shadow winnt.h's TokenType enum value (Windows-only collision).
-using TokenType = midigpt::TokenType;
+using TT = midigpt::TokenType;
 
 // ---------------------------------------------------------------------------
 // Basic operations
@@ -19,38 +18,38 @@ using TokenType = midigpt::TokenType;
 
 TEST_CASE("Vocabulary: encode/decode/range/offset for 3 types") {
     EncoderConfig cfg;
-    cfg.token_domains.push_back({TokenType::PieceStart, 1});
-    cfg.token_domains.push_back({TokenType::Track, 10});
-    cfg.token_domains.push_back({TokenType::NoteOnset, 128});
+    cfg.token_domains.push_back({TT::PieceStart, 1});
+    cfg.token_domains.push_back({TT::Track, 10});
+    cfg.token_domains.push_back({TT::NoteOnset, 128});
     Vocabulary vocab(cfg);
 
     CHECK(vocab.size() == 139);
-    CHECK(vocab.has(TokenType::PieceStart));
-    CHECK(vocab.has(TokenType::Track));
-    CHECK(vocab.has(TokenType::NoteOnset));
-    CHECK(!vocab.has(TokenType::PieceEnd));
+    CHECK(vocab.has(TT::PieceStart));
+    CHECK(vocab.has(TT::Track));
+    CHECK(vocab.has(TT::NoteOnset));
+    CHECK(!vocab.has(TT::PieceEnd));
 
-    CHECK(vocab.domain_size(TokenType::PieceStart) == 1);
-    CHECK(vocab.domain_size(TokenType::Track) == 10);
-    CHECK(vocab.domain_size(TokenType::NoteOnset) == 128);
+    CHECK(vocab.domain_size(TT::PieceStart) == 1);
+    CHECK(vocab.domain_size(TT::Track) == 10);
+    CHECK(vocab.domain_size(TT::NoteOnset) == 128);
 
-    CHECK(vocab.offset(TokenType::PieceStart) == 0);
-    CHECK(vocab.offset(TokenType::Track) == 1);
-    CHECK(vocab.offset(TokenType::NoteOnset) == 11);
+    CHECK(vocab.offset(TT::PieceStart) == 0);
+    CHECK(vocab.offset(TT::Track) == 1);
+    CHECK(vocab.offset(TT::NoteOnset) == 11);
 
-    CHECK(vocab.encode(TokenType::Track, 5) == 6);
-    CHECK(vocab.encode(TokenType::NoteOnset, 60) == 71);
+    CHECK(vocab.encode(TT::Track, 5) == 6);
+    CHECK(vocab.encode(TT::NoteOnset, 60) == 71);
 
     auto d = vocab.decode(71);
-    CHECK(d.first == TokenType::NoteOnset);
+    CHECK(d.first == TT::NoteOnset);
     CHECK(d.second == 60);
 
-    CHECK(vocab.is_type(71, TokenType::NoteOnset));
-    CHECK_FALSE(vocab.is_type(71, TokenType::Track));
+    CHECK(vocab.is_type(71, TT::NoteOnset));
+    CHECK_FALSE(vocab.is_type(71, TT::Track));
 
-    CHECK(vocab.get_type(6) == TokenType::Track);
+    CHECK(vocab.get_type(6) == TT::Track);
 
-    auto r = vocab.range(TokenType::NoteOnset);
+    auto r = vocab.range(TT::NoteOnset);
     CHECK(r.first == 11);
     CHECK(r.second == 139);
 }
@@ -61,18 +60,18 @@ TEST_CASE("Vocabulary: encode/decode/range/offset for 3 types") {
 
 TEST_CASE("Vocabulary: has() returns false for absent type") {
     EncoderConfig cfg;
-    cfg.token_domains.push_back({TokenType::Track, 5});
+    cfg.token_domains.push_back({TT::Track, 5});
     Vocabulary vocab(cfg);
-    CHECK_FALSE(vocab.has(TokenType::Tension));
-    CHECK_FALSE(vocab.has(TokenType::PieceEnd));
-    CHECK_FALSE(vocab.has(TokenType::NoteOnset));
+    CHECK_FALSE(vocab.has(TT::Tension));
+    CHECK_FALSE(vocab.has(TT::PieceEnd));
+    CHECK_FALSE(vocab.has(TT::NoteOnset));
 }
 
 TEST_CASE("Vocabulary: range() for absent type returns (-1,-1)") {
     EncoderConfig cfg;
-    cfg.token_domains.push_back({TokenType::Track, 5});
+    cfg.token_domains.push_back({TT::Track, 5});
     Vocabulary vocab(cfg);
-    auto r = vocab.range(TokenType::Tension);
+    auto r = vocab.range(TT::Tension);
     CHECK(r.first == -1);
     CHECK(r.second == -1);
 }
@@ -83,21 +82,18 @@ TEST_CASE("Vocabulary: range() for absent type returns (-1,-1)") {
 
 TEST_CASE("Vocabulary: offset(t_{i+1}) == offset(t_i) + domain_size(t_i)") {
     EncoderConfig cfg;
-    // Use midigpt::TokenType explicitly — MSVC resolves bare TokenType as
-    // TOKEN_INFORMATION_CLASS::TokenType (=8) in template args, breaking
-    // std::pair and structured bindings.
-    std::vector<std::pair<midigpt::TokenType,int>> ds = {
-        {midigpt::TokenType::PieceStart, 1},
-        {midigpt::TokenType::Track,      10},
-        {midigpt::TokenType::Instrument, 128},
-        {midigpt::TokenType::Bar,        1},
-        {midigpt::TokenType::TimeAbsolutePos, 192},
-        {midigpt::TokenType::VelocityLevel,  32},
-        {midigpt::TokenType::NoteOnset,  128},
-        {midigpt::TokenType::NoteDuration, 64},
-        {midigpt::TokenType::BarEnd,     1},
-        {midigpt::TokenType::TrackEnd,   1},
-        {midigpt::TokenType::PieceEnd,   1},
+    std::vector<std::pair<TT,int>> ds = {
+        {TT::PieceStart, 1},
+        {TT::Track,      10},
+        {TT::Instrument, 128},
+        {TT::Bar,        1},
+        {TT::TimeAbsolutePos, 192},
+        {TT::VelocityLevel,  32},
+        {TT::NoteOnset,  128},
+        {TT::NoteDuration, 64},
+        {TT::BarEnd,     1},
+        {TT::TrackEnd,   1},
+        {TT::PieceEnd,   1},
     };
     for (auto& d : ds) cfg.token_domains.push_back({d.first, d.second});
     Vocabulary vocab(cfg);
@@ -120,23 +116,23 @@ TEST_CASE("Vocabulary: offset(t_{i+1}) == offset(t_i) + domain_size(t_i)") {
 
 TEST_CASE("Vocabulary: domain size 1 yields single-token range") {
     EncoderConfig cfg;
-    cfg.token_domains.push_back({TokenType::PieceStart, 1});
+    cfg.token_domains.push_back({TT::PieceStart, 1});
     Vocabulary vocab(cfg);
     CHECK(vocab.size() == 1);
-    CHECK(vocab.encode(TokenType::PieceStart, 0) == 0);
-    auto r = vocab.range(TokenType::PieceStart);
+    CHECK(vocab.encode(TT::PieceStart, 0) == 0);
+    auto r = vocab.range(TT::PieceStart);
     CHECK(r.second - r.first == 1);
 }
 
 TEST_CASE("Vocabulary: large domain (4096) encodes/decodes correctly") {
     EncoderConfig cfg;
-    cfg.token_domains.push_back({TokenType::PieceStart, 1});
-    cfg.token_domains.push_back({TokenType::PitchClassSet, 4096});
+    cfg.token_domains.push_back({TT::PieceStart, 1});
+    cfg.token_domains.push_back({TT::PitchClassSet, 4096});
     Vocabulary vocab(cfg);
     for (int v : {0, 1, 1000, 4095}) {
-        int tok = vocab.encode(TokenType::PitchClassSet, v);
+        int tok = vocab.encode(TT::PitchClassSet, v);
         auto d = vocab.decode(tok);
-        CHECK(d.first == TokenType::PitchClassSet);
+        CHECK(d.first == TT::PitchClassSet);
         CHECK(d.second == v);
     }
 }
@@ -147,20 +143,20 @@ TEST_CASE("Vocabulary: large domain (4096) encodes/decodes correctly") {
 
 TEST_CASE("Vocabulary: get_type at every offset and is_type at boundaries") {
     EncoderConfig cfg;
-    cfg.token_domains.push_back({TokenType::Track, 4});
-    cfg.token_domains.push_back({TokenType::Bar, 2});
-    cfg.token_domains.push_back({TokenType::NoteOnset, 3});
+    cfg.token_domains.push_back({TT::Track, 4});
+    cfg.token_domains.push_back({TT::Bar, 2});
+    cfg.token_domains.push_back({TT::NoteOnset, 3});
     Vocabulary vocab(cfg);
     // First token of each range
-    CHECK(vocab.get_type(vocab.encode(TokenType::Track, 0)) == TokenType::Track);
-    CHECK(vocab.get_type(vocab.encode(TokenType::Track, 3)) == TokenType::Track);
-    CHECK(vocab.get_type(vocab.encode(TokenType::Bar, 0)) == TokenType::Bar);
-    CHECK(vocab.get_type(vocab.encode(TokenType::Bar, 1)) == TokenType::Bar);
-    CHECK(vocab.get_type(vocab.encode(TokenType::NoteOnset, 0)) == TokenType::NoteOnset);
-    CHECK(vocab.get_type(vocab.encode(TokenType::NoteOnset, 2)) == TokenType::NoteOnset);
+    CHECK(vocab.get_type(vocab.encode(TT::Track, 0)) == TT::Track);
+    CHECK(vocab.get_type(vocab.encode(TT::Track, 3)) == TT::Track);
+    CHECK(vocab.get_type(vocab.encode(TT::Bar, 0)) == TT::Bar);
+    CHECK(vocab.get_type(vocab.encode(TT::Bar, 1)) == TT::Bar);
+    CHECK(vocab.get_type(vocab.encode(TT::NoteOnset, 0)) == TT::NoteOnset);
+    CHECK(vocab.get_type(vocab.encode(TT::NoteOnset, 2)) == TT::NoteOnset);
     // Cross-type
-    CHECK_FALSE(vocab.is_type(vocab.encode(TokenType::Track, 3), TokenType::Bar));
-    CHECK_FALSE(vocab.is_type(vocab.encode(TokenType::Bar, 0), TokenType::Track));
+    CHECK_FALSE(vocab.is_type(vocab.encode(TT::Track, 3), TT::Bar));
+    CHECK_FALSE(vocab.is_type(vocab.encode(TT::Bar, 0), TT::Track));
 }
 
 // ---------------------------------------------------------------------------
@@ -172,8 +168,8 @@ TEST_CASE("EncoderConfig JSON: roundtrip preserves primitives and domains") {
     cfg.resolution = 960;
     cfg.emit_delta_tokens = true;
     cfg.velocity_levels = 64;
-    cfg.token_domains.push_back({TokenType::PieceStart, 1});
-    cfg.token_domains.push_back({TokenType::Track, 10});
+    cfg.token_domains.push_back({TT::PieceStart, 1});
+    cfg.token_domains.push_back({TT::Track, 10});
 
     auto json_str = cfg.to_json();
     auto cfg2 = EncoderConfig::from_json(json_str);
@@ -182,9 +178,9 @@ TEST_CASE("EncoderConfig JSON: roundtrip preserves primitives and domains") {
     CHECK(cfg2.emit_delta_tokens == true);
     CHECK(cfg2.velocity_levels == 64);
     REQUIRE(cfg2.token_domains.size() == 2);
-    CHECK(cfg2.token_domains[0].type == TokenType::PieceStart);
+    CHECK(cfg2.token_domains[0].type == TT::PieceStart);
     CHECK(cfg2.token_domains[0].domain_size == 1);
-    CHECK(cfg2.token_domains[1].type == TokenType::Track);
+    CHECK(cfg2.token_domains[1].type == TT::Track);
     CHECK(cfg2.token_domains[1].domain_size == 10);
 }
 
@@ -214,8 +210,8 @@ TEST_CASE("EncoderConfig.add_attribute_token_domains appends attribute slots") {
     CHECK(cfg.token_domains.size() == before + 2);
     bool found_tension = false, found_density = false;
     for (auto& d : cfg.token_domains) {
-        if (d.type == TokenType::Tension && d.domain_size == 10)    found_tension = true;
-        if (d.type == TokenType::NoteDensity && d.domain_size == 8) found_density = true;
+        if (d.type == TT::Tension && d.domain_size == 10)    found_tension = true;
+        if (d.type == TT::NoteDensity && d.domain_size == 8) found_density = true;
     }
     CHECK(found_tension);
     CHECK(found_density);

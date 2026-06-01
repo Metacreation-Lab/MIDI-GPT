@@ -23,8 +23,7 @@
 
 using namespace midigpt;
 using namespace midigpt::tokenizer;
-// Explicitly shadow winnt.h's TokenType enum value (Windows-only collision).
-using TokenType = midigpt::TokenType;
+using TT = midigpt::TokenType;
 
 namespace {
 
@@ -34,27 +33,27 @@ EncoderConfig std_config(bool with_velocity = true, bool with_duration = true,
     EncoderConfig cfg;
     cfg.resolution = 480;
     cfg.velocity_levels = 32;
-    auto push = [&](TokenType t, int s) { cfg.token_domains.push_back({t, s}); };
-    push(TokenType::PieceStart, 1);
-    push(TokenType::PieceEnd, 1);
-    push(TokenType::Track, 128);
-    push(TokenType::Instrument, 128);
-    push(TokenType::TrackEnd, 1);
-    push(TokenType::Bar, 1);
-    push(TokenType::BarEnd, 1);
-    push(TokenType::TimeSig, 36);
-    push(TokenType::TimeAbsolutePos, 192);
-    if (with_velocity) push(TokenType::VelocityLevel, 32);
-    push(TokenType::NoteOnset, 128);
-    if (with_duration) push(TokenType::NoteDuration, 128);
+    auto push = [&](TT t, int s) { cfg.token_domains.push_back({t, s}); };
+    push(TT::PieceStart, 1);
+    push(TT::PieceEnd, 1);
+    push(TT::Track, 128);
+    push(TT::Instrument, 128);
+    push(TT::TrackEnd, 1);
+    push(TT::Bar, 1);
+    push(TT::BarEnd, 1);
+    push(TT::TimeSig, 36);
+    push(TT::TimeAbsolutePos, 192);
+    if (with_velocity) push(TT::VelocityLevel, 32);
+    push(TT::NoteOnset, 128);
+    if (with_duration) push(TT::NoteDuration, 128);
     if (with_delta) {
-        push(TokenType::Delta, 64);
-        push(TokenType::DeltaDirection, 2);
+        push(TT::Delta, 64);
+        push(TT::DeltaDirection, 2);
     }
     if (with_fillin) {
-        push(TokenType::FillInPlaceholder, 1);
-        push(TokenType::FillInStart, 1);
-        push(TokenType::FillInEnd, 1);
+        push(TT::FillInPlaceholder, 1);
+        push(TT::FillInStart, 1);
+        push(TT::FillInEnd, 1);
     }
     return cfg;
 }
@@ -81,7 +80,7 @@ Score one_bar_one_note(int pitch = 60, int vel = 64, int onset = 48,
     return s;
 }
 
-int count_type(const std::vector<int>& toks, const Vocabulary& vocab, TokenType t) {
+int count_type(const std::vector<int>& toks, const Vocabulary& vocab, TT t) {
     auto r = vocab.range(t);
     if (r.first == -1) return 0;
     int n = 0;
@@ -144,7 +143,7 @@ TEST_CASE("Encoder/Decoder: 3-bar single track roundtrip") {
     s.tracks.push_back(t);
 
     auto tokens = enc.encode(s);
-    auto bar_count = count_type(tokens, vocab, TokenType::Bar);
+    auto bar_count = count_type(tokens, vocab, TT::Bar);
     CHECK(bar_count == 3);
 
     Score back = dec.decode(tokens);
@@ -176,7 +175,7 @@ TEST_CASE("Encoder/Decoder: 2-track score roundtrip") {
         s.tracks.push_back(t);
     }
     auto tokens = enc.encode(s);
-    CHECK(count_type(tokens, vocab, TokenType::Track) == 2);
+    CHECK(count_type(tokens, vocab, TT::Track) == 2);
 
     Score back = dec.decode(tokens);
     REQUIRE(back.tracks.size() == 2);
@@ -200,8 +199,8 @@ TEST_CASE("Encoder: drum track omits NoteDuration tokens") {
     t.bars.push_back(b); s.tracks.push_back(t);
 
     auto tokens = enc.encode(s);
-    CHECK(count_type(tokens, vocab, TokenType::NoteDuration) == 0);
-    CHECK(count_type(tokens, vocab, TokenType::NoteOnset) == 1);
+    CHECK(count_type(tokens, vocab, TT::NoteDuration) == 0);
+    CHECK(count_type(tokens, vocab, TT::NoteOnset) == 1);
 }
 
 TEST_CASE("Encoder: melodic track emits NoteDuration tokens") {
@@ -210,7 +209,7 @@ TEST_CASE("Encoder: melodic track emits NoteDuration tokens") {
     Encoder enc(vocab);
     auto s = one_bar_one_note();
     auto tokens = enc.encode(s);
-    CHECK(count_type(tokens, vocab, TokenType::NoteDuration) == 1);
+    CHECK(count_type(tokens, vocab, TT::NoteDuration) == 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -232,7 +231,7 @@ TEST_CASE("Encoder velocity_sticky=true: identical velocities emit one VelocityL
     t.bars.push_back(bar); s.tracks.push_back(t);
 
     auto tokens = enc.encode(s);
-    CHECK(count_type(tokens, vocab, TokenType::VelocityLevel) == 1);
+    CHECK(count_type(tokens, vocab, TT::VelocityLevel) == 1);
 }
 
 TEST_CASE("Encoder velocity_sticky=false: each note emits its own VelocityLevel") {
@@ -250,7 +249,7 @@ TEST_CASE("Encoder velocity_sticky=false: each note emits its own VelocityLevel"
     t.bars.push_back(bar); s.tracks.push_back(t);
 
     auto tokens = enc.encode(s);
-    CHECK(count_type(tokens, vocab, TokenType::VelocityLevel) == 2);
+    CHECK(count_type(tokens, vocab, TT::VelocityLevel) == 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -272,7 +271,7 @@ TEST_CASE("Encoder emit_delta_tokens=true: delta-bearing notes emit Delta tokens
     t.bars.push_back(b); s.tracks.push_back(t);
 
     auto tokens = enc.encode(s);
-    CHECK(count_type(tokens, vocab, TokenType::Delta) >= 1);
+    CHECK(count_type(tokens, vocab, TT::Delta) >= 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -319,9 +318,9 @@ TEST_CASE("Encoder multi_fill: emits FillInPlaceholder for masked bars and FillI
     EncodeOptions opt;
     opt.multi_fill = {{0, 1}};  // infill bar 1
     auto tokens = enc.encode(s, opt);
-    CHECK(count_type(tokens, vocab, TokenType::FillInPlaceholder) == 1);
-    CHECK(count_type(tokens, vocab, TokenType::FillInStart) >= 1);
-    CHECK(count_type(tokens, vocab, TokenType::FillInEnd) >= 1);
+    CHECK(count_type(tokens, vocab, TT::FillInPlaceholder) == 1);
+    CHECK(count_type(tokens, vocab, TT::FillInStart) >= 1);
+    CHECK(count_type(tokens, vocab, TT::FillInEnd) >= 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -377,7 +376,7 @@ TEST_CASE("Encoder remove_future_bars=true: future bars emit no tokens") {
     EncodeOptions a; auto baseline = enc.encode(s, a);
     EncodeOptions b; b.remove_future_bars = true; auto pruned = enc.encode(s, b);
     CHECK(pruned.size() < baseline.size());
-    CHECK(count_type(pruned, vocab, TokenType::Bar) == 1);
+    CHECK(count_type(pruned, vocab, TT::Bar) == 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -407,6 +406,6 @@ TEST_CASE("Encoder partial_encode: only emits a prefix of bars, no TrackEnd") {
     opt.partial_encode_track_index = 0;
     opt.partial_encode_track_bars = 2;
     auto tokens = enc.encode(s, opt);
-    CHECK(count_type(tokens, vocab, TokenType::Bar) == 2);
-    CHECK(count_type(tokens, vocab, TokenType::TrackEnd) == 0);
+    CHECK(count_type(tokens, vocab, TT::Bar) == 2);
+    CHECK(count_type(tokens, vocab, TT::TrackEnd) == 0);
 }
