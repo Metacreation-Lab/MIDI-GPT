@@ -1,4 +1,4 @@
-site_name: midigpt
+site_name: MIDI-GPT
 site_description: GPT-2 transformer for controllable multitrack music generation
 site_url: https://metacreation-lab.github.io/MIDI-GPT/
 repo_url: https://github.com/Metacreation-Lab/MIDI-GPT
