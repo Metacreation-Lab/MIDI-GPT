@@ -1,15 +1,15 @@
-from typing import Optional
 from midigpt._types import Score
 from midigpt.attributes.base import BaseAttribute
 
-class OnsetPolyphony(BaseAttribute):
-    name       = "onset_polyphony"
-    token_type = "OnsetPolyphony"
-    level      = "track"
-    track_type = "melodic"
-    size       = 10
 
-    def compute(self, score: Score, track_idx: int, bar_idx: Optional[int] = None) -> float | int:
+class OnsetPolyphony(BaseAttribute):
+    name = "onset_polyphony"
+    token_type = "OnsetPolyphony"
+    level = "track"
+    track_type = "melodic"
+    size = 10
+
+    def compute(self, score: Score, track_idx: int, bar_idx: int | None = None) -> float | int:
         track = score.tracks[track_idx]
         max_poly = 0
         for bar in track.bars:

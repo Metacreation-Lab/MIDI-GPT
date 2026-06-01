@@ -6,22 +6,24 @@ Goals:
 - Real shipped configs (models/*_config.json) for any test that depends on
   the canonical encoder spec — never duplicate that spec in test code.
 """
+
 from __future__ import annotations
+
 import json
 import pathlib
+
 import pytest
 import torch
 
 import midigpt._core as _core
-from midigpt._types import Score, Track, Bar, Note
+from midigpt._types import Bar, Note, Score, Track
 from midigpt.attributes.base import AttributeAnalyzer
-from midigpt.tokenizer.tokenizer import Tokenizer
 from midigpt.inference.model.gpt2 import GPT2Config, GPT2LMHeadModel
-
+from midigpt.tokenizer.tokenizer import Tokenizer
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 MODELS_DIR = REPO_ROOT / "models"
-MIDI_DIR   = REPO_ROOT / "tests" / "midi"
+MIDI_DIR = REPO_ROOT / "tests" / "midi"
 
 
 # --------------------------------------------------------------------------- #
@@ -52,29 +54,30 @@ def ghost_tokenizer(ghost_config, ghost_analyzer) -> Tokenizer:
 #  Score builders
 # --------------------------------------------------------------------------- #
 def make_bar(notes=None, ts_num=4, ts_den=4, beat_length=4.0) -> Bar:
-    return Bar(notes=list(notes or []), ts_numerator=ts_num,
-               ts_denominator=ts_den, beat_length=beat_length)
+    return Bar(
+        notes=list(notes or []), ts_numerator=ts_num, ts_denominator=ts_den, beat_length=beat_length
+    )
 
 
 def make_note(pitch=60, vel=80, onset=0, dur=120, delta=0) -> Note:
-    return Note(pitch=pitch, velocity=vel, onset_ticks=onset,
-                duration_ticks=dur, delta=delta)
+    return Note(pitch=pitch, velocity=vel, onset_ticks=onset, duration_ticks=dur, delta=delta)
 
 
-def melodic_track(n_bars=4, notes_per_bar=4, base_pitch=60,
-                  res=12, instrument=0) -> Track:
+def melodic_track(n_bars=4, notes_per_bar=4, base_pitch=60, res=12, instrument=0) -> Track:
     """A simple melodic track: ascending C-major-ish line, one note per beat."""
     bars = []
     for b in range(n_bars):
         notes = []
         for i in range(notes_per_bar):
             onset = i * (res * 4 // notes_per_bar)
-            notes.append(make_note(
-                pitch=base_pitch + (b + i) % 12,
-                vel=80,
-                onset=onset,
-                dur=res,
-            ))
+            notes.append(
+                make_note(
+                    pitch=base_pitch + (b + i) % 12,
+                    vel=80,
+                    onset=onset,
+                    dur=res,
+                )
+            )
         bars.append(make_bar(notes))
     return Track(bars=bars, instrument=instrument, track_type="melodic")
 
@@ -83,10 +86,14 @@ def drum_track(n_bars=4, res=12) -> Track:
     """Simple kick-on-1, snare-on-3 drum track."""
     bars = []
     for _ in range(n_bars):
-        bars.append(make_bar([
-            make_note(pitch=36, onset=0,        dur=res // 2),
-            make_note(pitch=38, onset=2 * res,  dur=res // 2),
-        ]))
+        bars.append(
+            make_bar(
+                [
+                    make_note(pitch=36, onset=0, dur=res // 2),
+                    make_note(pitch=38, onset=2 * res, dur=res // 2),
+                ]
+            )
+        )
     return Track(bars=bars, instrument=0, track_type="drum")
 
 
@@ -101,7 +108,8 @@ def two_track_score() -> Score:
     """Melodic + drum, 4 bars each."""
     return Score(
         tracks=[melodic_track(n_bars=4), drum_track(n_bars=4)],
-        resolution=12, tempo=500000,
+        resolution=12,
+        tempo=500000,
     )
 
 
@@ -109,9 +117,9 @@ def two_track_score() -> Score:
 def empty_bars_score() -> Score:
     """1 melodic track, 4 EMPTY bars (silent throughout)."""
     return Score(
-        tracks=[Track(bars=[make_bar() for _ in range(4)],
-                      instrument=0, track_type="melodic")],
-        resolution=12, tempo=500000,
+        tracks=[Track(bars=[make_bar() for _ in range(4)], instrument=0, track_type="melodic")],
+        resolution=12,
+        tempo=500000,
     )
 
 
@@ -151,16 +159,23 @@ class FakeModel:
     `logit_fn(input_ids, past_kv) -> Tensor[B, T, V]` lets tests inject
     arbitrary logit shapes per call. Default: uniform zeros (uniform draws).
     """
+
     arch = "fake"
     encoder_config = None
 
-    def __init__(self, vocab_size: int, n_positions: int = 512,
-                 n_layer: int = 2, n_head: int = 2, head_dim: int = 8,
-                 logit_fn=None):
+    def __init__(
+        self,
+        vocab_size: int,
+        n_positions: int = 512,
+        n_layer: int = 2,
+        n_head: int = 2,
+        head_dim: int = 8,
+        logit_fn=None,
+    ):
         self.vocab_size = vocab_size
         self._n_positions = n_positions
         self._n_layer = n_layer
-        self._n_head  = n_head
+        self._n_head = n_head
         self._head_dim = head_dim
         self.calls: list[dict] = []
         self._logit_fn = logit_fn or (
@@ -171,27 +186,29 @@ class FakeModel:
         return self.forward(input_ids, past_kv, **kwargs)
 
     def forward(self, input_ids, past_kv=None, **kwargs):
-        self.calls.append({
-            "input_ids": input_ids.clone(),
-            "past_len": self.kv_length(past_kv),
-            "kwargs": {k: v for k, v in kwargs.items()},
-        })
+        self.calls.append(
+            {
+                "input_ids": input_ids.clone(),
+                "past_len": self.kv_length(past_kv),
+                "kwargs": {k: v for k, v in kwargs.items()},
+            }
+        )
         logits = self._logit_fn(input_ids, past_kv)
         # Append T zero positions to each layer's KV
         T = input_ids.shape[1]
         present = []
-        for k, v in (past_kv or self.make_empty_kv()):
-            new_k = torch.cat(
-                [k, torch.zeros(1, self._n_head, T, self._head_dim)], dim=2)
-            new_v = torch.cat(
-                [v, torch.zeros(1, self._n_head, T, self._head_dim)], dim=2)
+        for k, v in past_kv or self.make_empty_kv():
+            new_k = torch.cat([k, torch.zeros(1, self._n_head, T, self._head_dim)], dim=2)
+            new_v = torch.cat([v, torch.zeros(1, self._n_head, T, self._head_dim)], dim=2)
             present.append((new_k, new_v))
         return logits, tuple(present)
 
     def make_empty_kv(self):
         return tuple(
-            (torch.zeros(1, self._n_head, 0, self._head_dim),
-             torch.zeros(1, self._n_head, 0, self._head_dim))
+            (
+                torch.zeros(1, self._n_head, 0, self._head_dim),
+                torch.zeros(1, self._n_head, 0, self._head_dim),
+            )
             for _ in range(self._n_layer)
         )
 
@@ -219,8 +236,10 @@ class FakeModel:
 def fake_model_factory(ghost_tokenizer):
     """Returns a builder so tests can customize logit_fn."""
     vocab = ghost_tokenizer.vocab_size()
+
     def _make(logit_fn=None, **kw):
         return FakeModel(vocab_size=vocab, logit_fn=logit_fn, **kw)
+
     return _make
 
 
@@ -230,8 +249,7 @@ def fake_model_factory(ghost_tokenizer):
 @pytest.fixture
 def packed_bundle_path(tmp_path, tiny_gpt2, ghost_config_json) -> pathlib.Path:
     bundle = tmp_path / "tiny.pt"
-    tiny_gpt2.save_pretrained(str(bundle),
-                              encoder_config=json.loads(ghost_config_json))
+    tiny_gpt2.save_pretrained(str(bundle), encoder_config=json.loads(ghost_config_json))
     return bundle
 
 

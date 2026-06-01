@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 import math
 from dataclasses import dataclass
@@ -19,16 +20,16 @@ class TrainConfig:
     # ── Optimiser ────────────────────────────────────────────────────────
     learning_rate: float = 5e-5
     weight_decay: float = 0.01
-    max_grad_norm: float = 1.0          # gradient clipping (0 = disabled)
+    max_grad_norm: float = 1.0  # gradient clipping (0 = disabled)
     warmup_steps: int = 500
-    lr_scheduler_type: str = "linear"   # "linear" | "cosine" | "constant"
+    lr_scheduler_type: str = "linear"  # "linear" | "cosine" | "constant"
 
     # ── Training loop ────────────────────────────────────────────────────
     num_epochs: int = 10
     per_device_batch_size: int = 4
     gradient_accumulation_steps: int = 8
     seed: int = 42
-    num_workers: int = 0   # C++ MIDI parser is not fork-safe; must be 0
+    num_workers: int = 0  # C++ MIDI parser is not fork-safe; must be 0
 
     # ── Model architecture ────────────────────────────────────────────────
     n_embd: int = 512
@@ -50,7 +51,7 @@ class TrainConfig:
     logger: Literal["tensorboard", "wandb", "none"] = "none"
     # WandB-specific (ignored when logger != "wandb")
     wandb_project: str = "midigpt"
-    wandb_entity: str = ""              # defaults to your personal WandB account
+    wandb_entity: str = ""  # defaults to your personal WandB account
 
     # ── Window / track sampling ───────────────────────────────────────────
     max_tracks: int = 12
@@ -68,29 +69,32 @@ class TrainConfig:
     # Fraction of samples where MASK_BAR is applied (gate inside MaskBarConfig).
     # Set mask_apply_probability=0.0 to disable masking entirely.
     mask_apply_probability: float = 0.5
-    mask_mode: int = 2                  # MaskMode: 0=RANDOM 1=STRUCTURED 2=MIXED
+    mask_mode: int = 2  # MaskMode: 0=RANDOM 1=STRUCTURED 2=MIXED
     mask_bar_fraction: float = 0.25
     mask_max_lookahead: int = 4
 
     @classmethod
-    def from_file(cls, path: str) -> "TrainConfig":
+    def from_file(cls, path: str) -> TrainConfig:
         """Load a TrainConfig from a JSON or YAML file. Unknown keys are ignored."""
         import json as _json
+
         p = Path(path)
         if p.suffix in (".yaml", ".yml"):
             try:
                 import yaml
+
                 data = yaml.safe_load(p.read_text())
             except ImportError:
-                raise ImportError("pip install pyyaml to load YAML train configs")
+                raise ImportError("pip install pyyaml to load YAML train configs") from None
         else:
             data = _json.loads(p.read_text())
         import dataclasses
+
         valid = {f.name for f in dataclasses.fields(cls)}
         return cls(**{k: v for k, v in data.items() if k in valid})
 
 
-def _validate_train_config(config: "TrainConfig", encoder_config_json: dict) -> None:
+def _validate_train_config(config: TrainConfig, encoder_config_json: dict) -> None:
     """Raise ValueError if TrainConfig requests features the encoder doesn't support."""
     if config.infill_probability > 0 and not encoder_config_json.get("supports_infill", False):
         raise ValueError(
@@ -99,9 +103,11 @@ def _validate_train_config(config: "TrainConfig", encoder_config_json: dict) -> 
             f"infill-capable checkpoint."
         )
     if config.mask_apply_probability > 0:
-        import midigpt._core as _core
         # Build a minimal vocabulary to test for MaskBar token presence.
         import json as _json
+
+        import midigpt._core as _core
+
         cfg = _core.EncoderConfig.from_json(_json.dumps(encoder_config_json))
         vocab = _core.Vocabulary(cfg)
         if not vocab.has(_core.TokenType.MaskBar):
@@ -116,12 +122,14 @@ def _precision_str(precision: str) -> str:
     return {"fp16": "16-mixed", "bf16": "bf16-mixed", "fp32": "32"}[precision]
 
 
-def _build_logger(config: "TrainConfig"):
+def _build_logger(config: TrainConfig):
     if config.logger == "tensorboard":
         from lightning.pytorch.loggers import TensorBoardLogger
+
         return TensorBoardLogger(save_dir=config.output_dir, name="logs")
     if config.logger == "wandb":
         from lightning.pytorch.loggers import WandbLogger
+
         kwargs = dict(
             project=config.wandb_project,
             save_dir=config.output_dir,
@@ -136,6 +144,7 @@ def _load_dotenv() -> None:
     """Load .env from the repo root if python-dotenv is available."""
     try:
         from dotenv import load_dotenv
+
         load_dotenv()
     except ImportError:
         pass
@@ -147,23 +156,25 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
 
     try:
         import lightning as L
-        from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
+        from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
     except ImportError:
-        raise ImportError("pip install midigpt[train]")
+        raise ImportError("pip install midigpt[train]") from None
 
     import midigpt._core as _core
-    from midigpt.tokenizer.tokenizer import Tokenizer
     from midigpt.augmentation.mask_bar import MaskBarConfig, MaskMode
     from midigpt.inference.model import GPT2Config, GPT2LMHeadModel
-    from midigpt.training.lightning_module import MidiGPTLightningModule
+    from midigpt.tokenizer.tokenizer import Tokenizer
     from midigpt.training.data_module import MidiGPTDataModule
+    from midigpt.training.lightning_module import MidiGPTLightningModule
 
     L.seed_everything(config.seed, workers=True)
 
     import json as _json
+
     enc_path = Path(config.encoder_config_path)
     if enc_path.suffix == ".pt":
         import torch as _torch
+
         _bundle = _torch.load(str(enc_path), map_location="cpu", weights_only=False)
         _enc = _bundle.get("encoder_config", {})
         enc_json_str = _json.dumps(_enc) if isinstance(_enc, dict) else _enc
@@ -192,12 +203,16 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
         )
     log.info("Model params: %d", sum(p.numel() for p in model.parameters()))
 
-    mask_cfg = MaskBarConfig(
-        apply_probability=config.mask_apply_probability,
-        mode=MaskMode(config.mask_mode),
-        bar_fraction=config.mask_bar_fraction,
-        max_lookahead=config.mask_max_lookahead,
-    ) if config.mask_apply_probability > 0.0 else None
+    mask_cfg = (
+        MaskBarConfig(
+            apply_probability=config.mask_apply_probability,
+            mode=MaskMode(config.mask_mode),
+            bar_fraction=config.mask_bar_fraction,
+            max_lookahead=config.mask_max_lookahead,
+        )
+        if config.mask_apply_probability > 0.0
+        else None
+    )
 
     data_module = MidiGPTDataModule(
         train_path=train_path,
@@ -252,6 +267,7 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
     trainer.fit(lit_module, data_module)
 
     import json as _json
+
     enc_cfg = model.encoder_config
     if hasattr(enc_cfg, "to_json"):
         enc_cfg = _json.loads(enc_cfg.to_json())
@@ -261,7 +277,7 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
 
 
 if __name__ == "__main__":
-    import argparse, sys
+    import argparse
 
     logging.basicConfig(
         level=logging.INFO,
@@ -270,10 +286,10 @@ if __name__ == "__main__":
     )
 
     parser = argparse.ArgumentParser(description="Train a MidiGPT model.")
-    parser.add_argument("--config",      required=True, help="Path to TrainConfig JSON/YAML")
-    parser.add_argument("--train-data",  required=True, help="Parquet shard(s): path, list, or glob")
-    parser.add_argument("--eval-data",   default=None,  help="Optional eval parquet shard")
-    parser.add_argument("--output-dir",  default=None,  help="Override output_dir from config")
+    parser.add_argument("--config", required=True, help="Path to TrainConfig JSON/YAML")
+    parser.add_argument("--train-data", required=True, help="Parquet shard(s): path, list, or glob")
+    parser.add_argument("--eval-data", default=None, help="Optional eval parquet shard")
+    parser.add_argument("--output-dir", default=None, help="Override output_dir from config")
     args = parser.parse_args()
 
     cfg = TrainConfig.from_file(args.config)

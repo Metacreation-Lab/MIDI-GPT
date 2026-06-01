@@ -1,7 +1,10 @@
 """Tests for midigpt.inference.config (section 3.3)."""
+
 from __future__ import annotations
+
 import pytest
-from midigpt.inference.config import InferenceConfig, TrackPrompt, GenerationRequest
+
+from midigpt.inference.config import GenerationRequest, InferenceConfig, TrackPrompt
 
 
 def test_inference_config_defaults():

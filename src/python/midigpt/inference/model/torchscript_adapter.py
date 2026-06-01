@@ -10,16 +10,17 @@ n_positions). When unavailable, the adapter probes the model's internal
 ``transformer.{wte, h, wpe}`` layout — this is intentionally GPT-2-shaped and
 exists only to keep legacy checkpoints working.
 """
-from __future__ import annotations
-from typing import Callable
-import torch
 
+from __future__ import annotations
+
+import torch
 
 _CANDIDATE_N_HEAD = (8, 16, 12, 4)
 
 
 class TorchScriptAdapter:
     """Wraps a jit.ScriptModule and exposes the ModelBase surface."""
+
     arch = "torchscript"
     encoder_config: dict | None = None
 
@@ -86,8 +87,7 @@ class TorchScriptAdapter:
                 continue
             head_dim = n_embd // n_head
             kv = tuple(
-                (torch.zeros(1, n_head, 0, head_dim),
-                 torch.zeros(1, n_head, 0, head_dim))
+                (torch.zeros(1, n_head, 0, head_dim), torch.zeros(1, n_head, 0, head_dim))
                 for _ in range(n_layer)
             )
             try:

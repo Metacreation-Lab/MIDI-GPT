@@ -1,6 +1,6 @@
 import midigpt._core as _core
-from midigpt._types import Score, Note
-from midigpt._converters import to_cpp, from_cpp
+from midigpt._converters import from_cpp, to_cpp
+from midigpt._types import Score
 from midigpt.attributes.base import AttributeAnalyzer
 
 
@@ -27,18 +27,20 @@ def resample_delta(score: Score, source_res: int, target_res: int) -> Score:
                 note.delta = 0
     return score
 
+
 class Tokenizer:
-    def __init__(self, encoder_config: _core.EncoderConfig,
-                 analyzer: AttributeAnalyzer | None = None):
+    def __init__(
+        self, encoder_config: _core.EncoderConfig, analyzer: AttributeAnalyzer | None = None
+    ):
         analyzer = analyzer or AttributeAnalyzer.from_config(encoder_config)
         # Inject attribute-control token domains into the config before
         # building the vocab. Python is the source of truth for these sizes.
         specs = analyzer.token_domain_specs()
         if specs:
             encoder_config.add_attribute_token_domains(specs)
-        self._vocab    = _core.Vocabulary(encoder_config)
-        self._encoder  = _core.Encoder(self._vocab)
-        self._decoder  = _core.Decoder(self._vocab)
+        self._vocab = _core.Vocabulary(encoder_config)
+        self._encoder = _core.Encoder(self._vocab)
+        self._decoder = _core.Decoder(self._vocab)
         self._analyzer = analyzer
 
     def encode(
@@ -76,8 +78,8 @@ class Tokenizer:
         return cls(encoder_config, analyzer)
 
     @classmethod
-    def from_checkpoint(cls, path: str,
-                        analyzer: AttributeAnalyzer | None = None) -> "Tokenizer":
+    def from_checkpoint(cls, path: str, analyzer: AttributeAnalyzer | None = None) -> "Tokenizer":
         from midigpt.tokenizer.checkpoint import load_checkpoint
+
         bundle = load_checkpoint(path)
         return cls(bundle.encoder_config, analyzer)

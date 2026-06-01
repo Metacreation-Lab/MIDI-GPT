@@ -12,15 +12,14 @@ Covers section 3.12 of TEST_IMPLEMENTATION_PLAN.md:
 - Construction with explicit ``ts_config`` skips the probe.
 - Loading a missing or corrupt artifact raises a clear error.
 """
+
 import pathlib
-from typing import List, Optional, Tuple
 
 import pytest
 import torch
 from torch import nn
 
 from midigpt.inference.model.torchscript_adapter import TorchScriptAdapter
-
 
 VOCAB = 32
 N_POS = 64
@@ -40,8 +39,7 @@ class _ProbeShapedModule(nn.Module):
     The forward is deterministic so we can compare eager vs scripted outputs.
     """
 
-    def __init__(self, vocab: int = VOCAB, n_embd: int = 16, n_layer: int = 2,
-                 n_pos: int = N_POS):
+    def __init__(self, vocab: int = VOCAB, n_embd: int = 16, n_layer: int = 2, n_pos: int = N_POS):
         super().__init__()
         self.transformer = nn.Module()
         self.transformer.wte = nn.Embedding(vocab, n_embd)
@@ -57,11 +55,11 @@ class _ProbeShapedModule(nn.Module):
     def forward(
         self,
         input_ids: torch.Tensor,
-        past_kv: Optional[List[Tuple[torch.Tensor, torch.Tensor]]] = None,
-    ) -> Tuple[torch.Tensor, List[Tuple[torch.Tensor, torch.Tensor]]]:
+        past_kv: list[tuple[torch.Tensor, torch.Tensor]] | None = None,
+    ) -> tuple[torch.Tensor, list[tuple[torch.Tensor, torch.Tensor]]]:
         h = self.transformer.wte(input_ids)
         logits = self.head(h)
-        out: List[Tuple[torch.Tensor, torch.Tensor]] = past_kv if past_kv is not None else []
+        out: list[tuple[torch.Tensor, torch.Tensor]] = past_kv if past_kv is not None else []
         return logits, out
 
 
@@ -81,15 +79,16 @@ class _BadNEmbdModule(nn.Module):
     def forward(
         self,
         input_ids: torch.Tensor,
-        past_kv: Optional[List[Tuple[torch.Tensor, torch.Tensor]]] = None,
-    ) -> Tuple[torch.Tensor, List[Tuple[torch.Tensor, torch.Tensor]]]:
-        empty: List[Tuple[torch.Tensor, torch.Tensor]] = []
+        past_kv: list[tuple[torch.Tensor, torch.Tensor]] | None = None,
+    ) -> tuple[torch.Tensor, list[tuple[torch.Tensor, torch.Tensor]]]:
+        empty: list[tuple[torch.Tensor, torch.Tensor]] = []
         vocab = self.vocab
         return torch.zeros(input_ids.shape[0], input_ids.shape[1], vocab), empty
 
 
-def _build_scripted(tmp_path: pathlib.Path,
-                    module: Optional[nn.Module] = None) -> Tuple[nn.Module, pathlib.Path]:
+def _build_scripted(
+    tmp_path: pathlib.Path, module: nn.Module | None = None
+) -> tuple[nn.Module, pathlib.Path]:
     """Script ``module`` (or a fresh ``_ProbeShapedModule``), save to disk,
     reload, and return ``(loaded_scripted_module, artifact_path)``."""
     if module is None:
@@ -136,8 +135,7 @@ def bad_scripted_path(tmp_path_factory):
 
 def test_adapter_skips_probe_when_ts_config_given(bad_scripted_path):
     loaded = torch.jit.load(str(bad_scripted_path))
-    cfg = {"n_head": 1, "n_layer": 1, "n_embd": 7,
-           "head_dim": 7, "n_positions": 123}
+    cfg = {"n_head": 1, "n_layer": 1, "n_embd": 7, "head_dim": 7, "n_positions": 123}
     adapter = TorchScriptAdapter(loaded, ts_config=cfg)
     assert adapter._cfg is cfg
     assert adapter.max_context() == 123
@@ -209,7 +207,7 @@ def test_adapter_kv_null_positions_zeroes_v_and_negs_k(tmp_path):
 
     # No-op cases
     adapter.kv_null_positions(None, [(0, 1)])  # past_kv None
-    adapter.kv_null_positions(populated, [])   # spans empty
+    adapter.kv_null_positions(populated, [])  # spans empty
     # Untouched ranges still intact.
     for k, _ in populated:
         assert torch.all(k[:, :, 0:1, :] == 1.0)
@@ -263,7 +261,7 @@ def test_adapter_forward_engine_signature_with_past_kv(tmp_path):
 
     assert logits.shape == (1, 2, VOCAB)
     # Shaped module returns past_kv unchanged.
-    assert isinstance(present, (tuple, list))
+    assert isinstance(present, tuple | list)
     assert len(present) == adapter._cfg["n_layer"]
 
 
@@ -308,12 +306,7 @@ def test_loading_missing_torchscript_artifact_raises(tmp_path):
         torch.jit.load(str(missing))
     # The error message should at least reference the path or the failure mode.
     text = str(exc.value).lower()
-    assert (
-        "does_not_exist" in text
-        or "no such file" in text
-        or "cannot" in text
-        or "fail" in text
-    )
+    assert "does_not_exist" in text or "no such file" in text or "cannot" in text or "fail" in text
 
 
 def test_loading_corrupt_torchscript_artifact_raises(tmp_path):
@@ -334,4 +327,4 @@ def test_roundtrip_save_load_then_adapter_still_works(tmp_path):
     with torch.no_grad():
         logits, present = adapter.forward(ids)
     assert logits.shape == (1, 3, VOCAB)
-    assert isinstance(present, (tuple, list))
+    assert isinstance(present, tuple | list)

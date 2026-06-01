@@ -4,22 +4,23 @@ NOTE: the plan says ``get_model_class`` raises ``KeyError`` on unknown arch,
 but the actual implementation raises ``ValueError``. Tests are written
 against the actual behavior, per hard-rule #1.
 """
+
 from __future__ import annotations
 
 import pytest
 
 from midigpt.inference.model import registry as registry_module
+from midigpt.inference.model.gpt2 import GPT2LMHeadModel
 from midigpt.inference.model.registry import (
     REGISTRY,
     get_model_class,
     register,
 )
-from midigpt.inference.model.gpt2 import GPT2LMHeadModel
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def isolated_registry():
@@ -39,10 +40,9 @@ def isolated_registry():
 # Built-in registrations
 # ---------------------------------------------------------------------------
 
+
 def test_registry_contains_gpt2_entry():
-    assert "gpt2" in REGISTRY, (
-        f"expected 'gpt2' in REGISTRY, got keys={sorted(REGISTRY)}"
-    )
+    assert "gpt2" in REGISTRY, f"expected 'gpt2' in REGISTRY, got keys={sorted(REGISTRY)}"
     assert REGISTRY["gpt2"] is GPT2LMHeadModel
 
 
@@ -72,6 +72,7 @@ def test_registry_module_exports_singleton_dict():
 # Unknown arch
 # ---------------------------------------------------------------------------
 
+
 def test_get_model_class_unknown_arch_raises_value_error(isolated_registry):
     with pytest.raises(ValueError) as exc_info:
         get_model_class("definitely_not_a_real_arch_xyz")
@@ -94,6 +95,7 @@ def test_get_model_class_empty_string_raises_value_error(isolated_registry):
 # ---------------------------------------------------------------------------
 # @register decorator
 # ---------------------------------------------------------------------------
+
 
 def test_register_decorator_adds_class_and_returns_it(isolated_registry):
     class Dummy:

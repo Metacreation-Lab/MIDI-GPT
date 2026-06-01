@@ -57,7 +57,7 @@ cmake_install.cmake
 notes/
 output/
 wandb/
-docs/
+site/
 
 # Cluster-specific SLURM scripts and configs
 slurm/

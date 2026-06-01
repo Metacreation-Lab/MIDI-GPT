@@ -1,9 +1,10 @@
 """Score windowing: pick a contiguous bar range and a random track subset."""
+
 from __future__ import annotations
+
 import copy
 import math
 import random
-from typing import Optional
 
 from midigpt._types import Score, Track
 
@@ -13,8 +14,8 @@ def select_window(
     n_bars: int,
     n_tracks: int,
     min_fill_ratio: float = 0.75,
-    rng: Optional[random.Random] = None,
-) -> Optional[Score]:
+    rng: random.Random | None = None,
+) -> Score | None:
     """Return a Score slice of exactly `n_bars` bars on exactly `n_tracks` tracks.
 
     A track is "valid" for a window starting at `start` if it has at least

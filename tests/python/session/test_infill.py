@@ -3,7 +3,9 @@
 Infill = autoregressive=False. `bars` lists the generation targets (bars to
 fill in); every OTHER bar in the track supplies context.
 """
+
 from __future__ import annotations
+
 import pytest
 import torch
 
@@ -20,21 +22,17 @@ def _engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer):
     return InferenceEngine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
 
 
-def _infill_request(track_id: int, target_bars: list[int],
-                    **cfg_kw) -> GenerationRequest:
+def _infill_request(track_id: int, target_bars: list[int], **cfg_kw) -> GenerationRequest:
     """`target_bars` are the bars to regenerate; all other bars are context."""
     base = dict(seed=0, max_attempts=3, novelty_check=False, silence_check=False)
     base.update(cfg_kw)
     return GenerationRequest(
-        tracks=[TrackPrompt(id=track_id, bars=target_bars,
-                            autoregressive=False)],
+        tracks=[TrackPrompt(id=track_id, bars=target_bars, autoregressive=False)],
         config=InferenceConfig(**base),
     )
 
 
-def test_infill_session_run_returns_score(
-    tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score
-):
+def test_infill_session_run_returns_score(tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score):
     torch.manual_seed(0)
     engine = _engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
     req = _infill_request(track_id=0, target_bars=[2])
@@ -44,9 +42,7 @@ def test_infill_session_run_returns_score(
     assert len(result.tracks[0].bars) == 4
 
 
-def test_infill_preserves_unmasked_bars(
-    tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score
-):
+def test_infill_preserves_unmasked_bars(tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score):
     """Bars NOT in target_bars should be returned unchanged."""
     torch.manual_seed(0)
     engine = _engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
@@ -84,21 +80,17 @@ def test_infill_does_not_mutate_input_score(
     torch.manual_seed(0)
     engine = _engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
     before = [
-        [[(n.pitch, n.onset_ticks) for n in b.notes] for b in t.bars]
-        for t in simple_score.tracks
+        [[(n.pitch, n.onset_ticks) for n in b.notes] for b in t.bars] for t in simple_score.tracks
     ]
     req = _infill_request(track_id=0, target_bars=[2])
     engine.session(simple_score, req).run()
     after = [
-        [[(n.pitch, n.onset_ticks) for n in b.notes] for b in t.bars]
-        for t in simple_score.tracks
+        [[(n.pitch, n.onset_ticks) for n in b.notes] for b in t.bars] for t in simple_score.tracks
     ]
     assert before == after
 
 
-def test_infill_with_two_track_score(
-    tiny_gpt2, ghost_tokenizer, ghost_analyzer, two_track_score
-):
+def test_infill_with_two_track_score(tiny_gpt2, ghost_tokenizer, ghost_analyzer, two_track_score):
     torch.manual_seed(0)
     engine = _engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
     req = GenerationRequest(
@@ -106,8 +98,7 @@ def test_infill_with_two_track_score(
             TrackPrompt(id=0, bars=[2], autoregressive=False),
             TrackPrompt(id=1, bars=[], ignore=True),
         ],
-        config=InferenceConfig(seed=0, max_attempts=3,
-                               novelty_check=False, silence_check=False),
+        config=InferenceConfig(seed=0, max_attempts=3, novelty_check=False, silence_check=False),
     )
     result = engine.session(two_track_score, req).run()
     assert len(result.tracks) == 2

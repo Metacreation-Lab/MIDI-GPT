@@ -3,7 +3,9 @@
 Covers `_build_constraints`: hard polyphony/density caps, full-AR attribute
 constraints, and the underlying selection/ignore plumbing.
 """
+
 from __future__ import annotations
+
 import pytest
 import torch
 
@@ -54,17 +56,14 @@ def test_selection_mask_autoregressive_flag(
     assert list(mask.autoregressive) == [True]
 
 
-def test_selection_mask_ignore_flag(
-    tiny_gpt2, ghost_tokenizer, ghost_analyzer, two_track_score
-):
+def test_selection_mask_ignore_flag(tiny_gpt2, ghost_tokenizer, ghost_analyzer, two_track_score):
     engine = _engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
     req = GenerationRequest(
         tracks=[
             TrackPrompt(id=0, bars=[2, 3], autoregressive=True),
             TrackPrompt(id=1, bars=[], ignore=True),
         ],
-        config=InferenceConfig(seed=0, max_attempts=1,
-                               novelty_check=False, silence_check=False),
+        config=InferenceConfig(seed=0, max_attempts=1, novelty_check=False, silence_check=False),
     )
     session = engine.session(two_track_score, req)
     mask = session._build_selection_mask()
@@ -79,10 +78,12 @@ def test_build_constraints_invoked_during_run(
     session = engine.session(simple_score, _ar_request())
     calls = []
     real = session._build_constraints
+
     def wrapped(step):
         g = real(step)
         calls.append(g)
         return g
+
     monkeypatch.setattr(session, "_build_constraints", wrapped)
     torch.manual_seed(0)
     session.run()
@@ -109,9 +110,7 @@ def test_density_hard_limit_accepted_by_config(
     assert session._request.config.density_hard_limit == 8
 
 
-def test_zero_hard_limits_are_disabled(
-    tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score
-):
+def test_zero_hard_limits_are_disabled(tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score):
     """0 hard limit means 'off' — sampling should behave identically to defaults."""
     engine = _engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
 
@@ -128,9 +127,7 @@ def test_zero_hard_limits_are_disabled(
     assert n_base == n_zero
 
 
-def test_top_p_and_top_k_filters_run(
-    tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score
-):
+def test_top_p_and_top_k_filters_run(tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score):
     torch.manual_seed(0)
     engine = _engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
     req = _ar_request(top_p=0.9, top_k=20)
@@ -149,18 +146,15 @@ def test_temperature_escalation_changes_retries(
     assert isinstance(result, Score)
 
 
-def test_full_ar_track_ids_set_on_session(
-    tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score
-):
+def test_full_ar_track_ids_set_on_session(tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score):
     """After _sample_step, _full_ar_ids should reflect AR tracks with no prefix."""
     engine = _engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
     req = GenerationRequest(
         tracks=[TrackPrompt(id=0, bars=[0, 1, 2, 3], autoregressive=True)],
-        config=InferenceConfig(seed=0, max_attempts=1,
-                               novelty_check=False, silence_check=False),
+        config=InferenceConfig(seed=0, max_attempts=1, novelty_check=False, silence_check=False),
     )
     session = engine.session(simple_score, req)
     assert isinstance(session, SamplingSession)
     # Verify mask classifies all bars as AR targets.
     mask = session._build_selection_mask()
-    assert all(list(mask.selected)[0])
+    assert all(next(iter(mask.selected)))

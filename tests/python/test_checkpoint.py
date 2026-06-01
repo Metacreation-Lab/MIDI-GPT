@@ -13,6 +13,7 @@ Covers ``load_checkpoint`` for the two supported on-disk layouts:
 Plus error paths: missing files, malformed ``.pt`` files, missing
 ``encoder_config`` in a packed bundle, and unsupported path kinds.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -41,9 +42,7 @@ def test_load_checkpoint_packed_bundle_returns_ready_model(packed_bundle_path):
 
     assert isinstance(bundle, CheckpointBundle)
     assert bundle.model is not None, "packed bundle should hydrate the model"
-    assert bundle.model_path is None, (
-        "packed bundle uses .model, not .model_path"
-    )
+    assert bundle.model_path is None, "packed bundle uses .model, not .model_path"
     assert isinstance(bundle.encoder_config, _core.EncoderConfig)
     # The hydrated model exposes its packed encoder_config, and our loader
     # uses it to build the EncoderConfig instance — sanity-check the vocab
@@ -86,7 +85,8 @@ def _write_legacy_dir(dir_path: pathlib.Path, config_json: str) -> pathlib.Path:
 
 
 def test_load_checkpoint_legacy_directory_returns_model_path(
-    tmp_path, ghost_config_json,
+    tmp_path,
+    ghost_config_json,
 ):
     bundle_dir = tmp_path / "legacy_ckpt"
     expected_model_pt = _write_legacy_dir(bundle_dir, ghost_config_json)
@@ -94,9 +94,7 @@ def test_load_checkpoint_legacy_directory_returns_model_path(
     bundle = load_checkpoint(str(bundle_dir))
 
     assert isinstance(bundle, CheckpointBundle)
-    assert bundle.model is None, (
-        "legacy directory layout populates model_path, not model"
-    )
+    assert bundle.model is None, "legacy directory layout populates model_path, not model"
     assert bundle.model_path == str(expected_model_pt)
     assert isinstance(bundle.encoder_config, _core.EncoderConfig)
     # The encoder_config parsed from disk must match the JSON we wrote.
@@ -107,7 +105,8 @@ def test_load_checkpoint_legacy_directory_returns_model_path(
 
 
 def test_load_checkpoint_legacy_directory_model_pt_is_loadable_torchscript(
-    tmp_path, ghost_config_json,
+    tmp_path,
+    ghost_config_json,
 ):
     """The directory loader's contract: ``model.pt`` is a TorchScript file
     that some downstream consumer will ``torch.jit.load``.  Prove the file
@@ -151,7 +150,8 @@ def test_load_checkpoint_pt_without_format_version_raises(tmp_path):
 
 
 def test_load_checkpoint_pt_bundle_with_none_encoder_config_raises(
-    tmp_path, tiny_gpt2,
+    tmp_path,
+    tiny_gpt2,
 ):
     # Save a real packed bundle, then re-save with encoder_config=None.
     raw_path = tmp_path / "no_enc.pt"

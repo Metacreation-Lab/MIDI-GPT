@@ -7,18 +7,18 @@ Covers:
   - `resample_delta`: no-op fast-path, 12↔480 scaling, delta application,
     clamp-at-zero.
 """
+
 from __future__ import annotations
 
 import copy
-from typing import Iterable
+from collections.abc import Iterable
 
 import pytest
+from conftest import make_bar, make_note, melodic_track
 
 import midigpt._core as _core
 from midigpt._types import Bar, Note, Score, Track
 from midigpt.tokenizer.tokenizer import Tokenizer, resample_delta
-
-from conftest import make_bar, make_note, melodic_track
 
 
 # --------------------------------------------------------------------------- #
@@ -36,8 +36,7 @@ def test_vocab_size_is_positive(ghost_tokenizer: Tokenizer) -> None:
     assert ghost_tokenizer.vocab_size() > 0
 
 
-def test_vocab_size_covers_all_token_type_ranges(ghost_tokenizer: Tokenizer,
-                                                 ghost_config) -> None:
+def test_vocab_size_covers_all_token_type_ranges(ghost_tokenizer: Tokenizer, ghost_config) -> None:
     """vocab_size must be exactly the max end of every populated domain range.
 
     The Vocabulary is laid out as contiguous, non-overlapping ranges starting
@@ -47,7 +46,7 @@ def test_vocab_size_covers_all_token_type_ranges(ghost_tokenizer: Tokenizer,
     ranges = _nonzero_ranges(vocab)
     assert ranges, "no populated token domains"
     starts = [s for s, _ in ranges.values()]
-    ends   = [e for _, e in ranges.values()]
+    ends = [e for _, e in ranges.values()]
     assert min(starts) == 0
     assert max(ends) == ghost_tokenizer.vocab_size()
 
@@ -65,16 +64,14 @@ def test_every_token_id_is_in_some_domain(ghost_tokenizer: Tokenizer) -> None:
 # --------------------------------------------------------------------------- #
 #  encode: type / value-range / attribute-mutation
 # --------------------------------------------------------------------------- #
-def test_encode_returns_list_of_ints(ghost_tokenizer: Tokenizer,
-                                     simple_score: Score) -> None:
+def test_encode_returns_list_of_ints(ghost_tokenizer: Tokenizer, simple_score: Score) -> None:
     tokens = ghost_tokenizer.encode(simple_score)
     assert isinstance(tokens, list)
     assert len(tokens) > 0
     assert all(isinstance(t, int) for t in tokens)
 
 
-def test_encode_token_ids_within_vocab(ghost_tokenizer: Tokenizer,
-                                       simple_score: Score) -> None:
+def test_encode_token_ids_within_vocab(ghost_tokenizer: Tokenizer, simple_score: Score) -> None:
     tokens = ghost_tokenizer.encode(simple_score)
     V = ghost_tokenizer.vocab_size()
     assert tokens, "expected at least one token"
@@ -83,7 +80,8 @@ def test_encode_token_ids_within_vocab(ghost_tokenizer: Tokenizer,
 
 
 def test_encode_compute_attributes_false_does_not_mutate_track(
-        ghost_tokenizer: Tokenizer, simple_score: Score) -> None:
+    ghost_tokenizer: Tokenizer, simple_score: Score
+) -> None:
     """With compute_attributes=False, track.attributes must be unchanged."""
     before = [dict(t.attributes) for t in simple_score.tracks]
     ghost_tokenizer.encode(simple_score, compute_attributes=False)
@@ -92,7 +90,8 @@ def test_encode_compute_attributes_false_does_not_mutate_track(
 
 
 def test_encode_compute_attributes_true_populates_track_attributes(
-        ghost_tokenizer: Tokenizer, simple_score: Score) -> None:
+    ghost_tokenizer: Tokenizer, simple_score: Score
+) -> None:
     """Sanity counter-check: compute_attributes=True DOES populate attrs.
 
     Without this, the previous test would be trivially satisfied by an encoder
@@ -101,8 +100,9 @@ def test_encode_compute_attributes_true_populates_track_attributes(
     before = dict(simple_score.tracks[0].attributes)
     ghost_tokenizer.encode(simple_score, compute_attributes=True)
     after = dict(simple_score.tracks[0].attributes)
-    assert len(after) > len(before), \
+    assert len(after) > len(before), (
         f"expected attributes to be populated; before={before} after={after}"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -113,7 +113,8 @@ def _all_pitches(score: Score) -> list[int]:
 
 
 def test_encode_decode_roundtrip_preserves_track_count(
-        ghost_tokenizer: Tokenizer, simple_score: Score) -> None:
+    ghost_tokenizer: Tokenizer, simple_score: Score
+) -> None:
     tokens = ghost_tokenizer.encode(simple_score)
     decoded = ghost_tokenizer.decode(tokens)
     assert isinstance(decoded, Score)
@@ -121,7 +122,8 @@ def test_encode_decode_roundtrip_preserves_track_count(
 
 
 def test_encode_decode_roundtrip_preserves_pitches(
-        ghost_tokenizer: Tokenizer, simple_score: Score) -> None:
+    ghost_tokenizer: Tokenizer, simple_score: Score
+) -> None:
     original_pitches = sorted(_all_pitches(simple_score))
     assert original_pitches, "fixture has no notes"
 
@@ -142,8 +144,8 @@ def test_encode_decode_roundtrip_preserves_pitches(
 # --------------------------------------------------------------------------- #
 def _make_zero_delta_score(res: int = 12) -> Score:
     """Single track, 1 bar, two notes, all deltas zero."""
-    n1 = make_note(pitch=60, onset=0,  dur=res,     delta=0)
-    n2 = make_note(pitch=64, onset=res, dur=res,    delta=0)
+    n1 = make_note(pitch=60, onset=0, dur=res, delta=0)
+    n2 = make_note(pitch=64, onset=res, dur=res, delta=0)
     bar = make_bar([n1, n2])
     track = Track(bars=[bar], instrument=0, track_type="melodic")
     return Score(tracks=[track], resolution=res, tempo=500000)
@@ -153,14 +155,14 @@ def test_resample_delta_noop_returns_same_object_when_resolutions_match() -> Non
     """When source==target res AND all deltas are zero, returns score unchanged."""
     score = _make_zero_delta_score(res=12)
     onset_before = score.tracks[0].bars[0].notes[0].onset_ticks
-    dur_before   = score.tracks[0].bars[0].notes[0].duration_ticks
+    dur_before = score.tracks[0].bars[0].notes[0].duration_ticks
 
     out = resample_delta(score, source_res=12, target_res=12)
 
     # Fast-path: returns the same object (identity), nothing rewritten.
     assert out is score
     assert score.resolution == 12
-    assert score.tracks[0].bars[0].notes[0].onset_ticks    == onset_before
+    assert score.tracks[0].bars[0].notes[0].onset_ticks == onset_before
     assert score.tracks[0].bars[0].notes[0].duration_ticks == dur_before
 
 
@@ -171,9 +173,9 @@ def test_resample_delta_12_to_480_scales_onset_and_duration_by_40() -> None:
 
     assert out.resolution == 480
     notes = out.tracks[0].bars[0].notes
-    assert notes[0].onset_ticks    == 0
+    assert notes[0].onset_ticks == 0
     assert notes[0].duration_ticks == 12 * 40
-    assert notes[1].onset_ticks    == 12 * 40
+    assert notes[1].onset_ticks == 12 * 40
     assert notes[1].duration_ticks == 12 * 40
     # delta is reset to 0 after resampling.
     assert all(n.delta == 0 for n in notes)
@@ -184,14 +186,14 @@ def test_resample_delta_480_to_12_scales_down_and_floors() -> None:
     score = _make_zero_delta_score(res=480)
     # Tweak a note to a non-multiple of 40 to exercise truncation.
     n = score.tracks[0].bars[0].notes[0]
-    n.onset_ticks    = 481  # → int(12 * 481 / 480) = int(12.025) = 12
+    n.onset_ticks = 481  # → int(12 * 481 / 480) = int(12.025) = 12
     n.duration_ticks = 481  # → 12
 
     out = resample_delta(score, source_res=480, target_res=12)
 
     assert out.resolution == 12
     resampled = out.tracks[0].bars[0].notes[0]
-    assert resampled.onset_ticks    == 12
+    assert resampled.onset_ticks == 12
     assert resampled.duration_ticks == 12
 
 

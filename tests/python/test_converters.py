@@ -1,14 +1,19 @@
 """Tests for midigpt._converters (section 3.2)."""
+
 from __future__ import annotations
+
 import pytest
+
 import midigpt._core as _core
-from midigpt._types import Note, Bar, Track, Score
-from midigpt._converters import to_cpp, from_cpp
+from midigpt._converters import from_cpp, to_cpp
+from midigpt._types import Bar, Note, Score, Track
 
 
 def _make_score_with_notes(pitches, res=480, instrument=0, track_type="melodic"):
-    notes = [Note(pitch=p, velocity=80, onset_ticks=i * 120, duration_ticks=100, delta=0)
-             for i, p in enumerate(pitches)]
+    notes = [
+        Note(pitch=p, velocity=80, onset_ticks=i * 120, duration_ticks=100, delta=0)
+        for i, p in enumerate(pitches)
+    ]
     bar = Bar(notes=notes)
     track = Track(bars=[bar], instrument=instrument, track_type=track_type)
     return Score(tracks=[track], resolution=res, tempo=500000)
@@ -94,8 +99,10 @@ def test_multiple_tracks_roundtrip():
 
 
 def test_multiple_bars_roundtrip():
-    bars = [Bar(notes=[Note(pitch=60 + i, velocity=80, onset_ticks=0, duration_ticks=100)])
-            for i in range(4)]
+    bars = [
+        Bar(notes=[Note(pitch=60 + i, velocity=80, onset_ticks=0, duration_ticks=100)])
+        for i in range(4)
+    ]
     s = Score(tracks=[Track(bars=bars)], resolution=480)
     r = from_cpp(to_cpp(s))
     assert len(r.tracks[0].bars) == 4

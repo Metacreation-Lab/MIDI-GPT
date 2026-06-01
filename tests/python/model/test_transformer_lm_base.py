@@ -12,11 +12,12 @@ Covers:
 - Required-method enforcement: a subclass missing `arch` / `Config` cannot be
   loaded via the packed-bundle path.
 """
+
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass
 
-import json
 import pytest
 import torch
 
@@ -86,7 +87,7 @@ def test_save_pretrained_writes_packed_bundle_with_all_fields(
     assert raw["encoder_config"] == enc
     assert set(raw["state_dict"].keys()) == set(tiny_gpt2.state_dict().keys())
     # State-dict tensors saved on CPU.
-    for k, v in raw["state_dict"].items():
+    for _k, v in raw["state_dict"].items():
         assert v.device.type == "cpu"
 
 
@@ -232,7 +233,7 @@ def test_incremental_forward_extends_kv_length(tiny_gpt2):
     assert tiny_gpt2.kv_length(kv2) == 4 + 3
     assert logits2.shape == (1, 3, cfg.vocab_size)
     # Per-layer KV grew by exactly ids2.shape[1].
-    for (k_old, _), (k_new, _) in zip(kv1, kv2):
+    for (k_old, _), (k_new, _) in zip(kv1, kv2, strict=False):
         assert k_new.shape[2] == k_old.shape[2] + ids2.shape[1]
 
 
@@ -260,9 +261,7 @@ def test_max_context_matches_config(tiny_gpt2):
     assert tiny_gpt2.max_context() == tiny_gpt2.cfg.n_positions
 
 
-def test_roundtrip_preserves_forward_logits_bitwise(
-    tiny_gpt2, ghost_config_json, tmp_path
-):
+def test_roundtrip_preserves_forward_logits_bitwise(tiny_gpt2, ghost_config_json, tmp_path):
     """After save/load, the same input produces the same logits."""
     torch.manual_seed(0)
     cfg = tiny_gpt2.cfg

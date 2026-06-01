@@ -19,19 +19,21 @@ Notes for future maintainers:
   use `empty_bars_score` (fully silent) and a single-bar custom score (fully
   covered).
 """
+
 from __future__ import annotations
 
 import math
 
 import pytest
+from conftest import drum_track, make_bar, make_note, melodic_track
 
-from midigpt._types import Score, Track, Bar, Note
+from midigpt._types import Bar, Note, Score, Track
 from midigpt.attributes import (
     ATTRIBUTE_REGISTRY,
     TOKEN_TYPE_TO_ATTRIBUTE,
     AttributeAnalyzer,
-    BaseAttribute,
     BarLevelPitchClassSet,
+    BaseAttribute,
     KeySignature,
     NoteDensity,
     NoteDensityQuantile,
@@ -43,24 +45,22 @@ from midigpt.attributes import (
     SilenceProportion,
 )
 
-from conftest import make_bar, make_note, melodic_track, drum_track
-
 
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
-def _single_track_score(notes, res=12, beat_length=4.0,
-                        ts_num=4, ts_den=4, n_bars=1,
-                        track_type="melodic", instrument=0) -> Score:
+def _single_track_score(
+    notes, res=12, beat_length=4.0, ts_num=4, ts_den=4, n_bars=1, track_type="melodic", instrument=0
+) -> Score:
     """One-track score with explicit notes in the FIRST bar; remaining bars empty."""
-    first = make_bar(notes=notes, ts_num=ts_num, ts_den=ts_den,
-                     beat_length=beat_length)
-    extras = [make_bar(ts_num=ts_num, ts_den=ts_den, beat_length=beat_length)
-              for _ in range(n_bars - 1)]
+    first = make_bar(notes=notes, ts_num=ts_num, ts_den=ts_den, beat_length=beat_length)
+    extras = [
+        make_bar(ts_num=ts_num, ts_den=ts_den, beat_length=beat_length) for _ in range(n_bars - 1)
+    ]
     return Score(
-        tracks=[Track(bars=[first] + extras,
-                      instrument=instrument, track_type=track_type)],
-        resolution=res, tempo=500000,
+        tracks=[Track(bars=[first, *extras], instrument=instrument, track_type=track_type)],
+        resolution=res,
+        tempo=500000,
     )
 
 
@@ -68,8 +68,13 @@ def _single_track_score(notes, res=12, beat_length=4.0,
 # 1. Per-class metadata invariants
 # --------------------------------------------------------------------------- #
 ALL_CLASSES = [
-    NoteDensity, OnsetPolyphony, PitchRange, KeySignature,
-    NoteDurationDistribution, SilenceProportion, BarLevelPitchClassSet,
+    NoteDensity,
+    OnsetPolyphony,
+    PitchRange,
+    KeySignature,
+    NoteDurationDistribution,
+    SilenceProportion,
+    BarLevelPitchClassSet,
     NoteDensityQuantile,
 ]
 
@@ -107,9 +112,16 @@ def test_note_duration_quantile_metadata(mode):
 # --------------------------------------------------------------------------- #
 def test_attribute_registry_contains_expected_keys():
     expected = {
-        "note_density", "onset_polyphony", "pitch_range", "key_signature",
-        "note_duration_dist", "silence_proportion", "pitch_class_set",
-        "note_density_quantile", "polyphony_quantile", "note_duration_quantile",
+        "note_density",
+        "onset_polyphony",
+        "pitch_range",
+        "key_signature",
+        "note_duration_dist",
+        "silence_proportion",
+        "pitch_class_set",
+        "note_density_quantile",
+        "polyphony_quantile",
+        "note_duration_quantile",
     }
     assert set(ATTRIBUTE_REGISTRY.keys()) == expected
     # Every value is a BaseAttribute subclass
@@ -120,7 +132,8 @@ def test_attribute_registry_contains_expected_keys():
 def test_token_type_to_attribute_keys_match_registry():
     for token_type, (reg_key, params) in TOKEN_TYPE_TO_ATTRIBUTE.items():
         assert reg_key in ATTRIBUTE_REGISTRY, (
-            f"{token_type} maps to unknown registry key {reg_key!r}")
+            f"{token_type} maps to unknown registry key {reg_key!r}"
+        )
         # params must be a dict (possibly empty) and must be constructable
         assert isinstance(params, dict)
         ATTRIBUTE_REGISTRY[reg_key](**params)
@@ -138,38 +151,38 @@ def test_note_density_compute_four_notes_per_bar():
 
 
 def test_note_density_empty_track_returns_zero():
-    score = Score(tracks=[Track(bars=[], track_type="melodic")],
-                  resolution=12, tempo=500000)
+    score = Score(tracks=[Track(bars=[], track_type="melodic")], resolution=12, tempo=500000)
     assert NoteDensity().compute(score, 0) == 0
 
 
 def test_onset_polyphony_chord_of_three():
     # Three simultaneous onsets at tick 0 in a single bar.
-    chord = [make_note(pitch=60, onset=0, dur=12),
-             make_note(pitch=64, onset=0, dur=12),
-             make_note(pitch=67, onset=0, dur=12)]
+    chord = [
+        make_note(pitch=60, onset=0, dur=12),
+        make_note(pitch=64, onset=0, dur=12),
+        make_note(pitch=67, onset=0, dur=12),
+    ]
     score = _single_track_score(chord)
     assert OnsetPolyphony().compute(score, 0) == 3
 
 
 def test_onset_polyphony_monophonic_returns_one():
-    notes = [make_note(pitch=60, onset=0, dur=12),
-             make_note(pitch=62, onset=12, dur=12)]
+    notes = [make_note(pitch=60, onset=0, dur=12), make_note(pitch=62, onset=12, dur=12)]
     score = _single_track_score(notes)
     assert OnsetPolyphony().compute(score, 0) == 1
 
 
 def test_pitch_range_compute_spans_octave():
     # Notes [60..72] → max - min = 12.
-    notes = [make_note(pitch=p, onset=i * 4, dur=4)
-             for i, p in enumerate(range(60, 73))]
+    notes = [make_note(pitch=p, onset=i * 4, dur=4) for i, p in enumerate(range(60, 73))]
     score = _single_track_score(notes)
     assert PitchRange().compute(score, 0) == 12
 
 
 def test_pitch_range_compute_no_notes_returns_zero():
-    score = Score(tracks=[Track(bars=[make_bar()], track_type="melodic")],
-                  resolution=12, tempo=500000)
+    score = Score(
+        tracks=[Track(bars=[make_bar()], track_type="melodic")], resolution=12, tempo=500000
+    )
     assert PitchRange().compute(score, 0) == 0
 
 
@@ -201,8 +214,9 @@ def test_key_signature_c_major_diatonic_yields_c_or_relative_minor():
 
 
 def test_key_signature_no_notes_returns_sentinel():
-    score = Score(tracks=[Track(bars=[make_bar()], track_type="melodic")],
-                  resolution=12, tempo=500000)
+    score = Score(
+        tracks=[Track(bars=[make_bar()], track_type="melodic")], resolution=12, tempo=500000
+    )
     # 24 = "no key" sentinel.
     assert KeySignature().compute(score, 0) == 24
 
@@ -215,8 +229,9 @@ def test_note_duration_distribution_quarter_notes():
 
 
 def test_note_duration_distribution_empty_returns_default():
-    score = Score(tracks=[Track(bars=[make_bar()], track_type="melodic")],
-                  resolution=12, tempo=500000)
+    score = Score(
+        tracks=[Track(bars=[make_bar()], track_type="melodic")], resolution=12, tempo=500000
+    )
     assert NoteDurationDistribution().compute(score, 0) == 3
 
 
@@ -246,20 +261,22 @@ def test_bar_level_pitch_class_set_out_of_range_bar():
 def test_polyphony_quantile_quantize_clamps_at_extremes():
     p = PolyphonyQuantile(mode="max")
     # quantize: clamp to [1, 10] then subtract 1.
-    assert p.quantize(0) == 0          # clamped up to 1, then -1
+    assert p.quantize(0) == 0  # clamped up to 1, then -1
     assert p.quantize(1) == 0
     assert p.quantize(5) == 4
     assert p.quantize(10) == 9
-    assert p.quantize(99) == 9         # clamped down to 10, then -1
+    assert p.quantize(99) == 9  # clamped down to 10, then -1
     assert p.quantize(-3) == 0
 
 
 def test_polyphony_quantile_compute_min_vs_max():
     # Chord of 3 voices held for the whole bar → only timesteps with 3
     # voices contribute. 85th percentile of [3, 3, ...] == 3. 15th also 3.
-    chord = [make_note(pitch=60, onset=0, dur=48),
-             make_note(pitch=64, onset=0, dur=48),
-             make_note(pitch=67, onset=0, dur=48)]
+    chord = [
+        make_note(pitch=60, onset=0, dur=48),
+        make_note(pitch=64, onset=0, dur=48),
+        make_note(pitch=67, onset=0, dur=48),
+    ]
     score = _single_track_score(chord)
     p_min = PolyphonyQuantile(mode="min")
     p_max = PolyphonyQuantile(mode="max")
@@ -279,9 +296,11 @@ def test_polyphony_quantile_compute_is_deterministic():
 
 def test_polyphony_quantile_achievable_range_monotone():
     # All bars empty → fixed contribution is empty.
-    s = Score(tracks=[Track(bars=[make_bar() for _ in range(4)],
-                            track_type="melodic")],
-              resolution=12, tempo=500000)
+    s = Score(
+        tracks=[Track(bars=[make_bar() for _ in range(4)], track_type="melodic")],
+        resolution=12,
+        tempo=500000,
+    )
     p_max = PolyphonyQuantile(mode="max")
     lo, hi = p_max.achievable_range(s, 0, generated_bars=[0, 1, 2, 3])
     assert lo == 0 and hi == p_max.size - 1
@@ -352,10 +371,17 @@ def test_note_density_quantile_achievable_range_lower_le_upper():
 # --------------------------------------------------------------------------- #
 # 6. Determinism on fixed input
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("cls", [
-    NoteDensity, OnsetPolyphony, PitchRange, KeySignature,
-    NoteDurationDistribution, SilenceProportion,
-])
+@pytest.mark.parametrize(
+    "cls",
+    [
+        NoteDensity,
+        OnsetPolyphony,
+        PitchRange,
+        KeySignature,
+        NoteDurationDistribution,
+        SilenceProportion,
+    ],
+)
 def test_attribute_compute_is_deterministic(cls, simple_score):
     inst = cls()
     a = inst.compute(simple_score, 0)
@@ -377,13 +403,7 @@ def test_analyzer_from_config_returns_nonempty(ghost_analyzer):
         assert isinstance(size, int) and size > 0
 
 
-def test_analyzer_from_config_matches_token_domain_mapping(ghost_config,
-                                                            ghost_analyzer):
-    import json
-    cfg_dict = json.loads(ghost_config.to_json())
-    domain_token_types = {d["type"] for d in cfg_dict.get("token_domains", [])}
-    # Every attribute the analyzer reports must correspond to a known TT
-    # that appears in the config's token_domains (the "auto" path).
+def test_analyzer_from_config_matches_token_domain_mapping(ghost_analyzer):
     for attr in ghost_analyzer._attrs.values():
         # Either auto-inferred from token_domains or appended via the JSON
         # overlay — both pathways yield real registered classes.
@@ -402,8 +422,7 @@ def test_analyzer_attribute_track_types(ghost_analyzer):
         assert tt in ("melodic", "drum", "both"), f"{name}: {tt}"
 
 
-def test_analyzer_compute_track_tokens_returns_only_track_level(ghost_analyzer,
-                                                                  simple_score):
+def test_analyzer_compute_track_tokens_returns_only_track_level(ghost_analyzer, simple_score):
     out = ghost_analyzer.compute_track_tokens(simple_score, 0)
     levels = ghost_analyzer.attribute_levels()
     for name in out:
@@ -414,28 +433,29 @@ def test_analyzer_compute_track_tokens_returns_only_track_level(ghost_analyzer,
         assert 0 <= q < sizes[name], f"{name}={q} out of [0, {sizes[name]})"
 
 
-def test_analyzer_compute_track_tokens_filters_drum_only_on_melodic(
-        ghost_analyzer, simple_score):
+def test_analyzer_compute_track_tokens_filters_drum_only_on_melodic(ghost_analyzer, simple_score):
     # `simple_score` track is melodic. Drum-only attrs must be excluded.
     out = ghost_analyzer.compute_track_tokens(simple_score, 0)
     track_types = ghost_analyzer.attribute_track_types()
     for name in out:
         assert track_types[name] in ("melodic", "both"), (
-            f"{name} is {track_types[name]} but appeared on a melodic track")
+            f"{name} is {track_types[name]} but appeared on a melodic track"
+        )
 
 
 def test_analyzer_compute_track_tokens_filters_melodic_only_on_drum(
-        ghost_analyzer, two_track_score):
+    ghost_analyzer, two_track_score
+):
     # Track 1 is a drum track.
     out = ghost_analyzer.compute_track_tokens(two_track_score, 1)
     track_types = ghost_analyzer.attribute_track_types()
     for name in out:
         assert track_types[name] in ("drum", "both"), (
-            f"{name} is {track_types[name]} but appeared on a drum track")
+            f"{name} is {track_types[name]} but appeared on a drum track"
+        )
 
 
-def test_analyzer_compute_bar_tokens_only_bar_level(ghost_analyzer,
-                                                     simple_score):
+def test_analyzer_compute_bar_tokens_only_bar_level(ghost_analyzer, simple_score):
     out = ghost_analyzer.compute_bar_tokens(simple_score, 0, 0)
     # Bar-level outputs are keyed by token_type (NOT name) per source.
     # Construct a token_type → level map by inspecting analyzer attrs.
@@ -455,8 +475,7 @@ def test_analyzer_evaluate_matching_bin_returns_one(ghost_analyzer, simple_score
         assert s == 1.0, f"{name} should match itself: got {s}"
 
 
-def test_analyzer_evaluate_mismatching_bin_returns_zero(ghost_analyzer,
-                                                         simple_score):
+def test_analyzer_evaluate_mismatching_bin_returns_zero(ghost_analyzer, simple_score):
     realized = ghost_analyzer.compute_track_tokens(simple_score, 0)
     sizes = ghost_analyzer.attribute_sizes()
     # Force a mismatch by perturbing every bin to a different value within
@@ -471,10 +490,8 @@ def test_analyzer_evaluate_mismatching_bin_returns_zero(ghost_analyzer,
         assert s == 0.0, f"{name} should mismatch perturbed value, got {s}"
 
 
-def test_analyzer_evaluate_unknown_attribute_is_ignored(ghost_analyzer,
-                                                         simple_score):
-    out = ghost_analyzer.evaluate({"_nonexistent_attribute_": 0},
-                                    simple_score, 0)
+def test_analyzer_evaluate_unknown_attribute_is_ignored(ghost_analyzer, simple_score):
+    out = ghost_analyzer.evaluate({"_nonexistent_attribute_": 0}, simple_score, 0)
     assert "_nonexistent_attribute_" not in out
     assert out == {}
 

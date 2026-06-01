@@ -1,7 +1,10 @@
 """Tests for midigpt._types (section 3.1)."""
+
 from __future__ import annotations
+
 import pytest
-from midigpt._types import Note, Bar, Track, Score
+
+from midigpt._types import Bar, Note, Score, Track
 
 
 def test_note_defaults():
@@ -57,7 +60,7 @@ def test_score_to_dict_from_dict_roundtrip_structure(simple_score):
     assert r.resolution == simple_score.resolution
     assert r.tempo == simple_score.tempo
     assert len(r.tracks) == len(simple_score.tracks)
-    for ot, rt in zip(simple_score.tracks, r.tracks):
+    for ot, rt in zip(simple_score.tracks, r.tracks, strict=False):
         assert rt.instrument == ot.instrument
         assert rt.track_type == ot.track_type
         assert len(rt.bars) == len(ot.bars)
@@ -66,9 +69,9 @@ def test_score_to_dict_from_dict_roundtrip_structure(simple_score):
 def test_score_to_dict_from_dict_roundtrip_preserves_note_pitches(simple_score):
     d = simple_score.to_dict()
     r = Score.from_dict(d)
-    for ot, rt in zip(simple_score.tracks, r.tracks):
-        for ob, rb in zip(ot.bars, rt.bars):
-            for on, rn in zip(ob.notes, rb.notes):
+    for ot, rt in zip(simple_score.tracks, r.tracks, strict=False):
+        for ob, rb in zip(ot.bars, rt.bars, strict=False):
+            for on, rn in zip(ob.notes, rb.notes, strict=False):
                 assert rn.pitch == on.pitch
                 assert rn.velocity == on.velocity
                 assert rn.onset_ticks == on.onset_ticks
@@ -115,19 +118,14 @@ def test_from_midi_returns_nonempty_score(sample_midi_path):
 
 def test_midi_roundtrip_preserves_track_and_note_count(sample_midi_path, tmp_path):
     s = Score.from_midi(str(sample_midi_path))
-    orig_tracks = len(s.tracks)
     orig_notes = sum(len(b.notes) for t in s.tracks for b in t.bars)
     out = tmp_path / "rt.mid"
     s.to_midi(str(out))
     s2 = Score.from_midi(str(out))
     # Empty meta-only tracks may be dropped by the MIDI writer; require that
     # every track carrying notes survives the roundtrip.
-    nonempty_orig = sum(
-        1 for t in s.tracks if any(b.notes for b in t.bars)
-    )
-    nonempty_rt = sum(
-        1 for t in s2.tracks if any(b.notes for b in t.bars)
-    )
+    nonempty_orig = sum(1 for t in s.tracks if any(b.notes for b in t.bars))
+    nonempty_rt = sum(1 for t in s2.tracks if any(b.notes for b in t.bars))
     assert nonempty_rt == nonempty_orig
     assert sum(len(b.notes) for t in s2.tracks for b in t.bars) == orig_notes
 

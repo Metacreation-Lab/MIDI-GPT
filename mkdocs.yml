@@ -1,0 +1,65 @@
+site_name: midigpt
+site_description: GPT-2 transformer for controllable multitrack music generation
+site_url: https://metacreation-lab.github.io/MIDI-GPT/
+repo_url: https://github.com/Metacreation-Lab/MIDI-GPT
+repo_name: Metacreation-Lab/MIDI-GPT
+copyright: Copyright &copy; 2026 Metacreation Lab
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation & Usage: quickstart.md
+    - Models: models.md
+  - Concepts: concepts.md
+  - API Reference: api.md
+  - Training: training.md
+  - OSC Server: osc.md
+  - Contributing: contributing.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - search
+
+extra_javascript:
+  - https://unpkg.com/mermaid@11/dist/mermaid.esm.min.mjs

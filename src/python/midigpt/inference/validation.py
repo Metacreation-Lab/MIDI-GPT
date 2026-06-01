@@ -8,7 +8,9 @@ Layering:
        ↓
   Encoder(score, opts) → tokens
 """
+
 from __future__ import annotations
+
 import json
 import logging
 from dataclasses import replace
@@ -23,6 +25,7 @@ class RequestValidationError(ValueError):
 
 
 # --- helpers ------------------------------------------------------------
+
 
 def _config_dict(encoder_config) -> dict:
     try:
@@ -44,16 +47,13 @@ def _time_signatures(cfg_dict: dict) -> set[tuple[int, int]]:
                 out.add((int(n), int(d)))
             except ValueError:
                 continue
-        elif isinstance(entry, (list, tuple)) and len(entry) == 2:
+        elif isinstance(entry, list | tuple) and len(entry) == 2:
             out.add((int(entry[0]), int(entry[1])))
     return out
 
 
 def _supports_mask_bar(cfg_dict: dict) -> bool:
-    return any(
-        d.get("type") == "MaskBar"
-        for d in (cfg_dict.get("token_domains") or [])
-    )
+    return any(d.get("type") == "MaskBar" for d in (cfg_dict.get("token_domains") or []))
 
 
 def _attribute_control_names(encoder_config) -> set[str]:
@@ -81,8 +81,10 @@ def _is_right_suffix(bars: list[int], total: int) -> bool:
 
 # --- main entry ---------------------------------------------------------
 
-def validate_request(request: GenerationRequest, score, encoder_config,
-                     analyzer=None) -> GenerationRequest:
+
+def validate_request(
+    request: GenerationRequest, score, encoder_config, analyzer=None
+) -> GenerationRequest:
     """Validate and fill defaults. Returns a (possibly new) request.
 
     Raises RequestValidationError on structural problems.
@@ -125,7 +127,8 @@ def validate_request(request: GenerationRequest, score, encoder_config,
     if cfg.temperature_escalation > _TEMP_ESC_MAX:
         log.warning(
             "temperature_escalation=%.2f clamped to %.2f (max)",
-            cfg.temperature_escalation, _TEMP_ESC_MAX,
+            cfg.temperature_escalation,
+            _TEMP_ESC_MAX,
         )
         cfg = replace(cfg, temperature_escalation=_TEMP_ESC_MAX)
 
@@ -214,7 +217,9 @@ def validate_request(request: GenerationRequest, score, encoder_config,
     if oor_count:
         log.warning(
             "%d note(s) have pitches outside [%d, %d]; they will be dropped at encode time",
-            oor_count, pmin, pmax,
+            oor_count,
+            pmin,
+            pmax,
         )
 
     # ---------------- instrument range warning ----------------
@@ -227,7 +232,8 @@ def validate_request(request: GenerationRequest, score, encoder_config,
         if not (0 <= inst <= 127):
             log.warning(
                 "track %d: instrument %s out of GM range [0,127] — will fall back to 0 at encode time",
-                ti, inst,
+                ti,
+                inst,
             )
 
     # ---------------- per-note structural warnings ----------------
@@ -236,7 +242,7 @@ def validate_request(request: GenerationRequest, score, encoder_config,
     ppq = int(getattr(score, "resolution", 480) or 480)
     for t in score.tracks:
         for b in t.bars:
-            bar_notes = b.notes if hasattr(b, 'notes') else [score.notes[i] for i in b.note_indices]
+            bar_notes = b.notes if hasattr(b, "notes") else [score.notes[i] for i in b.note_indices]
             for note in bar_notes:
                 if note.duration_ticks <= 0:
                     zero_dur += 1
@@ -308,9 +314,7 @@ def validate_request(request: GenerationRequest, score, encoder_config,
                 f"track_id={tp.id}: autoregressive and ignore are mutually exclusive"
             )
         if tp.ignore and tp.bars:
-            raise RequestValidationError(
-                f"track_id={tp.id}: ignored tracks must not specify bars"
-            )
+            raise RequestValidationError(f"track_id={tp.id}: ignored tracks must not specify bars")
 
         nb_track = len(score.tracks[tp.id].bars)
         for b in tp.bars:
@@ -330,8 +334,7 @@ def validate_request(request: GenerationRequest, score, encoder_config,
             for b in tp.mask_bars:
                 if b < 0 or b >= nb_track:
                     raise RequestValidationError(
-                        f"track_id={tp.id}: mask_bar {b} out of range "
-                        f"(track has {nb_track} bars)"
+                        f"track_id={tp.id}: mask_bar {b} out of range (track has {nb_track} bars)"
                     )
             overlap = sorted(set(tp.mask_bars) & set(tp.bars))
             if overlap:
@@ -347,7 +350,7 @@ def validate_request(request: GenerationRequest, score, encoder_config,
             if not _is_right_suffix(tp.bars, nb_track):
                 raise RequestValidationError(
                     f"track_id={tp.id} (autoregressive): bars must form a contiguous "
-                    f"right-suffix of the track (e.g. [k, k+1, ..., {nb_track-1}]); "
+                    f"right-suffix of the track (e.g. [k, k+1, ..., {nb_track - 1}]); "
                     f"got {sorted(tp.bars)}"
                 )
 
@@ -357,8 +360,7 @@ def validate_request(request: GenerationRequest, score, encoder_config,
         # silently (infill wins), so we catch it here instead.
         if not tp.autoregressive and not tp.ignore and tp.bars:
             masked_infill = [
-                b for b in tp.bars
-                if b < nb_track and score.tracks[tp.id].bars[b].future
+                b for b in tp.bars if b < nb_track and score.tracks[tp.id].bars[b].future
             ]
             if masked_infill:
                 raise RequestValidationError(
@@ -371,7 +373,8 @@ def validate_request(request: GenerationRequest, score, encoder_config,
         # freely generate the whole track from the given context).
         if tp.autoregressive:
             masked_ar = [
-                b for b in (tp.bars or range(nb_track))
+                b
+                for b in (tp.bars or range(nb_track))
                 if b < nb_track and score.tracks[tp.id].bars[b].future
             ]
             if masked_ar:
@@ -397,8 +400,9 @@ def validate_request(request: GenerationRequest, score, encoder_config,
             tt = getattr(track, "track_type", None)
             if tt is None:
                 from midigpt._core import TrackType
+
                 tt = "drum" if track.type == TrackType.Drum else "melodic"
-            is_drum_track = (tt == "drum")
+            is_drum_track = tt == "drum"
 
         for k, v in tp.attributes.items():
             if attr_names and k not in attr_names:
@@ -441,8 +445,7 @@ def validate_request(request: GenerationRequest, score, encoder_config,
                 attr_obj = analyzer.get(k) if hasattr(analyzer, "get") else None
                 if attr_obj is not None:
                     try:
-                        lo, hi = attr_obj.achievable_range(
-                            score, tp.id, list(tp.bars))
+                        lo, hi = attr_obj.achievable_range(score, tp.id, list(tp.bars))
                     except Exception:
                         lo, hi = (0, (sz or 1) - 1)
                     if not (lo <= int(v) <= hi):
@@ -453,7 +456,11 @@ def validate_request(request: GenerationRequest, score, encoder_config,
                             "attribute will not match (try a value in range, "
                             "or switch to full AR to regenerate the whole "
                             "track)",
-                            tp.id, k, int(v), lo, hi,
+                            tp.id,
+                            k,
+                            int(v),
+                            lo,
+                            hi,
                         )
 
         # ---------- per-bar attribute overrides ----------
@@ -568,7 +575,7 @@ def validate_request(request: GenerationRequest, score, encoder_config,
                             if isinstance(entry, str) and "/" in entry:
                                 en, ed = entry.split("/")
                                 en, ed = int(en), int(ed)
-                            elif isinstance(entry, (list, tuple)) and len(entry) == 2:
+                            elif isinstance(entry, list | tuple) and len(entry) == 2:
                                 en, ed = int(entry[0]), int(entry[1])
                             else:
                                 en = ed = None
@@ -585,8 +592,7 @@ def validate_request(request: GenerationRequest, score, encoder_config,
         for k, v in controls.items():
             if k not in KNOWN_CONTROLS:
                 raise RequestValidationError(
-                    f"track_id={tp.id}: unknown control '{k}' "
-                    f"(known: {sorted(KNOWN_CONTROLS)})"
+                    f"track_id={tp.id}: unknown control '{k}' (known: {sorted(KNOWN_CONTROLS)})"
                 )
             if k == "time_signature":
                 if _ts_count == 0:
@@ -596,8 +602,7 @@ def validate_request(request: GenerationRequest, score, encoder_config,
                     )
                 if not (0 <= int(v) < _ts_count):
                     raise RequestValidationError(
-                        f"track_id={tp.id}: time_signature index {v} out of "
-                        f"range [0, {_ts_count})"
+                        f"track_id={tp.id}: time_signature index {v} out of range [0, {_ts_count})"
                     )
 
     if not has_anything_to_generate:

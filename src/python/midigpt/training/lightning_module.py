@@ -1,13 +1,15 @@
 """LightningModule wrapping GPT2LMHeadModel for supervised language-model training."""
+
 from __future__ import annotations
+
 import json
 import math
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import lightning as L
 import torch
 import torch.nn.functional as F
-import lightning as L
 
 if TYPE_CHECKING:
     from midigpt.inference.model.gpt2 import GPT2LMHeadModel
@@ -16,6 +18,7 @@ if TYPE_CHECKING:
 
 def _make_lr_lambda(warmup_steps: int, total_steps: int, scheduler_type: str):
     """Return a LambdaLR multiplier function for common scheduler types."""
+
     def linear(step: int) -> float:
         if step < warmup_steps:
             return step / max(1, warmup_steps)
@@ -33,15 +36,13 @@ def _make_lr_lambda(warmup_steps: int, total_steps: int, scheduler_type: str):
             return step / max(1, warmup_steps)
         return 1.0
 
-    return {"linear": linear, "cosine": cosine, "constant": constant}.get(
-        scheduler_type, linear
-    )
+    return {"linear": linear, "cosine": cosine, "constant": constant}.get(scheduler_type, linear)
 
 
 class MidiGPTLightningModule(L.LightningModule):
-    def __init__(self, model: "GPT2LMHeadModel", config: "TrainConfig"):
+    def __init__(self, model: GPT2LMHeadModel, config: TrainConfig):
         super().__init__()
-        self.model  = model
+        self.model = model
         self.config = config
         # total_steps is set by MidiGPTDataModule.setup() before fit() starts
         self.total_steps: int = 0
@@ -51,7 +52,7 @@ class MidiGPTLightningModule(L.LightningModule):
     # ------------------------------------------------------------------ #
     def _step(self, batch: dict, stage: str) -> torch.Tensor:
         input_ids = batch["input_ids"]
-        labels    = batch["labels"]
+        labels = batch["labels"]
 
         logits, _ = self.model(input_ids)
         # Shift: predict token i+1 from token i
@@ -63,8 +64,14 @@ class MidiGPTLightningModule(L.LightningModule):
             shift_labels.view(-1),
             ignore_index=-100,
         )
-        self.log(f"{stage}/loss", loss, on_step=(stage == "train"),
-                 on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log(
+            f"{stage}/loss",
+            loss,
+            on_step=(stage == "train"),
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=True,
+        )
         return loss
 
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
@@ -83,9 +90,7 @@ class MidiGPTLightningModule(L.LightningModule):
             lr=cfg.learning_rate,
             weight_decay=cfg.weight_decay,
         )
-        lr_lambda = _make_lr_lambda(
-            cfg.warmup_steps, self.total_steps, cfg.lr_scheduler_type
-        )
+        lr_lambda = _make_lr_lambda(cfg.warmup_steps, self.total_steps, cfg.lr_scheduler_type)
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
         return {
             "optimizer": optimizer,

@@ -17,12 +17,14 @@ the packed bundle format:
       "state_dict":     {...},
     }
 """
+
 from __future__ import annotations
+
 from dataclasses import asdict
 from typing import ClassVar
+
 import torch
 import torch.nn as nn
-
 
 PACKED_FORMAT_VERSION = 1
 
@@ -53,6 +55,7 @@ class TransformerLMBase(nn.Module):
       arch:   class-level registry key
       Config: dataclass type used to construct the model (cls(cfg))
     """
+
     arch: ClassVar[str]
     Config: ClassVar[type]
 
@@ -64,7 +67,7 @@ class TransformerLMBase(nn.Module):
         path: str,
         device: str | torch.device | None = "cpu",
         dtype: torch.dtype | None = None,
-    ) -> "TransformerLMBase":
+    ) -> TransformerLMBase:
         dev = resolve_device(device)
         ckpt = torch.load(path, map_location="cpu", weights_only=False)
         if not (isinstance(ckpt, dict) and ckpt.get("format_version") == PACKED_FORMAT_VERSION):
@@ -74,9 +77,7 @@ class TransformerLMBase(nn.Module):
             )
         arch = ckpt.get("arch") or "gpt2"
         if arch != cls.arch:
-            raise ValueError(
-                f"{path} has arch={arch!r}, but {cls.__name__}.arch={cls.arch!r}"
-            )
+            raise ValueError(f"{path} has arch={arch!r}, but {cls.__name__}.arch={cls.arch!r}")
         cfg = cls.Config(**ckpt["config"])
         model = cls(cfg)
         model.load_state_dict(ckpt["state_dict"], strict=True)

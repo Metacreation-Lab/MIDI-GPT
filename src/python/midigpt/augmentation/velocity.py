@@ -1,6 +1,8 @@
 import random
+
 from midigpt._types import Score
 from midigpt.augmentation.base import BaseTransform
+
 
 class VelocityScale(BaseTransform):
     def __init__(self, factor: float | tuple[float, float]):
@@ -11,7 +13,7 @@ class VelocityScale(BaseTransform):
             scale = self.factor
         else:
             scale = random.uniform(self.factor[0], self.factor[1])
-            
+
         for track in score.tracks:
             for bar in track.bars:
                 for note in bar.notes:

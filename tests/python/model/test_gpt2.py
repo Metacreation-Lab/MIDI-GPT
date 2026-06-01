@@ -1,4 +1,5 @@
 """Tests for `midigpt.inference.model.gpt2` — section 3.11 of TEST_IMPLEMENTATION_PLAN."""
+
 from __future__ import annotations
 
 import copy
@@ -49,10 +50,8 @@ def test_forward_returns_present_kv_with_per_layer_shape(tiny_gpt2, tiny_gpt2_co
         _, present_kv = tiny_gpt2(ids)
     assert len(present_kv) == tiny_gpt2_config.n_layer
     for k, v in present_kv:
-        assert k.shape == (B, tiny_gpt2_config.n_head, T,
-                           tiny_gpt2_config.head_dim)
-        assert v.shape == (B, tiny_gpt2_config.n_head, T,
-                           tiny_gpt2_config.head_dim)
+        assert k.shape == (B, tiny_gpt2_config.n_head, T, tiny_gpt2_config.head_dim)
+        assert v.shape == (B, tiny_gpt2_config.n_head, T, tiny_gpt2_config.head_dim)
 
 
 # --------------------------------------------------------------------------- #
@@ -80,7 +79,7 @@ def test_kv_cache_token_by_token_matches_one_shot(tiny_gpt2, tiny_gpt2_config):
     # KV grows by T after token-by-token loop and matches full pass
     assert tiny_gpt2.kv_length(kv) == T
     assert tiny_gpt2.kv_length(full_kv) == T
-    for (k_a, v_a), (k_b, v_b) in zip(kv, full_kv):
+    for (k_a, v_a), (k_b, v_b) in zip(kv, full_kv, strict=False):
         assert torch.allclose(k_a, k_b, atol=1e-5, rtol=1e-5)
         assert torch.allclose(v_a, v_b, atol=1e-5, rtol=1e-5)
 
@@ -120,9 +119,7 @@ def test_max_context_equals_n_positions(tiny_gpt2, tiny_gpt2_config):
 # --------------------------------------------------------------------------- #
 #  kv_null_positions
 # --------------------------------------------------------------------------- #
-def test_kv_null_positions_writes_negative_inf_to_K_and_zero_to_V(
-    tiny_gpt2, tiny_gpt2_config
-):
+def test_kv_null_positions_writes_negative_inf_to_K_and_zero_to_V(tiny_gpt2, tiny_gpt2_config):
     torch.manual_seed(0)
     ids = torch.randint(0, tiny_gpt2_config.vocab_size, (1, 8))
     with torch.no_grad():
@@ -147,7 +144,7 @@ def test_kv_null_positions_noop_on_none_or_empty_spans(tiny_gpt2, tiny_gpt2_conf
         _, kv = tiny_gpt2(ids)
     snapshot = [(k.clone(), v.clone()) for k, v in kv]
     tiny_gpt2.kv_null_positions(kv, [])
-    for (k, v), (k0, v0) in zip(kv, snapshot):
+    for (k, v), (k0, v0) in zip(kv, snapshot, strict=False):
         assert torch.equal(k, k0)
         assert torch.equal(v, v0)
 
@@ -165,9 +162,7 @@ def test_position_ids_override_changes_outputs(tiny_gpt2, tiny_gpt2_config):
         custom_pos = torch.tensor([[10, 11, 12, 13]])
         logits_shifted, _ = tiny_gpt2(ids, position_ids=custom_pos)
         # Same as default when explicitly passing arange(0,T)
-        logits_same, _ = tiny_gpt2(
-            ids, position_ids=torch.arange(0, 4).unsqueeze(0)
-        )
+        logits_same, _ = tiny_gpt2(ids, position_ids=torch.arange(0, 4).unsqueeze(0))
 
     assert not torch.allclose(logits_default, logits_shifted, atol=1e-5)
     assert torch.allclose(logits_default, logits_same, atol=1e-5, rtol=1e-5)
@@ -198,9 +193,7 @@ def test_key_mask_changes_attention_outputs(tiny_gpt2, tiny_gpt2_config):
 # --------------------------------------------------------------------------- #
 #  forward_with_hooks
 # --------------------------------------------------------------------------- #
-def test_forward_with_hooks_collects_attn_hidden_and_logits(
-    tiny_gpt2, tiny_gpt2_config
-):
+def test_forward_with_hooks_collects_attn_hidden_and_logits(tiny_gpt2, tiny_gpt2_config):
     torch.manual_seed(0)
     B, T = 1, 5
     ids = torch.randint(0, tiny_gpt2_config.vocab_size, (B, T))
@@ -268,9 +261,7 @@ def test_save_then_from_pretrained_preserves_logits_bit_equal(
     assert torch.equal(lg1, lg2)
 
 
-def test_save_then_load_preserves_encoder_config(
-    packed_bundle_path, ghost_config_json
-):
+def test_save_then_load_preserves_encoder_config(packed_bundle_path, ghost_config_json):
     loaded = GPT2LMHeadModel.from_pretrained(str(packed_bundle_path))
     assert loaded.encoder_config is not None
     assert loaded.encoder_config == json.loads(ghost_config_json)

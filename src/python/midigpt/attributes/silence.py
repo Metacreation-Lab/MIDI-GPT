@@ -1,22 +1,22 @@
-from typing import Optional
 from midigpt._types import Score
 from midigpt.attributes.base import BaseAttribute
 
-class SilenceProportion(BaseAttribute):
-    name       = "silence_proportion"
-    token_type = "SilenceProportion"
-    level      = "track"
-    track_type = "both"
-    size       = 10
 
-    def compute(self, score: Score, track_idx: int, bar_idx: Optional[int] = None) -> float | int:
+class SilenceProportion(BaseAttribute):
+    name = "silence_proportion"
+    token_type = "SilenceProportion"
+    level = "track"
+    track_type = "both"
+    size = 10
+
+    def compute(self, score: Score, track_idx: int, bar_idx: int | None = None) -> float | int:
         track = score.tracks[track_idx]
         if not track.bars:
             return 0.0
 
         silence_props = []
         bar_start_tick = 0
-        
+
         for bar in track.bars:
             # bar duration in ticks
             bar_len = int(bar.ts_numerator * (score.resolution * 4 / bar.ts_denominator))

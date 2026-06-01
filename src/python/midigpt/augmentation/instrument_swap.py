@@ -1,6 +1,8 @@
 import random
+
 from midigpt._types import Score
 from midigpt.augmentation.base import BaseTransform
+
 
 class InstrumentSwap(BaseTransform):
     def __init__(self, mapping: dict[int, list[int]]):

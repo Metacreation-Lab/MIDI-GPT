@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 import torch
 
 
@@ -10,12 +11,14 @@ class MidiGPTCollator:
     Labels are set to pad_value (-100) for padding positions so the loss
     function ignores them.
     """
+
     max_seq_len: int = 2048
     pad_value: int = -100
 
     def __call__(self, batch: list[dict]) -> dict:
-        input_ids = [torch.tensor(item["input_ids"][:self.max_seq_len], dtype=torch.long)
-                     for item in batch]
+        input_ids = [
+            torch.tensor(item["input_ids"][: self.max_seq_len], dtype=torch.long) for item in batch
+        ]
         max_len = max(t.size(0) for t in input_ids)
 
         padded_ids = torch.full((len(batch), max_len), 0, dtype=torch.long)

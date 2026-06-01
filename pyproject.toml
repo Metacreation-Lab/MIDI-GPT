@@ -31,6 +31,7 @@ inference = ["torch>=2.0", "tqdm>=4.65", "huggingface_hub>=0.22"]
 train     = ["midigpt[inference]", "lightning>=2.2",
              "datasets>=2.18", "pyarrow>=15.0", "python-dotenv>=1.0"]
 dev       = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.9"]
+docs      = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.24"]
 realtime  = ["midigpt[inference]", "python-osc>=1.8", "flask>=3.0", "flask-socketio>=5.3"]
 all       = ["midigpt[realtime,train]"]
 
@@ -68,3 +69,36 @@ manylinux-x86_64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src/python"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "RUF",  # ruff-specific rules
+    "N",    # pep8-naming
+]
+ignore = [
+    "E501",   # line too long — formatter enforces line-length
+    "N806",   # uppercase vars are common in ML/music code (N, T, etc.)
+    "N818",   # private exceptions don't need Error suffix
+    "B023",   # function-in-loop variable binding — deferred
+    "BLE001", # blind exception catching — deferred
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["F401", "F811", "S101", "N802", "N814", "B017"]
+"src/python/midigpt/training/**/*.py" = ["N812"]
+"src/python/midigpt/inference/model/**/*.py" = ["N812"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

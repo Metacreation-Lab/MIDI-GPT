@@ -1,4 +1,4 @@
-from midigpt.tokenizer.tokenizer import Tokenizer
 from midigpt.tokenizer.checkpoint import CheckpointBundle, load_checkpoint
+from midigpt.tokenizer.tokenizer import Tokenizer
 
-__all__ = ["Tokenizer", "CheckpointBundle", "load_checkpoint"]
+__all__ = ["CheckpointBundle", "Tokenizer", "load_checkpoint"]

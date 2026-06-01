@@ -1,4 +1,3 @@
-
 """
 MIDI-GPT OSC Studio — Flask + flask-socketio WebSocket bridge.
 
@@ -10,7 +9,9 @@ Usage:
     # Then open http://localhost:5000 in a browser.
     # The OSC server must be running separately on --osc-host/--osc-port.
 """
+
 from __future__ import annotations
+
 import argparse
 import logging
 import threading
@@ -20,14 +21,15 @@ log = logging.getLogger(__name__)
 try:
     from flask import Flask, send_from_directory
     from flask_socketio import SocketIO, emit
-    from pythonosc import dispatcher as osc_dispatcher, udp_client
+    from pythonosc import dispatcher as osc_dispatcher
+    from pythonosc import udp_client
     from pythonosc.osc_server import BlockingOSCUDPServer
 except ModuleNotFoundError as exc:
     raise ModuleNotFoundError(
         f"Studio requires the [realtime] extra: pip install midigpt[realtime]\n({exc})"
     ) from None
 
-import pathlib
+import pathlib  # noqa: E402
 
 STATIC_DIR = pathlib.Path(__file__).parent / "static"
 
@@ -44,12 +46,14 @@ _listen_port: int = 7401
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _send_osc(address: str, *args) -> None:
     if _osc_client is None:
         log.warning("OSC client not initialised — dropping %s", address)
         return
     try:
         from pythonosc.osc_message_builder import OscMessageBuilder
+
         builder = OscMessageBuilder(address=address)
         for a in args:
             if isinstance(a, bool):
@@ -74,6 +78,7 @@ def _relay_to_browser(address: str, *args) -> None:
 # Routes
 # ---------------------------------------------------------------------------
 
+
 @app.route("/")
 def index():
     return send_from_directory(str(STATIC_DIR), "index.html")
@@ -82,6 +87,7 @@ def index():
 # ---------------------------------------------------------------------------
 # SocketIO — browser → OSC server
 # ---------------------------------------------------------------------------
+
 
 @sio.on("connect")
 def on_connect():
@@ -98,65 +104,77 @@ def on_disconnect():
 def on_osc_out(data: dict):
     """Generic OSC forward: {address: str, args: list}."""
     address = data.get("address", "")
-    args    = data.get("args", [])
+    args = data.get("args", [])
     log.debug("osc:out %s %s", address, args)
     _send_osc(address, *args)
 
 
 # Convenience typed events so the JS side doesn't have to build raw OSC dicts.
 
+
 @sio.on("session:init")
 def on_session_init(data):
     _send_osc("/midigpt/session/init", str(data.get("name", "studio")))
+
 
 @sio.on("session:start")
 def on_session_start(_data=None):
     _send_osc("/midigpt/session/start")
 
+
 @sio.on("session:stop")
 def on_session_stop(_data=None):
     _send_osc("/midigpt/session/stop")
 
+
 @sio.on("track:create")
 def on_track_create(data):
-    _send_osc("/midigpt/track/create",
-              int(data["track_id"]),
-              int(data["instrument"]),
-              int(data["track_type"]),
-              int(data["is_agent"]))
+    _send_osc(
+        "/midigpt/track/create",
+        int(data["track_id"]),
+        int(data["instrument"]),
+        int(data["track_type"]),
+        int(data["is_agent"]),
+    )
+
 
 @sio.on("track:remove")
 def on_track_remove(data):
     _send_osc("/midigpt/track/remove", int(data["track_id"]))
 
+
 @sio.on("note")
 def on_note(data):
-    _send_osc("/midigpt/note",
-              int(data["track_id"]),
-              int(data["pitch"]),
-              int(data["velocity"]),
-              float(data["onset"]),
-              float(data["duration"]),
-              int(data["bar_index"]))
+    _send_osc(
+        "/midigpt/note",
+        int(data["track_id"]),
+        int(data["pitch"]),
+        int(data["velocity"]),
+        float(data["onset"]),
+        float(data["duration"]),
+        int(data["bar_index"]),
+    )
+
 
 @sio.on("bar:end")
 def on_bar_end(data):
-    _send_osc("/midigpt/bar/end",
-              int(data["bar_index"]),
-              int(data["ts_num"]),
-              int(data["ts_den"]))
+    _send_osc("/midigpt/bar/end", int(data["bar_index"]), int(data["ts_num"]), int(data["ts_den"]))
+
 
 @sio.on("param:set")
 def on_param_set(data):
     _send_osc("/midigpt/param/set", str(data["name"]), data["value"])
 
+
 @sio.on("param:set_once")
 def on_param_set_once(data):
     _send_osc("/midigpt/param/set_once", str(data["name"]), data["value"])
 
+
 @sio.on("param:reset")
 def on_param_reset(data):
     _send_osc("/midigpt/param/reset", str(data["name"]))
+
 
 @sio.on("attr:set")
 def on_attr_set(data):
@@ -166,6 +184,7 @@ def on_attr_set(data):
 # ---------------------------------------------------------------------------
 # OSC listener — OSC server → browser
 # ---------------------------------------------------------------------------
+
 
 def _build_osc_dispatcher() -> osc_dispatcher.Dispatcher:
     d = osc_dispatcher.Dispatcher()
@@ -204,6 +223,7 @@ def _run_osc_listener(host: str, port: int) -> None:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="MIDI-GPT OSC Studio (WebSocket bridge + UI server)",
@@ -213,10 +233,8 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--port", type=int, default=5000, help="Web server port")
     p.add_argument("--osc-host", default="127.0.0.1", help="OSC server host")
     p.add_argument("--osc-port", type=int, default=7400, help="OSC server send port")
-    p.add_argument("--listen-port", type=int, default=7401,
-                   help="Port to receive OSC replies on")
-    p.add_argument("--log-level", default="INFO",
-                   choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    p.add_argument("--listen-port", type=int, default=7401, help="Port to receive OSC replies on")
+    p.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     return p.parse_args()
 
 
@@ -229,8 +247,8 @@ def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    _osc_client   = udp_client.SimpleUDPClient(args.osc_host, args.osc_port)
-    _listen_port  = args.listen_port
+    _osc_client = udp_client.SimpleUDPClient(args.osc_host, args.osc_port)
+    _listen_port = args.listen_port
 
     t = threading.Thread(
         target=_run_osc_listener,
@@ -240,7 +258,9 @@ def main() -> None:
     )
     t.start()
 
-    log.info("Studio UI → http://%s:%d", args.host if args.host != "0.0.0.0" else "localhost", args.port)
+    log.info(
+        "Studio UI → http://%s:%d", args.host if args.host != "0.0.0.0" else "localhost", args.port
+    )
     sio.run(app, host=args.host, port=args.port, allow_unsafe_werkzeug=True)
 
 

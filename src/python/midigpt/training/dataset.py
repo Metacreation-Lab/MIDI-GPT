@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import copy
 import glob as _glob_mod
 import hashlib
@@ -10,15 +11,15 @@ import pyarrow.parquet as pq
 
 import midigpt._core as _core
 from midigpt._types import Score
-from midigpt.tokenizer.tokenizer import Tokenizer
+from midigpt.augmentation.mask_bar import MaskBar, MaskBarConfig
+from midigpt.augmentation.score_window import select_window
 from midigpt.augmentation.transpose import Transpose
 from midigpt.augmentation.velocity import VelocityScale
-from midigpt.augmentation.score_window import select_window
-from midigpt.augmentation.mask_bar import MaskBar, MaskBarConfig
+from midigpt.tokenizer.tokenizer import Tokenizer
 from midigpt.utils import cached_indices, file_cache_key
 
-
 # ── dataset filter ────────────────────────────────────────────────────────────
+
 
 def _metadata_valid_mask(parquet_path: str, min_bars: int, min_tracks: int) -> list[bool]:
     """Metadata-only filter — no MIDI parsing (avoids C++ crashes on corrupt rows).
@@ -36,9 +37,10 @@ def _metadata_valid_mask(parquet_path: str, min_bars: int, min_tracks: int) -> l
     )
 
     m_tracks = pc.greater_equal(meta["num_tracks"], min_tracks).to_pylist()
-    m_notes  = pc.greater(meta["total_notes"], 0).to_pylist()
+    m_notes = pc.greater(meta["total_notes"], 0).to_pylist()
 
     beats_threshold = float(min_bars * 2)
+
     def _beats_ok(x) -> bool:
         if isinstance(x, list):
             mx = max((float(v) for v in x if v is not None), default=0.0)
@@ -47,7 +49,7 @@ def _metadata_valid_mask(parquet_path: str, min_bars: int, min_tracks: int) -> l
         return mx >= beats_threshold
 
     raw_beats = meta["loop_duration_beats"].to_pylist()
-    return [t and n and _beats_ok(b) for t, n, b in zip(m_tracks, m_notes, raw_beats)]
+    return [t and n and _beats_ok(b) for t, n, b in zip(m_tracks, m_notes, raw_beats, strict=False)]
 
 
 def _probe_chunk(
@@ -63,52 +65,59 @@ def _probe_chunk(
       - If valid_ts is provided, every (ts_num/ts_den) in the parsed score is
         in the allowed set.
     """
-    import subprocess, json, os, sys
+    import json
+    import os
+    import subprocess
+    import sys
 
     valid_ts_list = sorted(valid_ts) if valid_ts is not None else None
-    sys_path_repr  = repr(sys.path)
-    parquet_repr   = repr(parquet_path)
-    chunk_repr     = repr(chunk)
-    ts_repr        = repr(valid_ts_list)
+    sys_path_repr = repr(sys.path)
+    parquet_repr = repr(parquet_path)
+    chunk_repr = repr(chunk)
+    ts_repr = repr(valid_ts_list)
 
-    script = "\n".join([
-        "import sys, json",
-        f"sys.path[:0] = {sys_path_repr}",
-        "import datasets as hf",
-        "from midigpt._types import Score",
-        f"_vts = {ts_repr}",
-        "valid_ts = set(_vts) if _vts is not None else None",
-        f"data = hf.load_dataset('parquet', data_files={parquet_repr}, split='train')",
-        f"chunk = {chunk_repr}",
-        "ok = []",
-        "for i in chunk:",
-        "    try:",
-        "        score = Score.from_bytes(data[i]['music'])",
-        "        if valid_ts is not None:",
-        "            ts_in = {str(b.ts_numerator)+'/'+str(b.ts_denominator) for t in score.tracks for b in t.bars}",
-        "            if not ts_in.issubset(valid_ts):",
-        "                continue",
-        "        ok.append(i)",
-        "    except Exception:",
-        "        ok.append(i)",
-        "print(json.dumps(ok))",
-    ])
+    script = "\n".join(
+        [
+            "import sys, json",
+            f"sys.path[:0] = {sys_path_repr}",
+            "import datasets as hf",
+            "from midigpt._types import Score",
+            f"_vts = {ts_repr}",
+            "valid_ts = set(_vts) if _vts is not None else None",
+            f"data = hf.load_dataset('parquet', data_files={parquet_repr}, split='train')",
+            f"chunk = {chunk_repr}",
+            "ok = []",
+            "for i in chunk:",
+            "    try:",
+            "        score = Score.from_bytes(data[i]['music'])",
+            "        if valid_ts is not None:",
+            "            ts_in = {str(b.ts_numerator)+'/'+str(b.ts_denominator) for t in score.tracks for b in t.bars}",
+            "            if not ts_in.issubset(valid_ts):",
+            "                continue",
+            "        ok.append(i)",
+            "    except Exception:",
+            "        ok.append(i)",
+            "print(json.dumps(ok))",
+        ]
+    )
 
     env = os.environ.copy()
     env["PYTHONPATH"] = ":".join(sys.path)
     result = subprocess.run(
         [sys.executable, "-c", script],
-        capture_output=True, text=True, timeout=120, env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=env,
     )
 
     if result.returncode == 0 and result.stdout.strip():
         return json.loads(result.stdout.strip())
     if len(chunk) == 1:
-        return []   # single index caused segfault — drop it
+        return []  # single index caused segfault — drop it
     mid = len(chunk) // 2
-    return (
-        _probe_chunk(parquet_path, chunk[:mid], valid_ts)
-        + _probe_chunk(parquet_path, chunk[mid:], valid_ts)
+    return _probe_chunk(parquet_path, chunk[:mid], valid_ts) + _probe_chunk(
+        parquet_path, chunk[mid:], valid_ts
     )
 
 
@@ -127,7 +136,8 @@ def _load_or_build_valid_indices(
 
     ts_key = (
         hashlib.md5("|".join(sorted(valid_time_sigs)).encode()).hexdigest()[:8]
-        if valid_time_sigs else "nots"
+        if valid_time_sigs
+        else "nots"
     )
     cache_file = cached_indices(
         file_cache_key(parquet_path, min_bars=min_bars, min_tracks=min_tracks, ts=ts_key)
@@ -150,6 +160,7 @@ def _load_or_build_valid_indices(
     valid: list[int] = []
     try:
         from tqdm.auto import tqdm as _tqdm
+
         it = _tqdm(range(0, len(candidates), chunk_size), desc="  parse+TS scan")
     except ImportError:
         it = range(0, len(candidates), chunk_size)
@@ -158,10 +169,7 @@ def _load_or_build_valid_indices(
         valid.extend(_probe_chunk(parquet_path, chunk, valid_time_sigs))
 
     dropped = len(candidates) - len(valid)
-    print(
-        f"  dataset filter: dropped {dropped} rows (parse errors / bad TS) — "
-        f"{len(valid)} kept"
-    )
+    print(f"  dataset filter: dropped {dropped} rows (parse errors / bad TS) — {len(valid)} kept")
     np.save(cache_file, np.array(valid, dtype=np.int64))
     print("  dataset filter: saved to cache")
     return valid
@@ -169,31 +177,55 @@ def _load_or_build_valid_indices(
 
 # ── schema for DatasetBuilder (preprocessed format) ───────────────────────────
 
-_SCORE_SCHEMA = pa.schema([
-    pa.field("resolution", pa.int32()),
-    pa.field("tempo",      pa.int32()),
-    pa.field("tracks", pa.list_(pa.struct([
-        pa.field("instrument",  pa.int32()),
-        pa.field("track_type",  pa.string()),
-        pa.field("bars", pa.list_(pa.struct([
-            pa.field("ts_numerator",   pa.int32()),
-            pa.field("ts_denominator", pa.int32()),
-            pa.field("future",         pa.bool_()),
-            pa.field("notes", pa.list_(pa.struct([
-                pa.field("pitch",          pa.int32()),
-                pa.field("velocity",       pa.int32()),
-                pa.field("onset_ticks",    pa.int32()),
-                pa.field("duration_ticks", pa.int32()),
-                pa.field("delta",          pa.int32()),
-            ]))),
-        ]))),
-    ]))),
-])
+_SCORE_SCHEMA = pa.schema(
+    [
+        pa.field("resolution", pa.int32()),
+        pa.field("tempo", pa.int32()),
+        pa.field(
+            "tracks",
+            pa.list_(
+                pa.struct(
+                    [
+                        pa.field("instrument", pa.int32()),
+                        pa.field("track_type", pa.string()),
+                        pa.field(
+                            "bars",
+                            pa.list_(
+                                pa.struct(
+                                    [
+                                        pa.field("ts_numerator", pa.int32()),
+                                        pa.field("ts_denominator", pa.int32()),
+                                        pa.field("future", pa.bool_()),
+                                        pa.field(
+                                            "notes",
+                                            pa.list_(
+                                                pa.struct(
+                                                    [
+                                                        pa.field("pitch", pa.int32()),
+                                                        pa.field("velocity", pa.int32()),
+                                                        pa.field("onset_ticks", pa.int32()),
+                                                        pa.field("duration_ticks", pa.int32()),
+                                                        pa.field("delta", pa.int32()),
+                                                    ]
+                                                )
+                                            ),
+                                        ),
+                                    ]
+                                )
+                            ),
+                        ),
+                    ]
+                )
+            ),
+        ),
+    ]
+)
 
 
 class DatasetBuilder:
-    def build(self, midi_paths: list[str], output_path: str,
-              splits: dict[str, float] | None = None):
+    def build(
+        self, midi_paths: list[str], output_path: str, splits: dict[str, float] | None = None
+    ):
         if splits is None:
             splits = {"train": 0.9, "valid": 0.05, "test": 0.05}
         scores = []
@@ -207,7 +239,7 @@ class DatasetBuilder:
         pq.write_table(table, output_path)
 
 
-def _resolve_paths(parquet_path: "str | list[str]") -> list[str]:
+def _resolve_paths(parquet_path: str | list[str]) -> list[str]:
     """Expand a single path, glob pattern, or list to a sorted list of parquet paths."""
     if isinstance(parquet_path, list):
         return sorted(parquet_path)
@@ -218,7 +250,7 @@ def _resolve_paths(parquet_path: "str | list[str]") -> list[str]:
 # ── static augments applied once per score before windowing ───────────────────
 
 _TRANSPOSE = Transpose(range(-6, 7))
-_VELOCITY  = VelocityScale((0.8, 1.2))
+_VELOCITY = VelocityScale((0.8, 1.2))
 
 
 class MidiGPTDataset:
@@ -244,7 +276,7 @@ class MidiGPTDataset:
 
     def __init__(
         self,
-        parquet_path: "str | list[str]",
+        parquet_path: str | list[str],
         tokenizer: Tokenizer,
         # Infill training
         infill_probability: float = 0.75,
@@ -261,23 +293,21 @@ class MidiGPTDataset:
         try:
             import datasets as hf
         except ImportError:
-            raise ImportError("pip install midigpt[train]")
+            raise ImportError("pip install midigpt[train]") from None
         paths = _resolve_paths(parquet_path)
         self._data = hf.load_dataset("parquet", data_files=paths, split="train")
-        self._tokenizer      = tokenizer
-        self._infill_prob    = infill_probability
-        self._infill_frac    = infill_bar_fraction
-        self._mask_cfg       = mask_bar_config
-        self._max_seq_len    = max_seq_len
-        self._max_tracks     = max_tracks
-        self._min_tracks     = min_tracks
+        self._tokenizer = tokenizer
+        self._infill_prob = infill_probability
+        self._infill_frac = infill_bar_fraction
+        self._mask_cfg = mask_bar_config
+        self._max_seq_len = max_seq_len
+        self._max_tracks = max_tracks
+        self._min_tracks = min_tracks
         self._min_fill_ratio = min_fill_ratio
 
         cfg_dict = json.loads(tokenizer._vocab.config().to_json())
-        raw_map  = cfg_dict.get("num_bars_map") or [4]
-        self._num_bars_choices: list[int] = sorted(
-            set(int(x) for x in raw_map), reverse=True
-        )
+        raw_map = cfg_dict.get("num_bars_map") or [4]
+        self._num_bars_choices: list[int] = sorted(set(int(x) for x in raw_map), reverse=True)
 
         if infill_probability > 0 and not cfg_dict.get("supports_infill", False):
             raise ValueError(
@@ -317,7 +347,7 @@ class MidiGPTDataset:
 
     def __getitem__(self, idx: int, _depth: int = 0) -> dict:
         if _depth >= 10:
-            raise RuntimeError(f"MidiGPTDataset: failed to load a valid sample after 10 attempts")
+            raise RuntimeError("MidiGPTDataset: failed to load a valid sample after 10 attempts")
         try:
             return self._encode_one(idx)
         except Exception:
@@ -332,12 +362,12 @@ class MidiGPTDataset:
 
         # Roll both decisions independently.
         is_infill = random.random() < self._infill_prob
-        do_mask   = self._mask_cfg is not None  # gate is inside MaskBar itself
+        do_mask = self._mask_cfg is not None  # gate is inside MaskBar itself
 
-        initial   = random.choice(self._num_bars_choices)
+        initial = random.choice(self._num_bars_choices)
         fallbacks = sorted([n for n in self._num_bars_choices if n < initial], reverse=True)
 
-        for n_bars in [initial] + fallbacks:
+        for n_bars in [initial, *fallbacks]:
             for n_tracks in range(self._max_tracks, self._min_tracks - 1, -1):
                 window = select_window(score, n_bars, n_tracks, self._min_fill_ratio)
                 if window is None:
@@ -389,6 +419,6 @@ class MidiGPTDataset:
         )
         try:
             tokens = self._tokenizer.encode(window if window else score)[: self._max_seq_len]
-        except Exception:
-            raise ValueError(f"Failed to encode sample {idx} after all retries")
+        except Exception as exc:
+            raise ValueError(f"Failed to encode sample {idx} after all retries") from exc
         return {"input_ids": tokens, "labels": tokens}

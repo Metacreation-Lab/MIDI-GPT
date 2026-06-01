@@ -1,7 +1,7 @@
 import json
 import pathlib
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import midigpt._core as _core
 
@@ -9,8 +9,8 @@ import midigpt._core as _core
 @dataclass
 class CheckpointBundle:
     encoder_config: _core.EncoderConfig
-    model_path: Optional[str] = None        # legacy: TorchScript model.pt path
-    model: Optional[Any] = None             # new: ready-to-use nn.Module
+    model_path: str | None = None  # legacy: TorchScript model.pt path
+    model: Any | None = None  # new: ready-to-use nn.Module
 
 
 def load_checkpoint(path: str) -> CheckpointBundle:
@@ -38,7 +38,7 @@ def _load_bundle_file(p: pathlib.Path) -> CheckpointBundle:
     try:
         import torch
     except ImportError:
-        raise ImportError("pip install midigpt[inference]")
+        raise ImportError("pip install midigpt[inference]") from None
 
     from midigpt.inference.model import get_model_class
 

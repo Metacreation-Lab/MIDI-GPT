@@ -34,12 +34,12 @@ def main() -> None:
     )
     p.add_argument("--port", type=int, default=7400)
     p.add_argument("--host", default="0.0.0.0")
-    p.add_argument("--log_level", default="WARNING",
-                   choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    p.add_argument("--log_level", default="WARNING", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     args = p.parse_args()
 
-    logging.basicConfig(level=getattr(logging, args.log_level),
-                        format="%(asctime)s [%(levelname)s] %(message)s")
+    logging.basicConfig(
+        level=getattr(logging, args.log_level), format="%(asctime)s [%(levelname)s] %(message)s"
+    )
 
     disp = dispatcher.Dispatcher()
     disp.set_default_handler(_handle_any)

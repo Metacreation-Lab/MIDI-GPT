@@ -1,10 +1,13 @@
-from abc import ABC, abstractmethod
-from midigpt._types import Score
 import copy
+from abc import ABC, abstractmethod
+
+from midigpt._types import Score
+
 
 class BaseTransform(ABC):
     @abstractmethod
     def __call__(self, score: Score) -> Score: ...
+
 
 class AugmentationPipeline:
     def __init__(self, transforms: list[BaseTransform]):
@@ -25,7 +28,10 @@ class AugmentationPipeline:
         be inside a stateless transform pipeline.
         """
         from midigpt.augmentation import Transpose, VelocityScale
-        return AugmentationPipeline([
-            Transpose(range(-6, 7)),   # ±6 semitones, drums excluded
-            VelocityScale((0.8, 1.2)), # ±20%
-        ])
+
+        return AugmentationPipeline(
+            [
+                Transpose(range(-6, 7)),  # ±6 semitones, drums excluded
+                VelocityScale((0.8, 1.2)),  # ±20%
+            ]
+        )

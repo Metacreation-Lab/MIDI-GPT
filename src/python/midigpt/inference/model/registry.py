@@ -1,5 +1,7 @@
 """Architecture registry: maps arch identifier strings to model classes."""
+
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -18,16 +20,15 @@ def register(arch_id: str):
             arch = "gpt2"
             ...
     """
+
     def decorator(cls):
         REGISTRY[arch_id] = cls
         return cls
+
     return decorator
 
 
-def get_model_class(arch_id: str) -> "type[ModelBase]":
+def get_model_class(arch_id: str) -> type[ModelBase]:
     if arch_id not in REGISTRY:
-        raise ValueError(
-            f"Unknown architecture '{arch_id}'. "
-            f"Registered: {sorted(REGISTRY)}"
-        )
+        raise ValueError(f"Unknown architecture '{arch_id}'. Registered: {sorted(REGISTRY)}")
     return REGISTRY[arch_id]

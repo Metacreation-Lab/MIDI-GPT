@@ -1,6 +1,9 @@
 """Protocol that every model architecture must satisfy."""
+
 from __future__ import annotations
-from typing import TYPE_CHECKING, Callable, ClassVar, Protocol, runtime_checkable
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     import torch
@@ -9,13 +12,13 @@ if TYPE_CHECKING:
 @runtime_checkable
 class ModelBase(Protocol):
     arch: ClassVar[str]
-    encoder_config: "dict | None"
+    encoder_config: dict | None
 
     def forward(
         self,
-        input_ids: "torch.Tensor",
-        past_kv: "tuple | None" = None,
-    ) -> "tuple[torch.Tensor, tuple]":
+        input_ids: torch.Tensor,
+        past_kv: tuple | None = None,
+    ) -> tuple[torch.Tensor, tuple]:
         """Return (logits, present_kv).
 
         logits shape: (batch, seq_len, vocab_size)
@@ -34,7 +37,7 @@ class ModelBase(Protocol):
     def kv_null_positions(
         self,
         past_kv,
-        spans: "list[tuple[int, int]]",
+        spans: list[tuple[int, int]],
     ) -> None:
         """In-place: neutralize positions in [s, e) for each (s, e) in spans.
 
@@ -51,10 +54,10 @@ class ModelBase(Protocol):
 
     def forward_with_hooks(
         self,
-        input_ids: "torch.Tensor",
-        past_kv: "tuple | None",
-        hooks: "dict[str, Callable]",
-    ) -> "tuple[torch.Tensor, tuple, dict]":
+        input_ids: torch.Tensor,
+        past_kv: tuple | None,
+        hooks: dict[str, Callable],
+    ) -> tuple[torch.Tensor, tuple, dict]:
         """Like forward(), but also fires per-layer callbacks.
 
         hooks keys (all optional):
@@ -71,14 +74,12 @@ class ModelBase(Protocol):
     def from_pretrained(
         cls,
         path: str,
-        device: "str | torch.device | None" = "cpu",
-        dtype: "torch.dtype | None" = None,
-    ) -> "ModelBase":
-        ...
+        device: str | torch.device | None = "cpu",
+        dtype: torch.dtype | None = None,
+    ) -> ModelBase: ...
 
     def save_pretrained(
         self,
         path: str,
-        encoder_config: "dict | None" = None,
-    ) -> None:
-        ...
+        encoder_config: dict | None = None,
+    ) -> None: ...

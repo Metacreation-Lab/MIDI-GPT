@@ -1,6 +1,6 @@
 import enum
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from midigpt._types import Score
 from midigpt.augmentation.base import BaseTransform
@@ -8,17 +8,18 @@ from midigpt.augmentation.base import BaseTransform
 
 class MaskMode(enum.IntEnum):
     """Strategy for selecting which bars to mark as MASK_BAR."""
-    RANDOM     = 0   # shuffle eligible bars, mask a random fraction
-    STRUCTURED = 1   # pick a time position, mask a contiguous lookahead window
-    MIXED      = 2   # 50/50 between RANDOM and STRUCTURED each call
+
+    RANDOM = 0  # shuffle eligible bars, mask a random fraction
+    STRUCTURED = 1  # pick a time position, mask a contiguous lookahead window
+    MIXED = 2  # 50/50 between RANDOM and STRUCTURED each call
 
 
 @dataclass
 class MaskBarConfig:
-    apply_probability: float = 0.5       # gate: skip masking entirely this sample
+    apply_probability: float = 0.5  # gate: skip masking entirely this sample
     mode: MaskMode = MaskMode.MIXED
-    bar_fraction: float = 0.25           # max fraction of eligible bars to mask
-    max_lookahead: int = 4               # structured mode: max bars ahead to mask
+    bar_fraction: float = 0.25  # max fraction of eligible bars to mask
+    max_lookahead: int = 4  # structured mode: max bars ahead to mask
 
 
 class MaskBar(BaseTransform):
@@ -42,7 +43,7 @@ class MaskBar(BaseTransform):
         config: MaskBarConfig | None = None,
         infill_bars: set[tuple[int, int]] | None = None,
     ):
-        self.cfg     = config or MaskBarConfig()
+        self.cfg = config or MaskBarConfig()
         self._infill = infill_bars or set()
 
     def __call__(self, score: Score) -> Score:
@@ -81,8 +82,8 @@ class MaskBar(BaseTransform):
         if num_bars < 2:
             return
         t_cur = random.randint(0, num_bars - 2)
-        k     = random.randint(1, max(1, self.cfg.max_lookahead))
-        end   = min(t_cur + k, num_bars - 1)
+        k = random.randint(1, max(1, self.cfg.max_lookahead))
+        end = min(t_cur + k, num_bars - 1)
 
         for t_idx, track in enumerate(score.tracks):
             if random.random() < 0.25:

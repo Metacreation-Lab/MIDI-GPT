@@ -12,6 +12,7 @@ Covers:
 - Clean errors for missing bundle path / non-bundle .pt / bundle missing
   encoder_config.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,12 +24,12 @@ import torch
 import midigpt._core as _core
 from midigpt._types import Score
 from midigpt.attributes.base import AttributeAnalyzer
-from midigpt.inference.engine import InferenceEngine
 from midigpt.inference.config import (
     GenerationRequest,
     InferenceConfig,
     TrackPrompt,
 )
+from midigpt.inference.engine import InferenceEngine
 from midigpt.inference.session import SamplingSession
 from midigpt.tokenizer.tokenizer import Tokenizer
 
@@ -45,8 +46,9 @@ def test_engine_construct_does_not_warmup(tiny_gpt2, ghost_tokenizer, ghost_anal
     assert engine._initial_kv is None
 
 
-def test_engine_warmup_populates_initial_kv(tiny_gpt2, ghost_tokenizer, ghost_analyzer,
-                                             tiny_gpt2_config):
+def test_engine_warmup_populates_initial_kv(
+    tiny_gpt2, ghost_tokenizer, ghost_analyzer, tiny_gpt2_config
+):
     engine = InferenceEngine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
     engine.warmup()
     kv = engine._initial_kv
@@ -69,14 +71,14 @@ def test_engine_warmup_populates_initial_kv(tiny_gpt2, ghost_tokenizer, ghost_an
 # --------------------------------------------------------------------------- #
 #  from_checkpoint
 # --------------------------------------------------------------------------- #
-def test_from_checkpoint_uses_bundle_model_not_path(packed_bundle_path,
-                                                      ghost_tokenizer):
+def test_from_checkpoint_uses_bundle_model_not_path(packed_bundle_path, ghost_tokenizer):
     engine = InferenceEngine.from_checkpoint(str(packed_bundle_path))
     # The packed bundle stored a real model instance — engine must use it
     # directly (NOT fall through to TorchScript loading via model_path).
     assert engine._model is not None
     # Real GPT2LMHeadModel has these attributes; a TorchScriptAdapter wouldn't.
     from midigpt.inference.model.gpt2 import GPT2LMHeadModel
+
     assert isinstance(engine._model, GPT2LMHeadModel)
     # Tokenizer was constructed from the bundle's encoder_config.
     assert isinstance(engine._tokenizer, Tokenizer)
@@ -118,15 +120,14 @@ def test_from_checkpoint_random_path_raises(tmp_path):
 # --------------------------------------------------------------------------- #
 #  Engine accepts any callable matching ModelBase (FakeModel)
 # --------------------------------------------------------------------------- #
-def test_engine_accepts_fake_model_callable(fake_model_factory, ghost_tokenizer,
-                                              ghost_analyzer):
+def test_engine_accepts_fake_model_callable(fake_model_factory, ghost_tokenizer, ghost_analyzer):
     fake = fake_model_factory()
     engine = InferenceEngine(fake, ghost_tokenizer, ghost_analyzer)
     engine.warmup()
     # Warmup invoked the model exactly once (the dummy 1-token forward).
     assert len(fake.calls) == 1
     assert fake.calls[0]["input_ids"].shape == (1, 1)
-    # Cached KV came from FakeModel.make_empty_kv() — n_layer × (zero-len K, V).
+    # Cached KV came from FakeModel.make_empty_kv() -- n_layer x (zero-len K, V).
     assert engine._initial_kv is not None
     assert len(engine._initial_kv) == fake._n_layer
     for k, v in engine._initial_kv:
@@ -140,7 +141,10 @@ def _make_request(track_id: int = 0, bars=(2, 3)) -> GenerationRequest:
     return GenerationRequest(
         tracks=[TrackPrompt(id=track_id, bars=list(bars), autoregressive=True)],
         config=InferenceConfig(
-            seed=0, max_attempts=1, novelty_check=False, silence_check=False,
+            seed=0,
+            max_attempts=1,
+            novelty_check=False,
+            silence_check=False,
         ),
     )
 
@@ -161,8 +165,9 @@ def test_session_returns_sampling_session_bound_to_score_and_request(
     assert session._request.tracks[0].autoregressive is True
 
 
-def test_session_populates_initial_kv_if_warmup_skipped(tiny_gpt2, ghost_tokenizer,
-                                                          ghost_analyzer, simple_score):
+def test_session_populates_initial_kv_if_warmup_skipped(
+    tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score
+):
     engine = InferenceEngine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
     assert engine._initial_kv is None
     request = _make_request(bars=(2, 3))
@@ -176,8 +181,7 @@ def test_session_rejects_invalid_request_track_id(packed_bundle_path, simple_sco
     # track id out of range — validate_request must raise.
     bad = GenerationRequest(
         tracks=[TrackPrompt(id=99, bars=[0], autoregressive=True)],
-        config=InferenceConfig(seed=0, max_attempts=1,
-                               novelty_check=False, silence_check=False),
+        config=InferenceConfig(seed=0, max_attempts=1, novelty_check=False, silence_check=False),
     )
     with pytest.raises(Exception):  # RequestValidationError
         engine.session(simple_score, bad)
@@ -200,8 +204,7 @@ def _full_request(score, ar_track: int = 0) -> GenerationRequest:
             tracks.append(TrackPrompt(id=i, bars=[], ignore=True))
     return GenerationRequest(
         tracks=tracks,
-        config=InferenceConfig(seed=0, max_attempts=1,
-                               novelty_check=False, silence_check=False),
+        config=InferenceConfig(seed=0, max_attempts=1, novelty_check=False, silence_check=False),
     )
 
 

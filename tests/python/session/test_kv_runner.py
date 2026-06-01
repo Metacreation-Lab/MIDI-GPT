@@ -1,5 +1,7 @@
 """Tests for midigpt.inference.session._KVRunner (section 3.14)."""
+
 from __future__ import annotations
+
 import pytest
 import torch
 
@@ -103,24 +105,32 @@ def test_null_positions_zeros_v_and_neg_k(fake_model_factory):
 def test_forward_falls_back_to_positional_only_on_kwarg_error(fake_model_factory):
     """If the model rejects kwargs (e.g. TorchScript signature), _KVRunner
     retries with (ctx,) only and still returns logits."""
+
     class _StrictModel:
         arch = "strict"
+
         def __init__(self, vocab):
             self.vocab_size = vocab
             self.calls = []
+
         def __call__(self, ids, *args, **kwargs):
             if args or kwargs:
                 raise TypeError("strict signature: positional ids only")
             self.calls.append(ids.shape)
             return torch.zeros(ids.shape[0], ids.shape[1], self.vocab_size)
+
         def make_empty_kv(self):
             return ()
+
         def kv_length(self, kv):
             return 0
+
         def kv_null_positions(self, kv, spans):
             pass
+
         def max_context(self):
             return 64
+
     m = _StrictModel(32)
     runner = _KVRunner(m, ())
     out = runner.forward(torch.tensor([[1, 2]], dtype=torch.long))

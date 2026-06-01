@@ -1,7 +1,8 @@
-from midigpt._types import Score, Track, Bar, Note
-
 import os
-from ._core import set_verbosity, LogLevel
+
+from midigpt._types import Bar, Note, Score, Track
+
+from ._core import LogLevel, set_verbosity
 
 # Initialize logging level from environment variable
 _env_log_level = os.environ.get("MIDIGPT_LOG_LEVEL")
@@ -16,5 +17,8 @@ if _env_log_level is not None:
 
 __version__ = "0.2.3"
 __all__ = [
-    "Score", "Track", "Bar", "Note",
+    "Bar",
+    "Note",
+    "Score",
+    "Track",
 ]

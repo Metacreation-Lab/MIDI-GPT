@@ -1,6 +1,8 @@
 import random
+
 from midigpt._types import Score
 from midigpt.augmentation.base import BaseTransform
+
 
 class Transpose(BaseTransform):
     def __init__(self, semitones: int | range):
@@ -11,7 +13,7 @@ class Transpose(BaseTransform):
             shift = self.semitones
         else:
             shift = random.choice(list(self.semitones))
-            
+
         for track in score.tracks:
             if track.track_type == "drum":
                 continue

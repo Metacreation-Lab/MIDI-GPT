@@ -1,19 +1,18 @@
 import logging
 import threading
-from typing import Dict, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
-from midigpt._types import Score, Track, Bar, Note
-from midigpt.inference.config import GenerationRequest, TrackPrompt, InferenceConfig
+from midigpt._types import Bar, Note, Score, Track  # noqa: E402
+from midigpt.inference.config import GenerationRequest, InferenceConfig, TrackPrompt  # noqa: E402
 
-_AGENT_PARAM_DEFAULTS: Dict = {
+_AGENT_PARAM_DEFAULTS: dict = {
     "temperature": 1.0,
     "min_pitch": 0,
     "max_pitch": 127,
 }
 
-_COND_PARAM_DEFAULTS: Dict = {
+_COND_PARAM_DEFAULTS: dict = {
     "ignore": 0,
     "temperature": 1.0,
 }
@@ -24,34 +23,40 @@ def bar_ticks(ts_num: int, ts_den: int, resolution: int) -> int:
 
 
 class TrackInfo:
-    __slots__ = ("track_id", "instrument", "track_type", "is_agent",
-                 "piece_idx", "bars", "params")
+    __slots__ = (
+        "bars",
+        "instrument",
+        "is_agent",
+        "params",
+        "piece_idx",
+        "track_id",
+        "track_type",
+    )
 
-    def __init__(self, track_id: int, instrument: int, track_type: int,
-                 is_agent: bool, piece_idx: int) -> None:
+    def __init__(
+        self, track_id: int, instrument: int, track_type: int, is_agent: bool, piece_idx: int
+    ) -> None:
         self.track_id = track_id
         self.instrument = instrument
         self.track_type = track_type
         self.is_agent = is_agent
         self.piece_idx = piece_idx
-        self.bars: List[dict] = []
-        self.params: Dict = dict(
-            _AGENT_PARAM_DEFAULTS if is_agent else _COND_PARAM_DEFAULTS
-        )
+        self.bars: list[dict] = []
+        self.params: dict = dict(_AGENT_PARAM_DEFAULTS if is_agent else _COND_PARAM_DEFAULTS)
 
 
 class PieceState:
     def __init__(self, resolution: int = 12) -> None:
         self.resolution = resolution
         self._lock = threading.Lock()
-        self._tracks: Dict[int, TrackInfo] = {}
-        self._agent_track_id: Optional[int] = None
-        self._pending: Dict[Tuple[int, int], List[dict]] = {}
-        self._ts: Dict[int, Tuple[int, int]] = {}
+        self._tracks: dict[int, TrackInfo] = {}
+        self._agent_track_id: int | None = None
+        self._pending: dict[tuple[int, int], list[dict]] = {}
+        self._ts: dict[int, tuple[int, int]] = {}
         self.bars_completed: int = 0
 
     @property
-    def agent_track_id(self) -> Optional[int]:
+    def agent_track_id(self) -> int | None:
         return self._agent_track_id
 
     @property
@@ -64,15 +69,15 @@ class PieceState:
     def has_conditioning_tracks(self) -> bool:
         return any(not t.is_agent for t in self._tracks.values())
 
-    def _sorted_tracks(self) -> List[TrackInfo]:
+    def _sorted_tracks(self) -> list[TrackInfo]:
         return sorted(self._tracks.values(), key=lambda t: t.piece_idx)
 
-    def _last_ts(self) -> Tuple[int, int]:
+    def _last_ts(self) -> tuple[int, int]:
         if self._ts:
             return self._ts[max(self._ts)]
         return (4, 4)
 
-    def _get_ts(self, bar_index: int) -> Tuple[int, int]:
+    def _get_ts(self, bar_index: int) -> tuple[int, int]:
         return self._ts.get(bar_index, self._last_ts())
 
     def _extend_all_to_locked(self, num_bars: int) -> None:
@@ -81,12 +86,11 @@ class PieceState:
             while len(info.bars) < num_bars:
                 b = len(info.bars)
                 bn, bd = self._ts.get(b, (ts_n, ts_d))
-                info.bars.append(
-                    {"ts_numerator": bn, "ts_denominator": bd, "events": []}
-                )
+                info.bars.append({"ts_numerator": bn, "ts_denominator": bd, "events": []})
 
-    def create_track(self, track_id: int, instrument: int, track_type: int,
-                     is_agent: bool) -> Optional[str]:
+    def create_track(
+        self, track_id: int, instrument: int, track_type: int, is_agent: bool
+    ) -> str | None:
         with self._lock:
             if track_id in self._tracks:
                 return f"Duplicate track ID: {track_id}"
@@ -100,7 +104,7 @@ class PieceState:
                 self._agent_track_id = track_id
         return None
 
-    def remove_track(self, track_id: int) -> Optional[str]:
+    def remove_track(self, track_id: int) -> str | None:
         with self._lock:
             if track_id not in self._tracks:
                 return f"Unknown track ID: {track_id}"
@@ -117,7 +121,7 @@ class PieceState:
                 del self._pending[k]
         return None
 
-    def set_track_param(self, track_id: int, name: str, value) -> Optional[str]:
+    def set_track_param(self, track_id: int, name: str, value) -> str | None:
         with self._lock:
             if track_id not in self._tracks:
                 return f"Unknown track ID: {track_id}"
@@ -127,8 +131,15 @@ class PieceState:
             ti.params[name] = value
         return None
 
-    def push_note(self, track_id: int, pitch: int, velocity: int,
-                  onset: float, duration: float, bar_index: int) -> Optional[str]:
+    def push_note(
+        self,
+        track_id: int,
+        pitch: int,
+        velocity: int,
+        onset: float,
+        duration: float,
+        bar_index: int,
+    ) -> str | None:
         with self._lock:
             if track_id not in self._tracks:
                 return f"Unknown track ID: {track_id}"
@@ -136,9 +147,9 @@ class PieceState:
             if info.is_agent:
                 return "agent_track_note_ignored"
             event = {
-                "pitch":          int(pitch),
-                "velocity":       int(velocity),
-                "_onset_norm":    float(onset),
+                "pitch": int(pitch),
+                "velocity": int(velocity),
+                "_onset_norm": float(onset),
                 "_duration_norm": float(duration),
             }
             key = (track_id, bar_index)
@@ -160,9 +171,9 @@ class PieceState:
                 if key in self._pending:
                     converted = []
                     for ev in self._pending.pop(key):
-                        onset_norm    = ev.pop("_onset_norm")
+                        onset_norm = ev.pop("_onset_norm")
                         duration_norm = ev.pop("_duration_norm")
-                        ev["time"]              = int(onset_norm * ticks)
+                        ev["time"] = int(onset_norm * ticks)
                         ev["internal_duration"] = max(1, int(duration_norm * ticks))
                         converted.append(ev)
                     info.bars[bar_index]["events"] = converted
@@ -174,8 +185,7 @@ class PieceState:
         with self._lock:
             self._extend_all_to_locked(needed)
 
-    def to_score(self, max_bars: Optional[int] = None,
-                 start_bar: int = 0) -> Score:
+    def to_score(self, max_bars: int | None = None, start_bar: int = 0) -> Score:
         """Build a Score from current state (thread-safe snapshot).
 
         If max_bars is given, all tracks are truncated/padded to exactly max_bars.
@@ -191,34 +201,40 @@ class PieceState:
             target = tracks_max if max_bars is None else max_bars
             ts_n_def, ts_d_def = self._last_ts()
 
-            tracks_out: List[Track] = []
+            tracks_out: list[Track] = []
             for info in sorted_tracks:
                 track_type = "drum" if info.track_type == 11 else "melodic"
-                bars_out: List[Bar] = []
+                bars_out: list[Bar] = []
                 truncated = info.bars[start_bar:target]
                 pad_bars = list(truncated) + [None] * (target - start_bar - len(truncated))
                 for bar in pad_bars:
                     ts_n = bar.get("ts_numerator", ts_n_def) if bar else ts_n_def
                     ts_d = bar.get("ts_denominator", ts_d_def) if bar else ts_d_def
-                    notes: List[Note] = []
-                    for ev in (bar.get("events", []) if bar else []):
+                    notes: list[Note] = []
+                    for ev in bar.get("events", []) if bar else []:
                         if ev.get("velocity", 0) > 0:
-                            notes.append(Note(
-                                pitch=ev["pitch"],
-                                velocity=ev["velocity"],
-                                onset_ticks=ev["time"],
-                                duration_ticks=ev.get("internal_duration", 1),
-                            ))
-                    bars_out.append(Bar(
-                        notes=notes,
-                        ts_numerator=ts_n,
-                        ts_denominator=ts_d,
-                    ))
-                tracks_out.append(Track(
-                    bars=bars_out,
-                    instrument=info.instrument,
-                    track_type=track_type,
-                ))
+                            notes.append(
+                                Note(
+                                    pitch=ev["pitch"],
+                                    velocity=ev["velocity"],
+                                    onset_ticks=ev["time"],
+                                    duration_ticks=ev.get("internal_duration", 1),
+                                )
+                            )
+                    bars_out.append(
+                        Bar(
+                            notes=notes,
+                            ts_numerator=ts_n,
+                            ts_denominator=ts_d,
+                        )
+                    )
+                tracks_out.append(
+                    Track(
+                        bars=bars_out,
+                        instrument=info.instrument,
+                        track_type=track_type,
+                    )
+                )
             return Score(tracks=tracks_out, resolution=self.resolution)
 
     def agent_has_history(self, before_bar: int) -> bool:
@@ -232,7 +248,7 @@ class PieceState:
                     return True
         return False
 
-    def agent_piece_idx(self) -> Optional[int]:
+    def agent_piece_idx(self) -> int | None:
         with self._lock:
             if self._agent_track_id is None:
                 return None
@@ -249,7 +265,7 @@ class PieceState:
         bar_offset: int = 0,
         cond_mask_from_bar: int | None = None,
         mask_agent_empty_before: int | None = None,
-        agent_attrs: Optional[dict] = None,
+        agent_attrs: dict | None = None,
     ) -> GenerationRequest:
         """Build GenerationRequest for the inference engine.
 
@@ -262,16 +278,16 @@ class PieceState:
         through `to_score(mask_human_from=…, mask_agent_empty_before=…)`.
         """
         with self._lock:
-            track_prompts: List[TrackPrompt] = []
+            track_prompts: list[TrackPrompt] = []
             # Bar indices in the (possibly trimmed) score are GLOBAL minus
             # bar_offset. Shift caller-provided GLOBAL bar indices accordingly.
             cond_mask_shifted = (
-                cond_mask_from_bar - bar_offset
-                if cond_mask_from_bar is not None else None
+                cond_mask_from_bar - bar_offset if cond_mask_from_bar is not None else None
             )
             agent_mask_shifted = (
                 mask_agent_empty_before - bar_offset
-                if mask_agent_empty_before is not None else None
+                if mask_agent_empty_before is not None
+                else None
             )
             end = score_len if score_len is not None else target_bar + num_anticipation
             for info in self._sorted_tracks():
@@ -282,38 +298,41 @@ class PieceState:
                     else:
                         bars = list(range(target_bar - bar_offset, end))
                     # Agent mask: empty pre-target bars (for `a_masked`).
-                    mask_bars: List[int] = []
+                    mask_bars: list[int] = []
                     if agent_mask_shifted is not None and not bootstrap:
                         gen_set = set(bars)
                         for b in range(0, min(agent_mask_shifted, end)):
                             if b in gen_set:
                                 continue
                             global_b = b + bar_offset
-                            if (global_b < len(info.bars)
-                                    and info.bars[global_b].get("events")):
+                            if global_b < len(info.bars) and info.bars[global_b].get("events"):
                                 continue  # has notes → CONTEXT, not MASK
                             mask_bars.append(b)
-                    track_prompts.append(TrackPrompt(
-                        id=info.piece_idx,
-                        bars=bars,
-                        autoregressive=True,
-                        ignore=False,
-                        mask_bars=mask_bars,
-                        attributes=dict(agent_attrs or {}),
-                    ))
+                    track_prompts.append(
+                        TrackPrompt(
+                            id=info.piece_idx,
+                            bars=bars,
+                            autoregressive=True,
+                            ignore=False,
+                            mask_bars=mask_bars,
+                            attributes=dict(agent_attrs or {}),
+                        )
+                    )
                 else:
                     # Human (conditioning) mask: bars at/after playhead.
                     mask_bars = []
                     if cond_mask_shifted is not None:
                         for b in range(max(0, cond_mask_shifted), end):
                             mask_bars.append(b)
-                    track_prompts.append(TrackPrompt(
-                        id=info.piece_idx,
-                        bars=[],
-                        autoregressive=False,
-                        ignore=bool(info.params.get("ignore", 0)),
-                        mask_bars=mask_bars,
-                    ))
+                    track_prompts.append(
+                        TrackPrompt(
+                            id=info.piece_idx,
+                            bars=[],
+                            autoregressive=False,
+                            ignore=bool(info.params.get("ignore", 0)),
+                            mask_bars=mask_bars,
+                        )
+                    )
 
         raw_seed = int(params.get("sampling_seed", -1))
         mask_mode = str(params.get("mask_mode", "token"))
@@ -341,7 +360,9 @@ class PieceState:
         )
         log.info(
             "gen_req target=%d j=%d bootstrap=%s agent_bars=%s",
-            target_bar, num_anticipation, bootstrap,
+            target_bar,
+            num_anticipation,
+            bootstrap,
             next((tp.bars for tp in track_prompts if tp.autoregressive), None),
         )
         return req
@@ -355,14 +376,14 @@ class PieceState:
         *,
         bootstrap: bool = False,
         bar_offset: int = 0,
-    ) -> List[Tuple[int, List[dict], Tuple[int, int]]]:
+    ) -> list[tuple[int, list[dict], tuple[int, int]]]:
         """Extract generated bars from result Score back into agent track state.
 
         Returns list of (bar_index, inline_events, (ts_num, ts_den)).
         inline_events = [{"pitch":, "velocity":, "time": onset_ticks, "internal_duration": duration_ticks}]
         result_resolution is the Score's resolution (for the caller to use in normalization).
         """
-        output: List[Tuple[int, List[dict], Tuple[int, int]]] = []
+        output: list[tuple[int, list[dict], tuple[int, int]]] = []
         with self._lock:
             if self._agent_track_id is None:
                 return output
@@ -392,9 +413,7 @@ class PieceState:
                     break
                 while len(agent.bars) <= b_global:
                     ts_n, ts_d = self._last_ts()
-                    agent.bars.append(
-                        {"ts_numerator": ts_n, "ts_denominator": ts_d, "events": []}
-                    )
+                    agent.bars.append({"ts_numerator": ts_n, "ts_denominator": ts_d, "events": []})
                 res_bar = res_track.bars[res_idx]
                 inline = [
                     {

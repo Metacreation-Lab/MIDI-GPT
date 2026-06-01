@@ -24,10 +24,13 @@ Packed checkpoint format (format_version 1):
       "state_dict":     {...},
     }
 """
+
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Callable
+
 import math
+from collections.abc import Callable
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -57,6 +60,7 @@ class GPT2Config:
 # --------------------------------------------------------------------------- #
 class Conv1D(nn.Module):
     """HF GPT-2 Conv1D: weight (nx, nf), applied as x @ w + b."""
+
     def __init__(self, nx: int, nf: int):
         super().__init__()
         self.weight = nn.Parameter(torch.empty(nx, nf))
@@ -112,13 +116,11 @@ class GPT2Attention(nn.Module):
         # encoder hidden_spans; broadcast across queries and combined with the
         # causal triangular mask. None = no span masking (cheap fast path).
         def _causal_bool_mask() -> torch.Tensor:
-            return torch.ones(T_q, T_k, dtype=torch.bool, device=q.device).tril(
-                diagonal=T_k - T_q
-            )
+            return torch.ones(T_q, T_k, dtype=torch.bool, device=q.device).tril(diagonal=T_k - T_q)
 
         if return_attn_weights:
             # Manual attention to capture weights
-            scale = self.head_dim ** -0.5
+            scale = self.head_dim**-0.5
             scores = torch.matmul(q, k.transpose(-2, -1)) * scale
             if T_q == T_k:
                 allow = torch.ones(T_q, T_k, dtype=torch.bool, device=q.device).tril()
@@ -178,8 +180,10 @@ class GPT2Block(nn.Module):
         key_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, tuple, torch.Tensor | None]:
         a, present, attn_w = self.attn(
-            self.ln_1(x), past_kv=past_kv,
-            return_attn_weights=return_attn_weights, key_mask=key_mask,
+            self.ln_1(x),
+            past_kv=past_kv,
+            return_attn_weights=return_attn_weights,
+            key_mask=key_mask,
         )
         x = x + a
         x = x + self.mlp(self.ln_2(x))
@@ -222,7 +226,9 @@ class GPT2LMHeadModel(TransformerLMBase):
         position_ids: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, tuple]:
         B, T = input_ids.shape
-        past_len = past_kv[0][0].shape[2] if past_kv is not None and past_kv[0][0].shape[2] > 0 else 0
+        past_len = (
+            past_kv[0][0].shape[2] if past_kv is not None and past_kv[0][0].shape[2] > 0 else 0
+        )
         if position_ids is None:
             pos = torch.arange(past_len, past_len + T, device=input_ids.device).unsqueeze(0)
         else:
@@ -233,7 +239,10 @@ class GPT2LMHeadModel(TransformerLMBase):
         for i, block in enumerate(self.transformer.h):
             pkv = past_kv[i] if past_kv is not None else None
             x, present, _ = block(
-                x, past_kv=pkv, return_attn_weights=False, key_mask=key_mask,
+                x,
+                past_kv=pkv,
+                return_attn_weights=False,
+                key_mask=key_mask,
             )
             presents.append(present)
         x = self.transformer.ln_f(x)
@@ -285,7 +294,9 @@ class GPT2LMHeadModel(TransformerLMBase):
           "logits" — fn(logits: Tensor)                   shape (B, T, V)
         """
         B, T = input_ids.shape
-        past_len = past_kv[0][0].shape[2] if past_kv is not None and past_kv[0][0].shape[2] > 0 else 0
+        past_len = (
+            past_kv[0][0].shape[2] if past_kv is not None and past_kv[0][0].shape[2] > 0 else 0
+        )
         pos = torch.arange(past_len, past_len + T, device=input_ids.device).unsqueeze(0)
 
         x = self.transformer.wte(input_ids) + self.transformer.wpe(pos)

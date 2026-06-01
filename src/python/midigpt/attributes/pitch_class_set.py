@@ -1,15 +1,15 @@
-from typing import Optional
 from midigpt._types import Score
 from midigpt.attributes.base import BaseAttribute
 
-class BarLevelPitchClassSet(BaseAttribute):
-    name       = "pitch_class_set"
-    token_type = "PitchClassSet"
-    level      = "bar"
-    track_type = "melodic"
-    size       = 13
 
-    def compute(self, score: Score, track_idx: int, bar_idx: Optional[int] = None) -> float | int:
+class BarLevelPitchClassSet(BaseAttribute):
+    name = "pitch_class_set"
+    token_type = "PitchClassSet"
+    level = "bar"
+    track_type = "melodic"
+    size = 13
+
+    def compute(self, score: Score, track_idx: int, bar_idx: int | None = None) -> float | int:
         if bar_idx is None:
             return 0
         track = score.tracks[track_idx]

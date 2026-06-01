@@ -1,28 +1,29 @@
 from midigpt.attributes.base import AttributeAnalyzer, BaseAttribute
 from midigpt.attributes.density import NoteDensity
-from midigpt.attributes.polyphony import OnsetPolyphony
-from midigpt.attributes.pitch_range import PitchRange
 from midigpt.attributes.key_signature import KeySignature
 from midigpt.attributes.note_duration import NoteDurationDistribution
-from midigpt.attributes.silence import SilenceProportion
 from midigpt.attributes.pitch_class_set import BarLevelPitchClassSet
+from midigpt.attributes.pitch_range import PitchRange
+from midigpt.attributes.polyphony import OnsetPolyphony
 from midigpt.attributes.quantile import (
     NoteDensityQuantile,
-    PolyphonyQuantile,
     NoteDurationQuantile,
+    PolyphonyQuantile,
 )
+from midigpt.attributes.silence import SilenceProportion
+
 # Name → class registry used by AttributeAnalyzer.from_config().
 # Encoder configs reference these names in the "attribute_controls" list.
 ATTRIBUTE_REGISTRY = {
-    "note_density":           NoteDensity,
-    "onset_polyphony":        OnsetPolyphony,
-    "pitch_range":            PitchRange,
-    "key_signature":          KeySignature,
-    "note_duration_dist":     NoteDurationDistribution,
-    "silence_proportion":     SilenceProportion,
-    "pitch_class_set":        BarLevelPitchClassSet,
-    "note_density_quantile":  NoteDensityQuantile,
-    "polyphony_quantile":     PolyphonyQuantile,
+    "note_density": NoteDensity,
+    "onset_polyphony": OnsetPolyphony,
+    "pitch_range": PitchRange,
+    "key_signature": KeySignature,
+    "note_duration_dist": NoteDurationDistribution,
+    "silence_proportion": SilenceProportion,
+    "pitch_class_set": BarLevelPitchClassSet,
+    "note_density_quantile": NoteDensityQuantile,
+    "polyphony_quantile": PolyphonyQuantile,
     "note_duration_quantile": NoteDurationQuantile,
 }
 
@@ -31,32 +32,32 @@ ATTRIBUTE_REGISTRY = {
 # token-type names match the C++ TokenType enum; params are constructor
 # kwargs for attributes that come in flavors (e.g. min/max).
 TOKEN_TYPE_TO_ATTRIBUTE = {
-    "MinPolyphony":    ("polyphony_quantile",     {"mode": "min"}),
-    "MaxPolyphony":    ("polyphony_quantile",     {"mode": "max"}),
+    "MinPolyphony": ("polyphony_quantile", {"mode": "min"}),
+    "MaxPolyphony": ("polyphony_quantile", {"mode": "max"}),
     "MinNoteDuration": ("note_duration_quantile", {"mode": "min"}),
     "MaxNoteDuration": ("note_duration_quantile", {"mode": "max"}),
-    "NoteDensity":     ("note_density_quantile",  {}),
-    "PitchClassSet":   ("pitch_class_set",        {}),
-    "PitchRange":      ("pitch_range",            {}),
-    "KeySignature":    ("key_signature",          {}),
-    "NoteDurationDist":("note_duration_dist",     {}),
-    "SilenceProportion":("silence_proportion",    {}),
-    "OnsetPolyphony":  ("onset_polyphony",        {}),
+    "NoteDensity": ("note_density_quantile", {}),
+    "PitchClassSet": ("pitch_class_set", {}),
+    "PitchRange": ("pitch_range", {}),
+    "KeySignature": ("key_signature", {}),
+    "NoteDurationDist": ("note_duration_dist", {}),
+    "SilenceProportion": ("silence_proportion", {}),
+    "OnsetPolyphony": ("onset_polyphony", {}),
 }
 
 __all__ = [
-    "AttributeAnalyzer",
-    "BaseAttribute",
     "ATTRIBUTE_REGISTRY",
     "TOKEN_TYPE_TO_ATTRIBUTE",
+    "AttributeAnalyzer",
+    "BarLevelPitchClassSet",
+    "BaseAttribute",
+    "KeySignature",
     "NoteDensity",
+    "NoteDensityQuantile",
+    "NoteDurationDistribution",
+    "NoteDurationQuantile",
     "OnsetPolyphony",
     "PitchRange",
-    "KeySignature",
-    "NoteDurationDistribution",
-    "SilenceProportion",
-    "BarLevelPitchClassSet",
-    "NoteDensityQuantile",
     "PolyphonyQuantile",
-    "NoteDurationQuantile",
+    "SilenceProportion",
 ]

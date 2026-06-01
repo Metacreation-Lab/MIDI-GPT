@@ -1,16 +1,17 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+
 from midigpt._types import Score
 
+
 class BaseAttribute(ABC):
-    name:       str   # e.g. "note_density"
-    token_type: str   # e.g. "NoteDensity"
-    level:      str   # "track" | "bar"
-    track_type: str   # "melodic" | "drum" | "both"
-    size:       int   # token-domain size for this attribute's vocab slot
+    name: str  # e.g. "note_density"
+    token_type: str  # e.g. "NoteDensity"
+    level: str  # "track" | "bar"
+    track_type: str  # "melodic" | "drum" | "both"
+    size: int  # token-domain size for this attribute's vocab slot
 
     @abstractmethod
-    def compute(self, score: Score, track_idx: int, bar_idx: Optional[int] = None) -> float | int: ...
+    def compute(self, score: Score, track_idx: int, bar_idx: int | None = None) -> float | int: ...
 
     @abstractmethod
     def quantize(self, value: float | int) -> int: ...
@@ -18,8 +19,9 @@ class BaseAttribute(ABC):
     def dequantize(self, quantized: int) -> float | int:
         raise NotImplementedError
 
-    def achievable_range(self, fixed_score: "Score", track_idx: int,
-                         generated_bars: list[int]) -> tuple[int, int]:
+    def achievable_range(
+        self, fixed_score: "Score", track_idx: int, generated_bars: list[int]
+    ) -> tuple[int, int]:
         """Inclusive closed interval [min_q, max_q] of quantized values that
         a track-level override could still realize given the fixed (non-
         generated) bars in `fixed_score` and the indices of the bars that
@@ -33,14 +35,16 @@ class BaseAttribute(ABC):
         size = int(getattr(self, "size", 0))
         return (0, max(0, size - 1))
 
+
 class AttributeAnalyzer:
     def __init__(self, attributes: list[BaseAttribute]):
         self._attrs = {a.name: a for a in attributes}
 
     def compute_track_tokens(self, score: Score, track_idx: int) -> dict[str, int]:
         result = {}
-        track  = score.tracks[track_idx]
+        track = score.tracks[track_idx]
         from midigpt._core import TrackType
+
         if hasattr(track, "track_type"):
             is_drum = track.track_type == "drum"
         else:
@@ -65,20 +69,20 @@ class AttributeAnalyzer:
 
     def compute_all(self, score: Score) -> list[dict[str, float | int]]:
         return [
-            {name: a.compute(score, i)
-             for name, a in self._attrs.items()
-             if a.level == "track"}
+            {name: a.compute(score, i) for name, a in self._attrs.items() if a.level == "track"}
             for i in range(len(score.tracks))
         ]
 
-    def evaluate(self, requested: dict[str, int], realized_score: Score, track_idx: int) -> dict[str, float]:
+    def evaluate(
+        self, requested: dict[str, int], realized_score: Score, track_idx: int
+    ) -> dict[str, float]:
         result = {}
         for name, req_q in requested.items():
             attr = self._attrs.get(name)
             if attr is None:
                 continue
-            raw      = attr.compute(realized_score, track_idx)
-            real_q   = attr.quantize(raw)
+            raw = attr.compute(realized_score, track_idx)
+            real_q = attr.quantize(raw)
             result[name] = 1.0 if real_q == req_q else 0.0
         return result
 
@@ -129,8 +133,7 @@ class AttributeAnalyzer:
         for attr in self._attrs.values():
             size = getattr(attr, "size", None)
             if size is None:
-                raise ValueError(
-                    f"Attribute '{attr.name}' has no .size; cannot build vocab")
+                raise ValueError(f"Attribute '{attr.name}' has no .size; cannot build vocab")
             specs.append((attr.token_type, int(size)))
         return specs
 
@@ -149,6 +152,7 @@ class AttributeAnalyzer:
         is appended (addition).
         """
         import json
+
         from midigpt.attributes import ATTRIBUTE_REGISTRY, TOKEN_TYPE_TO_ATTRIBUTE
 
         try:
@@ -160,7 +164,7 @@ class AttributeAnalyzer:
         # maps unique identifier (TokenType string OR registry key) to attrs index.
         # TokenType used for auto-inference, registry key used for explicit overrides.
         auto_indices: dict[str, int] = {}
-        
+
         for d in cfg_dict.get("token_domains", []) or []:
             tt = d.get("type")
             mapping = TOKEN_TYPE_TO_ATTRIBUTE.get(tt)
@@ -177,7 +181,7 @@ class AttributeAnalyzer:
             try:
                 entries = json.loads(raw) if isinstance(raw, str) else raw
             except json.JSONDecodeError as e:
-                raise ValueError(f"attribute_controls_json is not valid JSON: {e}")
+                raise ValueError(f"attribute_controls_json is not valid JSON: {e}") from e
             for entry in entries or []:
                 name = entry["name"]
                 params = entry.get("params", {})
@@ -187,7 +191,7 @@ class AttributeAnalyzer:
                         f"Registered: {sorted(ATTRIBUTE_REGISTRY.keys())}"
                     )
                 inst = ATTRIBUTE_REGISTRY[name](**params)
-                
+
                 # If this instance's TokenType is already auto-inferred, replace it.
                 # Otherwise if the registry key is an auto-index (simple case), replace it.
                 # Otherwise append.
@@ -198,7 +202,7 @@ class AttributeAnalyzer:
                 elif name in auto_indices:
                     attrs[auto_indices[name]] = inst
                     replaced = True
-                    
+
                 if not replaced:
                     auto_indices[name] = len(attrs)
                     attrs.append(inst)

@@ -20,7 +20,9 @@ Multiple parquet shards can be given at once:
         --parquet /data/v2.0.0/train/*.parquet \\
         --checkpoint models/yellow.pt
 """
+
 from __future__ import annotations
+
 import argparse
 import glob
 import json
@@ -32,6 +34,7 @@ from pathlib import Path
 def _load_encoder_config(checkpoint: str | None, encoder_config: str | None) -> dict:
     if checkpoint:
         import torch
+
         data = torch.load(checkpoint, map_location="cpu", weights_only=False)
         enc = data.get("encoder_config", {})
         return enc if isinstance(enc, dict) else json.loads(enc)
@@ -83,18 +86,23 @@ def main() -> None:
         description="Pre-compute valid-index cache for GigaMIDI parquet shards."
     )
     parser.add_argument(
-        "--parquet", nargs="+", required=True, metavar="PATH",
+        "--parquet",
+        nargs="+",
+        required=True,
+        metavar="PATH",
         help="Parquet shard(s). Supports shell globs if quoted.",
     )
     parser.add_argument(
-        "--checkpoint", metavar="PATH",
+        "--checkpoint",
+        metavar="PATH",
         help="Packed .pt bundle (encoder config + weights). Mutually exclusive with --encoder-config.",
     )
     parser.add_argument(
-        "--encoder-config", metavar="PATH",
+        "--encoder-config",
+        metavar="PATH",
         help="Raw encoder config JSON. Alternative to --checkpoint.",
     )
-    parser.add_argument("--min-bars",   type=int, default=4)
+    parser.add_argument("--min-bars", type=int, default=4)
     parser.add_argument("--min-tracks", type=int, default=1)
     args = parser.parse_args()
 

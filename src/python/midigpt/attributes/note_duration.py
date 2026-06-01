@@ -1,16 +1,17 @@
 import math
-from typing import Optional
+
 from midigpt._types import Score
 from midigpt.attributes.base import BaseAttribute
 
-class NoteDurationDistribution(BaseAttribute):
-    name       = "note_duration_dist"
-    token_type = "NoteDurationDist"
-    level      = "track"
-    track_type = "both"
-    size       = 6
 
-    def compute(self, score: Score, track_idx: int, bar_idx: Optional[int] = None) -> float | int:
+class NoteDurationDistribution(BaseAttribute):
+    name = "note_duration_dist"
+    token_type = "NoteDurationDist"
+    level = "track"
+    track_type = "both"
+    size = 6
+
+    def compute(self, score: Score, track_idx: int, bar_idx: int | None = None) -> float | int:
         track = score.tracks[track_idx]
         durations = []
         for bar in track.bars:
@@ -32,12 +33,13 @@ class NoteDurationDistribution(BaseAttribute):
                 val = d / (score.resolution / 8.0)
                 level = max(0, min(5, int(math.log2(max(val, 1.0)))))
                 durations.append(level)
-                
+
         if not durations:
-            return 3 # default to quarter notes
-            
+            return 3  # default to quarter notes
+
         # find the most common duration bin
         from collections import Counter
+
         return Counter(durations).most_common(1)[0][0]
 
     def quantize(self, value: float | int) -> int:

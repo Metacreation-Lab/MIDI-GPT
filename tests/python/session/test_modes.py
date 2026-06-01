@@ -3,7 +3,9 @@
 Exercises each mask_mode supported by InferenceConfig:
   token, attention, attention_approx, attention_skip, remove.
 """
+
 from __future__ import annotations
+
 import pytest
 import torch
 
@@ -14,7 +16,6 @@ from midigpt.inference.config import (
     TrackPrompt,
 )
 from midigpt.inference.engine import InferenceEngine
-
 
 MODES = ("token", "attention", "attention_approx", "attention_skip", "remove")
 
@@ -27,8 +28,11 @@ def _infill_request(mask_mode: str) -> GenerationRequest:
     return GenerationRequest(
         tracks=[TrackPrompt(id=0, bars=[2], autoregressive=False)],
         config=InferenceConfig(
-            seed=0, max_attempts=3, mask_mode=mask_mode,
-            novelty_check=False, silence_check=False,
+            seed=0,
+            max_attempts=3,
+            mask_mode=mask_mode,
+            novelty_check=False,
+            silence_check=False,
         ),
     )
 
@@ -82,16 +86,18 @@ def test_attention_modes_produce_non_silent_output(
     assert total_notes > 0
 
 
-def test_remove_mode_runs_ar(tiny_gpt2, ghost_tokenizer, ghost_analyzer,
-                              simple_score):
+def test_remove_mode_runs_ar(tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score):
     """`remove` mode strips future bars; pair it with an AR request."""
     torch.manual_seed(0)
     engine = _engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
     req = GenerationRequest(
         tracks=[TrackPrompt(id=0, bars=[2, 3], autoregressive=True)],
         config=InferenceConfig(
-            seed=0, max_attempts=2, mask_mode="remove",
-            novelty_check=False, silence_check=False,
+            seed=0,
+            max_attempts=2,
+            mask_mode="remove",
+            novelty_check=False,
+            silence_check=False,
         ),
     )
     result = engine.session(simple_score, req).run()

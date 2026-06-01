@@ -1,61 +1,60 @@
 import logging
-from typing import Optional, Tuple
 
 from .piece_state import bar_ticks
 
 log = logging.getLogger(__name__)
 
 WARMUP_POLICIES = ("a_empty", "a_masked", "b", "b_collapse")
-MASK_MODES      = ("token", "attention", "attention_approx", "attention_skip", "remove")
+MASK_MODES = ("token", "attention", "attention_approx", "attention_skip", "remove")
 
 PARAM_DEFAULTS: dict = {
-    "lookahead_bars":       1,
-    "buffer_bars":          4,
+    "lookahead_bars": 1,
+    "buffer_bars": 4,
     "num_anticipated_bars": 1,
-    "temperature":          1.0,
-    "model_dim":            8,
-    "top_p":                1.0,
-    "top_k":                0,
-    "mask_p":               0.0,
-    "mask_k":               0,
+    "temperature": 1.0,
+    "model_dim": 8,
+    "top_p": 1.0,
+    "top_k": 0,
+    "mask_p": 0.0,
+    "mask_k": 0,
     "temperature_escalation": 1.0,
-    "novelty_check":        True,
-    "silence_check":        True,
-    "sampling_seed":       -1,
-    "adapt_buffer":         True,
-    "gen_timeout":          0.0,
-    "max_attempts":         3,
-    "warmup_policy":        "a_empty",
-    "mask_mode":            "token",
+    "novelty_check": True,
+    "silence_check": True,
+    "sampling_seed": -1,
+    "adapt_buffer": True,
+    "gen_timeout": 0.0,
+    "max_attempts": 3,
+    "warmup_policy": "a_empty",
+    "mask_mode": "token",
     "polyphony_hard_limit": 0,
-    "density_hard_limit":   0,
+    "density_hard_limit": 0,
 }
 
 PARAM_RANGES: dict = {
-    "lookahead_bars":       (1, 8),
-    "buffer_bars":          (2, 64),
+    "lookahead_bars": (1, 8),
+    "buffer_bars": (2, 64),
     "num_anticipated_bars": (1, 8),
-    "temperature":          (0.1, 5.0),
-    "model_dim":            (1, 16),
-    "top_p":                (0.0, 1.0),
-    "top_k":                (0, 10000),
-    "mask_p":               (0.0, 1.0),
-    "mask_k":               (0, 10000),
+    "temperature": (0.1, 5.0),
+    "model_dim": (1, 16),
+    "top_p": (0.0, 1.0),
+    "top_k": (0, 10000),
+    "mask_p": (0.0, 1.0),
+    "mask_k": (0, 10000),
     "temperature_escalation": (1.0, 3.0),
-    "novelty_check":        (None, None),
-    "silence_check":        (None, None),
-    "sampling_seed":        (None, None),
-    "adapt_buffer":         (None, None),
-    "gen_timeout":          (0, None),
-    "max_attempts":         (1, 10),
-    "warmup_policy":        (None, None),
-    "mask_mode":            (None, None),
+    "novelty_check": (None, None),
+    "silence_check": (None, None),
+    "sampling_seed": (None, None),
+    "adapt_buffer": (None, None),
+    "gen_timeout": (0, None),
+    "max_attempts": (1, 10),
+    "warmup_policy": (None, None),
+    "mask_mode": (None, None),
     "polyphony_hard_limit": (0, 128),
-    "density_hard_limit":   (0, 1000),
+    "density_hard_limit": (0, 1000),
 }
 
 
-def validate_param(name: str, value) -> Optional[str]:
+def validate_param(name: str, value) -> str | None:
     if name not in PARAM_RANGES:
         return f"Unknown global parameter: {name!r}"
     if name == "warmup_policy":
@@ -74,8 +73,7 @@ def validate_param(name: str, value) -> Optional[str]:
     return None
 
 
-def compute_target_bar(bars_completed: int, k: int, B: int,
-                       adapt_buffer: bool) -> Optional[int]:
+def compute_target_bar(bars_completed: int, k: int, B: int, adapt_buffer: bool) -> int | None:  # noqa: N803
     playhead = bars_completed
     if adapt_buffer:
         if playhead + k < B:
@@ -90,8 +88,7 @@ def compute_num_anticipation(target_bar: int, j: int, total_bars: int) -> int:
     return min(j, total_bars - target_bar)
 
 
-def compute_bar_features(events: list, ts_num: int, ts_den: int,
-                         resolution: int) -> Optional[dict]:
+def compute_bar_features(events: list, ts_num: int, ts_den: int, resolution: int) -> dict | None:
     note_ons = [e for e in events if e.get("velocity", 0) > 0]
     if not note_ons:
         return None
@@ -116,18 +113,18 @@ def compute_bar_features(events: list, ts_num: int, ts_den: int,
     raw_durations = [e.get("internal_duration", 1) for e in note_ons]
 
     return {
-        "note_density":      len(note_ons) / max(ts_num, 1),
-        "mean_pitch":        sum(pitches) / len(pitches),
-        "mean_velocity":     sum(velocities) / len(velocities),
-        "min_polyphony":     min(onset_polys),
-        "max_polyphony":     max(onset_polys),
-        "mean_duration":     sum(durations_norm) / len(durations_norm),
+        "note_density": len(note_ons) / max(ts_num, 1),
+        "mean_pitch": sum(pitches) / len(pitches),
+        "mean_velocity": sum(velocities) / len(velocities),
+        "min_polyphony": min(onset_polys),
+        "max_polyphony": max(onset_polys),
+        "mean_duration": sum(durations_norm) / len(durations_norm),
         "min_note_duration": min(raw_durations),
         "max_note_duration": max(raw_durations),
     }
 
 
-def run_inference(engine, score, request) -> Tuple[object, int]:
+def run_inference(engine, score, request) -> tuple[object, int]:
     """Call engine.session(score, request).run(). Returns (result_score, attempts=1)."""
     result = engine.session(score, request).run()
     return result, 1
