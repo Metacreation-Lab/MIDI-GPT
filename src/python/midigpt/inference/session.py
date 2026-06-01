@@ -119,7 +119,7 @@ class SamplingSession:
                 mask, enc_cfg,
                 cfg_try.bars_per_step, cfg_try.tracks_per_step
             )
-            score = copy.deepcopy(self._score)
+            score = to_cpp(copy.deepcopy(from_cpp(self._score)))
             try:
                 self._snapshot_sent = False
                 for step in tqdm(planner.plan()):
@@ -141,6 +141,11 @@ class SamplingSession:
                   cfg: InferenceConfig | None = None) -> Score:
         if cfg is None:
             cfg = self._request.config
+        # Normalise to _types.Score so helpers can always use bar.notes.
+        # On the first step the caller passes a _core.Score; from step 2 on
+        # it's already _types.Score (the previous step's candidate).
+        if not isinstance(score, Score):
+            score = from_cpp(score)
         original_score = score  # baseline for novelty comparison
 
         errors = []
