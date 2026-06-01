@@ -23,7 +23,7 @@ classifiers     = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/DaoTwenty/MIDI-GPT"
+Homepage = "https://github.com/Metacreation-Lab/MIDI-GPT"
 Paper    = "https://arxiv.org/abs/2501.17011"
 
 [project.optional-dependencies]

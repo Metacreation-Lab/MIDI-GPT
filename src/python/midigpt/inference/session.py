@@ -738,7 +738,6 @@ class SamplingSession:
             "pitch_range":        _core.TokenType.PitchRange,
             "key_signature":      _core.TokenType.KeySignature,
             "note_duration_dist": _core.TokenType.NoteDurationDist,
-            "tension":            _core.TokenType.Tension,
             "silence_proportion": _core.TokenType.SilenceProportion,
             "pitch_class_set":    _core.TokenType.PitchClassSet,
             "min_note_duration":  _core.TokenType.MinNoteDuration,
