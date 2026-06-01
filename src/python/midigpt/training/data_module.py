@@ -33,24 +33,26 @@ class MidiGPTDataModule(L.LightningDataModule):
         per_device_batch_size: int = 4,
         num_workers: int = 4,
         pin_memory: bool = True,
+        shuffle: bool = True,
         # Optional eval
         eval_path: str | None = None,
     ):
         super().__init__()
-        self._train_path   = train_path
-        self._eval_path    = eval_path
-        self._tokenizer    = tokenizer
-        self._infill_prob  = infill_probability
-        self._infill_frac  = infill_bar_fraction
-        self._mask_cfg     = mask_bar_config
-        self._max_seq_len  = max_seq_len
-        self._max_tracks   = max_tracks
-        self._min_tracks   = min_tracks
-        self._fill_ratio   = min_fill_ratio
-        self._batch_size   = per_device_batch_size
-        self._num_workers  = num_workers
-        self._pin_memory   = pin_memory
-        self._collator     = MidiGPTCollator(max_seq_len=max_seq_len)
+        self._train_path      = train_path
+        self._eval_path       = eval_path
+        self._tokenizer       = tokenizer
+        self._infill_prob     = infill_probability
+        self._infill_frac     = infill_bar_fraction
+        self._mask_cfg        = mask_bar_config
+        self._max_seq_len     = max_seq_len
+        self._max_tracks      = max_tracks
+        self._min_tracks      = min_tracks
+        self._fill_ratio      = min_fill_ratio
+        self._batch_size      = per_device_batch_size
+        self._num_workers     = num_workers
+        self._pin_memory      = pin_memory
+        self._shuffle         = shuffle
+        self._collator        = MidiGPTCollator(max_seq_len=max_seq_len)
         self._train_ds: MidiGPTDataset | None = None
         self._eval_ds:  MidiGPTDataset | None = None
 
@@ -78,7 +80,7 @@ class MidiGPTDataModule(L.LightningDataModule):
         return DataLoader(
             self._train_ds,
             batch_size=self._batch_size,
-            shuffle=True,
+            shuffle=self._shuffle,
             num_workers=self._num_workers,
             pin_memory=self._pin_memory,
             collate_fn=self._collator,
