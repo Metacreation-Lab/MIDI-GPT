@@ -32,6 +32,7 @@ class InferenceEngine:
         name_or_repo_id: str,
         filename: str | None = None,
         analyzer: AttributeAnalyzer | None = None,
+        device: str | None = None,
     ) -> InferenceEngine:
         """Load a model by name or HuggingFace repo ID.
 
@@ -68,11 +69,11 @@ class InferenceEngine:
             fname = filename
 
         local_path = hf_hub_download(repo_id=repo_id, filename=fname)
-        return cls.from_checkpoint(local_path, analyzer=analyzer)
+        return cls.from_checkpoint(local_path, analyzer=analyzer, device=device)
 
     @classmethod
     def from_checkpoint(
-        cls, path: str, analyzer: AttributeAnalyzer | None = None
+        cls, path: str, analyzer: AttributeAnalyzer | None = None, device: str | None = None
     ) -> InferenceEngine:
         try:
             import torch
@@ -81,11 +82,11 @@ class InferenceEngine:
         from midigpt.inference.model.torchscript_adapter import TorchScriptAdapter
         from midigpt.tokenizer.checkpoint import load_checkpoint
 
-        bundle = load_checkpoint(path)
+        bundle = load_checkpoint(path, device=device)
         if bundle.model is not None:
             model = bundle.model
         else:
-            scripted = torch.jit.load(bundle.model_path, map_location="cpu")
+            scripted = torch.jit.load(bundle.model_path, map_location=device or "cpu")
             scripted.eval()
             model = TorchScriptAdapter(scripted)
         tokenizer = Tokenizer(bundle.encoder_config, analyzer)
@@ -114,8 +115,13 @@ class InferenceEngine:
 
         model = self._model
         kv = model.make_empty_kv()
+        # Derive device from the KV tensors; avoids StopIteration on stub models
+        # that satisfy ModelBase without having nn.Module parameters.
+        dev = torch.device("cpu")
+        if kv and isinstance(kv[0][0], torch.Tensor):
+            dev = kv[0][0].device
         with torch.no_grad():
-            model(torch.tensor([[0]], dtype=torch.long), kv)
+            model(torch.tensor([[0]], dtype=torch.long, device=dev), kv)
         return kv
 
     def session(self, score: Score, request: GenerationRequest) -> SamplingSession:

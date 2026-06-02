@@ -1,3 +1,4 @@
+import dataclasses
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -47,6 +48,11 @@ class InferenceConfig:
     mask_p: float = 0.0
     mask_k: int = 0
 
+    @classmethod
+    def from_dict(cls, d: dict) -> "InferenceConfig":
+        known = {f.name for f in dataclasses.fields(cls)}
+        return cls(**{k: v for k, v in d.items() if k in known})
+
 
 @dataclass
 class TrackPrompt:
@@ -74,8 +80,29 @@ class TrackPrompt:
     bar_attributes: dict[int, dict[str, int]] = field(default_factory=dict)
     bar_controls: dict[int, dict[str, Any]] = field(default_factory=dict)
 
+    @classmethod
+    def from_dict(cls, d: dict) -> "TrackPrompt":
+        return cls(
+            id=d["id"],
+            bars=list(d["bars"]),
+            autoregressive=d.get("autoregressive", False),
+            ignore=d.get("ignore", False),
+            mask_bars=list(d.get("mask_bars", [])),
+            attributes=dict(d.get("attributes", {})),
+            controls=dict(d.get("controls", {})),
+            bar_attributes={int(k): v for k, v in d.get("bar_attributes", {}).items()},
+            bar_controls={int(k): v for k, v in d.get("bar_controls", {}).items()},
+        )
+
 
 @dataclass
 class GenerationRequest:
     tracks: list[TrackPrompt]
     config: InferenceConfig = field(default_factory=InferenceConfig)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "GenerationRequest":
+        return cls(
+            tracks=[TrackPrompt.from_dict(t) for t in d["tracks"]],
+            config=InferenceConfig.from_dict(d.get("config", {})),
+        )

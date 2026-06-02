@@ -33,11 +33,13 @@ train     = ["midigpt[inference]", "lightning>=2.2",
 dev       = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.9"]
 docs      = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.24"]
 realtime  = ["midigpt[inference]", "python-osc>=1.8", "flask>=3.0", "flask-socketio>=5.3"]
+http      = ["midigpt[inference]", "fastapi>=0.111", "uvicorn[standard]>=0.29"]
 all       = ["midigpt[realtime,train]"]
 
 [project.scripts]
 midigpt-server = "midigpt.osc.server:main"
 midigpt-listen = "midigpt.osc.listen:main"
+midigpt-http   = "midigpt.http.server:main"
 
 [tool.pytest.ini_options]
 markers = [

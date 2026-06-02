@@ -35,6 +35,7 @@ nav:
   - API Reference: api.md
   - Training: training.md
   - OSC Server: osc.md
+  - HTTP Server: http.md
   - Contributing: contributing.md
 
 markdown_extensions:

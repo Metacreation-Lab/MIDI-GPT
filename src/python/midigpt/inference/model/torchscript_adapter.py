@@ -45,10 +45,14 @@ class TorchScriptAdapter:
 
     def make_empty_kv(self) -> tuple:
         c = self._cfg
+        try:
+            dev = next(self._model.parameters()).device
+        except StopIteration:
+            dev = torch.device("cpu")
         return tuple(
             (
-                torch.zeros(1, c["n_head"], 0, c["head_dim"]),
-                torch.zeros(1, c["n_head"], 0, c["head_dim"]),
+                torch.zeros(1, c["n_head"], 0, c["head_dim"], device=dev),
+                torch.zeros(1, c["n_head"], 0, c["head_dim"], device=dev),
             )
             for _ in range(c["n_layer"])
         )

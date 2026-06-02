@@ -33,6 +33,7 @@ Pre-built wheels for CPython 3.10–3.12 on Linux (x86_64), macOS (x86_64 + arm6
 | `inference` | `torch>=2.0`, `tqdm`, `huggingface_hub` |
 | `train` | PyTorch Lightning, HuggingFace `datasets`, `pyarrow`, `python-dotenv` |
 | `realtime` | `python-osc`, Flask, Flask-SocketIO |
+| `http` | FastAPI, uvicorn |
 | `dev` | `pytest`, `ruff`, `mypy` |
 | `all` | `realtime` + `train` |
 
@@ -236,6 +237,55 @@ train(config, train_path="/data/train/00000.parquet", eval_path="/data/valid/000
 | `precision` | `"fp16"` | `"fp16"`, `"bf16"`, or `"fp32"` |
 | `logger` | `"none"` | `"tensorboard"`, `"wandb"`, or `"none"` |
 | `num_workers` | `0` | Must be 0 — the C++ MIDI parser is not fork-safe |
+
+---
+
+## HTTP server
+
+```bash
+pip install "midigpt[http]"
+
+# From a local checkpoint
+midigpt-http --ckpt models/yellow.pt --port 8000
+
+# From HuggingFace Hub (by name or repo ID)
+midigpt-http --pretrained yellow --port 8000
+midigpt-http --pretrained Metacreation/MIDI-GPT --hf-filename yellow.pt --port 8000
+```
+
+A stateless REST API — every request carries the full score and generation parameters. The interactive API docs are available at `http://localhost:8000/docs`.
+
+| Endpoint | Description |
+|---|---|
+| `GET /health` | Liveness probe |
+| `GET /info` | Model capabilities and attribute sizes |
+| `POST /generate` | `{score, request}` → `{score, timing}` |
+
+```bash
+# Score: 1 melodic track, 4 empty bars — generate all 4 from scratch
+curl -s -X POST http://localhost:8000/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "score": {
+      "resolution": 480, "tempo": 500000,
+      "tracks": [{
+        "instrument": 0, "track_type": "melodic",
+        "bars": [
+          {"ts_numerator": 4, "ts_denominator": 4, "notes": []},
+          {"ts_numerator": 4, "ts_denominator": 4, "notes": []},
+          {"ts_numerator": 4, "ts_denominator": 4, "notes": []},
+          {"ts_numerator": 4, "ts_denominator": 4, "notes": []}
+        ]
+      }]
+    },
+    "request": {
+      "tracks": [{"id": 0, "bars": [0, 1, 2, 3]}],
+      "config": {"model_dim": 4}
+    }
+  }' | jq .score
+```
+
+Use `--device cuda`, `--device mps`, or `--device auto` (default) to select the compute device.
 
 ---
 

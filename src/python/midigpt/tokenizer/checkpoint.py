@@ -13,7 +13,7 @@ class CheckpointBundle:
     model: Any | None = None  # new: ready-to-use nn.Module
 
 
-def load_checkpoint(path: str) -> CheckpointBundle:
+def load_checkpoint(path: str, device: str | None = None) -> CheckpointBundle:
     p = pathlib.Path(path)
 
     if p.is_dir():
@@ -29,12 +29,12 @@ def load_checkpoint(path: str) -> CheckpointBundle:
         )
 
     if p.is_file() and p.suffix == ".pt":
-        return _load_bundle_file(p)
+        return _load_bundle_file(p, device=device)
 
     raise ValueError(f"Checkpoint must be a directory or a .pt bundle file: {path}")
 
 
-def _load_bundle_file(p: pathlib.Path) -> CheckpointBundle:
+def _load_bundle_file(p: pathlib.Path, device: str | None = None) -> CheckpointBundle:
     try:
         import torch
     except ImportError:
@@ -50,7 +50,7 @@ def _load_bundle_file(p: pathlib.Path) -> CheckpointBundle:
         )
     arch = ckpt.get("arch") or "gpt2"
     model_cls = get_model_class(arch)
-    model = model_cls.from_pretrained(str(p), device="cpu")
+    model = model_cls.from_pretrained(str(p), device=device or "cpu")
 
     enc_cfg = model.encoder_config
     if enc_cfg is None:
