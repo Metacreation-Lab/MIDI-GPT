@@ -2,7 +2,7 @@ from midigpt.attributes.base import AttributeAnalyzer, BaseAttribute
 from midigpt.attributes.density import NoteDensity
 from midigpt.attributes.key_signature import KeySignature
 from midigpt.attributes.note_duration import NoteDurationDistribution
-from midigpt.attributes.pitch_class_set import BarLevelPitchClassSet
+from midigpt.attributes.pitch_class_set import BarLevelPitchClassSet, PitchClassSet
 from midigpt.attributes.pitch_range import PitchRange
 from midigpt.attributes.polyphony import OnsetPolyphony
 from midigpt.attributes.quantile import (
@@ -21,7 +21,7 @@ ATTRIBUTE_REGISTRY = {
     "key_signature": KeySignature,
     "note_duration_dist": NoteDurationDistribution,
     "silence_proportion": SilenceProportion,
-    "pitch_class_set": BarLevelPitchClassSet,
+    "pitch_class_set": PitchClassSet,
     "note_density_quantile": NoteDensityQuantile,
     "polyphony_quantile": PolyphonyQuantile,
     "note_duration_quantile": NoteDurationQuantile,
@@ -30,19 +30,28 @@ ATTRIBUTE_REGISTRY = {
 # TokenType (name) → (registry_key, params) used by AttributeAnalyzer
 # auto-inference for bundles missing `attribute_controls_json`. The
 # token-type names match the C++ TokenType enum; params are constructor
-# kwargs for attributes that come in flavors (e.g. min/max).
+# kwargs for attributes that come in flavors (e.g. min/max, level).
 TOKEN_TYPE_TO_ATTRIBUTE = {
+    # track-level
     "MinPolyphony": ("polyphony_quantile", {"mode": "min"}),
     "MaxPolyphony": ("polyphony_quantile", {"mode": "max"}),
     "MinNoteDuration": ("note_duration_quantile", {"mode": "min"}),
     "MaxNoteDuration": ("note_duration_quantile", {"mode": "max"}),
     "NoteDensity": ("note_density_quantile", {}),
-    "PitchClassSet": ("pitch_class_set", {}),
+    "SilenceProportion": ("silence_proportion", {}),
+    "PitchClassSetTrack": ("pitch_class_set", {"level": "track"}),
     "PitchRange": ("pitch_range", {}),
     "KeySignature": ("key_signature", {}),
     "NoteDurationDist": ("note_duration_dist", {}),
-    "SilenceProportion": ("silence_proportion", {}),
     "OnsetPolyphony": ("onset_polyphony", {}),
+    # bar-level
+    "PitchClassSet": ("pitch_class_set", {}),  # default level="bar"
+    "NoteDensityBar": ("note_density_quantile", {"level": "bar"}),
+    "MinPolyphonyBar": ("polyphony_quantile", {"mode": "min", "level": "bar"}),
+    "MaxPolyphonyBar": ("polyphony_quantile", {"mode": "max", "level": "bar"}),
+    "SilenceProportionBar": ("silence_proportion", {"level": "bar"}),
+    "MinNoteDurationBar": ("note_duration_quantile", {"mode": "min", "level": "bar"}),
+    "MaxNoteDurationBar": ("note_duration_quantile", {"mode": "max", "level": "bar"}),
 }
 
 __all__ = [
@@ -57,6 +66,7 @@ __all__ = [
     "NoteDurationDistribution",
     "NoteDurationQuantile",
     "OnsetPolyphony",
+    "PitchClassSet",
     "PitchRange",
     "PolyphonyQuantile",
     "SilenceProportion",

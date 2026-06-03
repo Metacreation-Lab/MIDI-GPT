@@ -161,9 +161,11 @@ class AttributeAnalyzer:
             cfg_dict = {}
 
         attrs: list = []
-        # maps unique identifier (TokenType string OR registry key) to attrs index.
-        # TokenType used for auto-inference, registry key used for explicit overrides.
-        auto_indices: dict[str, int] = {}
+        # Keyed by token_type string — the unique identity of each attribute slot
+        # in the model vocabulary. Both the auto-inference and explicit-override
+        # paths use this so that different registry entries (e.g. min/max polyphony)
+        # that share a registry key but have distinct token_types don't collide.
+        by_token_type: dict[str, int] = {}
 
         for d in cfg_dict.get("token_domains", []) or []:
             tt = d.get("type")
@@ -173,7 +175,7 @@ class AttributeAnalyzer:
             reg_key, params = mapping
             if reg_key not in ATTRIBUTE_REGISTRY:
                 continue
-            auto_indices[tt] = len(attrs)
+            by_token_type[tt] = len(attrs)
             attrs.append(ATTRIBUTE_REGISTRY[reg_key](**params))
 
         raw = getattr(config, "attribute_controls_json", "") or ""
@@ -191,20 +193,10 @@ class AttributeAnalyzer:
                         f"Registered: {sorted(ATTRIBUTE_REGISTRY.keys())}"
                     )
                 inst = ATTRIBUTE_REGISTRY[name](**params)
-
-                # If this instance's TokenType is already auto-inferred, replace it.
-                # Otherwise if the registry key is an auto-index (simple case), replace it.
-                # Otherwise append.
-                replaced = False
-                if inst.token_type in auto_indices:
-                    attrs[auto_indices[inst.token_type]] = inst
-                    replaced = True
-                elif name in auto_indices:
-                    attrs[auto_indices[name]] = inst
-                    replaced = True
-
-                if not replaced:
-                    auto_indices[name] = len(attrs)
+                if inst.token_type in by_token_type:
+                    attrs[by_token_type[inst.token_type]] = inst
+                else:
+                    by_token_type[inst.token_type] = len(attrs)
                     attrs.append(inst)
 
         return AttributeAnalyzer(attrs)
