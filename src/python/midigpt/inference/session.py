@@ -48,6 +48,14 @@ class _KVRunner:
         a redundant make_empty_kv() per step). On subsequent calls the cache
         from the previous step is reused.
         """
+        # The C++ encoder always produces CPU tensors; move to model device.
+        if self._initial_kv:
+            dev = self._initial_kv[0][0].device
+            ctx_t = ctx_t.to(dev)
+            if key_mask is not None:
+                key_mask = key_mask.to(dev)
+            if position_ids is not None:
+                position_ids = position_ids.to(dev)
         kwargs = {}
         if key_mask is not None:
             kwargs["key_mask"] = key_mask
@@ -392,9 +400,12 @@ class SamplingSession:
             raise _ContextOverflow(context_len, model_max_ctx)
         max_gen_tokens = model_max_ctx - context_len - 1
 
-        # Pre-allocate mask buffer once for this step (reused every token)
+        # Pre-allocate mask buffer once for this step (reused every token).
+        # Allocate on the model device so masked_fill stays device-consistent.
         vocab_size = self._engine._tokenizer.vocab_size()
-        mask_buf = torch.empty(vocab_size, dtype=torch.bool)
+        _ikv = self._engine._initial_kv
+        _model_dev = _ikv[0][0].device if _ikv else torch.device("cpu")
+        mask_buf = torch.empty(vocab_size, dtype=torch.bool, device=_model_dev)
 
         kv = _KVRunner(self._engine._model, self._engine._initial_kv)
         with torch.no_grad():
