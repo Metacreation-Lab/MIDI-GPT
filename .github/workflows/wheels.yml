@@ -55,17 +55,36 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
+
+      - name: Extract changelog section for this tag
+        id: changelog
+        run: |
+          version="${GITHUB_REF#refs/tags/v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[?" v "\\]?" {flag=1; next}
+            flag && /^## / {exit}
+            flag {print}
+          ' CHANGELOG.md > release_notes.md
+          if [ ! -s release_notes.md ]; then
+            echo "No changelog entry found for v$version — falling back to auto-generated notes." >&2
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           draft: false
-          generate_release_notes: true
+          body_path: release_notes.md
+          generate_release_notes: ${{ steps.changelog.outputs.missing == 'true' }}
 
   publish_pypi:
     name: Publish to PyPI
