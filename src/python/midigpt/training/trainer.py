@@ -172,7 +172,13 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
     import json as _json
 
     enc_path = Path(config.encoder_config_path)
-    if enc_path.suffix == ".pt":
+    if enc_path.suffix == ".safetensors":
+        from safetensors import safe_open
+
+        with safe_open(str(enc_path), framework="pt") as _f:
+            _meta = _f.metadata()
+        enc_json_str = _meta.get("encoder_config", "{}")
+    elif enc_path.suffix == ".pt":
         import torch as _torch
 
         _bundle = _torch.load(str(enc_path), map_location="cpu", weights_only=False)
@@ -271,7 +277,7 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
     enc_cfg = model.encoder_config
     if hasattr(enc_cfg, "to_json"):
         enc_cfg = _json.loads(enc_cfg.to_json())
-    final_path = Path(config.output_dir) / "model_final.pt"
+    final_path = Path(config.output_dir) / "model_final.safetensors"
     model.save_pretrained(str(final_path), encoder_config=enc_cfg)
     log.info("Training complete. Final bundle: %s", final_path)
 

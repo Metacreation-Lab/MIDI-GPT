@@ -16,6 +16,7 @@ Plus error paths: missing files, malformed ``.pt`` files, missing
 
 from __future__ import annotations
 
+import json
 import pathlib
 
 import pytest
@@ -23,6 +24,7 @@ import torch
 
 import midigpt._core as _core
 from midigpt.attributes.base import AttributeAnalyzer
+from midigpt.inference.model.transformer_lm_base import SAFETENSORS_FORMAT_VERSION
 from midigpt.tokenizer.checkpoint import CheckpointBundle, load_checkpoint
 from midigpt.tokenizer.tokenizer import Tokenizer
 
@@ -35,32 +37,32 @@ def _vocab_size(enc_cfg: _core.EncoderConfig) -> int:
 
 
 # --------------------------------------------------------------------------- #
-#  Packed .pt bundle
+#  Safetensors bundle (current format)
 # --------------------------------------------------------------------------- #
-def test_load_checkpoint_packed_bundle_returns_ready_model(packed_bundle_path):
+def test_load_checkpoint_safetensors_returns_ready_model(packed_bundle_path):
     bundle = load_checkpoint(str(packed_bundle_path))
 
     assert isinstance(bundle, CheckpointBundle)
-    assert bundle.model is not None, "packed bundle should hydrate the model"
-    assert bundle.model_path is None, "packed bundle uses .model, not .model_path"
+    assert bundle.model is not None, "safetensors bundle should hydrate the model"
+    assert bundle.model_path is None, "safetensors bundle uses .model, not .model_path"
     assert isinstance(bundle.encoder_config, _core.EncoderConfig)
-    # The hydrated model exposes its packed encoder_config, and our loader
-    # uses it to build the EncoderConfig instance — sanity-check the vocab
-    # size matches what the model was built for.
     assert bundle.model.cfg.vocab_size > 0
     assert _vocab_size(bundle.encoder_config) == bundle.model.cfg.vocab_size
 
 
-def test_load_checkpoint_packed_bundle_format_version_present(packed_bundle_path):
-    """The on-disk bundle must carry ``format_version`` — that is the gate
-    distinguishing packed bundles from random pickled objects."""
-    raw = torch.load(str(packed_bundle_path), map_location="cpu", weights_only=False)
-    assert isinstance(raw, dict)
-    assert "format_version" in raw
-    assert raw["format_version"] == 1
-    assert "state_dict" in raw
-    assert "encoder_config" in raw
-    assert raw["arch"] == "gpt2"
+def test_load_checkpoint_safetensors_metadata_fields(packed_bundle_path):
+    """Safetensors header must carry format_version, arch, config, encoder_config."""
+    from safetensors import safe_open
+
+    with safe_open(str(packed_bundle_path), framework="pt") as f:
+        meta = f.metadata()
+        tensor_keys = set(f.keys())
+
+    assert meta["format_version"] == str(SAFETENSORS_FORMAT_VERSION)
+    assert meta["arch"] == "gpt2"
+    assert json.loads(meta["config"])  # non-empty dict
+    assert json.loads(meta["encoder_config"])  # non-empty dict
+    assert len(tensor_keys) > 0
 
 
 # --------------------------------------------------------------------------- #
@@ -149,30 +151,44 @@ def test_load_checkpoint_pt_without_format_version_raises(tmp_path):
         load_checkpoint(str(bad))
 
 
+def test_load_checkpoint_safetensors_with_none_encoder_config_raises(
+    tmp_path,
+    tiny_gpt2,
+):
+    raw_path = tmp_path / "no_enc.safetensors"
+    tiny_gpt2.save_pretrained(str(raw_path), encoder_config=None)
+    with pytest.raises(ValueError, match="encoder_config"):
+        load_checkpoint(str(raw_path))
+
+
 def test_load_checkpoint_pt_bundle_with_none_encoder_config_raises(
     tmp_path,
     tiny_gpt2,
 ):
-    # Save a real packed bundle, then re-save with encoder_config=None.
+    # Legacy .pt path: save a valid packed bundle then manually corrupt encoder_config.
     raw_path = tmp_path / "no_enc.pt"
-    tiny_gpt2.save_pretrained(str(raw_path), encoder_config={})
-    raw = torch.load(str(raw_path), map_location="cpu", weights_only=False)
-    raw["encoder_config"] = None
-    torch.save(raw, str(raw_path))
-
+    torch.save(
+        {
+            "format_version": 1,
+            "arch": "gpt2",
+            "config": {},
+            "encoder_config": None,
+            "state_dict": {},
+        },
+        str(raw_path),
+    )
     with pytest.raises(ValueError, match="encoder_config"):
         load_checkpoint(str(raw_path))
 
 
 def test_load_checkpoint_random_path_raises(tmp_path):
-    # Not a directory, not a .pt file — just some random non-existent path.
     bogus = tmp_path / "does_not_exist.bin"
-    with pytest.raises(ValueError, match="directory or a .pt bundle"):
+    with pytest.raises(ValueError, match=r"\.safetensors"):
         load_checkpoint(str(bogus))
 
 
 def test_load_checkpoint_non_pt_extension_file_raises(tmp_path):
     f = tmp_path / "weights.bin"
     f.write_bytes(b"\x00\x01\x02")
-    with pytest.raises(ValueError, match="directory or a .pt bundle"):
+    with pytest.raises(ValueError, match=r"\.safetensors"):
         load_checkpoint(str(f))

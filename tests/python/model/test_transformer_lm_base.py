@@ -24,6 +24,7 @@ import torch
 from midigpt.inference.model.gpt2 import GPT2Config, GPT2LMHeadModel
 from midigpt.inference.model.transformer_lm_base import (
     PACKED_FORMAT_VERSION,
+    SAFETENSORS_FORMAT_VERSION,
     TransformerLMBase,
     resolve_device,
 )
@@ -72,30 +73,31 @@ def test_resolve_device_mps_raises_when_unavailable():
 # --------------------------------------------------------------------------- #
 #  Packed-bundle save_pretrained / from_pretrained roundtrip
 # --------------------------------------------------------------------------- #
-def test_save_pretrained_writes_packed_bundle_with_all_fields(
+def test_save_pretrained_writes_safetensors_with_all_fields(
     tiny_gpt2, ghost_config_json, tmp_path
 ):
+    from safetensors import safe_open
+
     enc = json.loads(ghost_config_json)
-    path = tmp_path / "bundle.pt"
+    path = tmp_path / "bundle.safetensors"
     tiny_gpt2.save_pretrained(str(path), encoder_config=enc)
 
-    raw = torch.load(str(path), map_location="cpu", weights_only=False)
-    assert isinstance(raw, dict)
-    assert raw["format_version"] == PACKED_FORMAT_VERSION
-    assert raw["arch"] == GPT2LMHeadModel.arch == "gpt2"
-    assert raw["config"] == asdict(tiny_gpt2.cfg)
-    assert raw["encoder_config"] == enc
-    assert set(raw["state_dict"].keys()) == set(tiny_gpt2.state_dict().keys())
-    # State-dict tensors saved on CPU.
-    for _k, v in raw["state_dict"].items():
-        assert v.device.type == "cpu"
+    with safe_open(str(path), framework="pt") as f:
+        meta = f.metadata()
+        tensor_keys = set(f.keys())
+
+    assert meta["format_version"] == str(SAFETENSORS_FORMAT_VERSION)
+    assert meta["arch"] == GPT2LMHeadModel.arch == "gpt2"
+    assert json.loads(meta["config"]) == asdict(tiny_gpt2.cfg)
+    assert json.loads(meta["encoder_config"]) == enc
+    assert tensor_keys == set(tiny_gpt2.state_dict().keys())
 
 
 def test_from_pretrained_roundtrip_matches_state_dict_and_config(
     tiny_gpt2, ghost_config_json, tmp_path
 ):
     enc = json.loads(ghost_config_json)
-    path = tmp_path / "bundle.pt"
+    path = tmp_path / "bundle.safetensors"
     tiny_gpt2.save_pretrained(str(path), encoder_config=enc)
 
     loaded = GPT2LMHeadModel.from_pretrained(str(path), device="cpu")
@@ -115,7 +117,7 @@ def test_from_pretrained_save_pretrained_uses_self_encoder_config_when_omitted(
 ):
     enc = json.loads(ghost_config_json)
     tiny_gpt2.encoder_config = enc  # set on the model
-    path = tmp_path / "bundle.pt"
+    path = tmp_path / "bundle.safetensors"
     tiny_gpt2.save_pretrained(str(path))  # no encoder_config kwarg
     loaded = GPT2LMHeadModel.from_pretrained(str(path), device="cpu")
     assert loaded.encoder_config == enc
@@ -174,7 +176,7 @@ def test_subclass_without_arch_cannot_load_packed_bundle(tiny_gpt2, tmp_path):
         # arch intentionally NOT defined
         Config = _Cfg
 
-    path = tmp_path / "bundle.pt"
+    path = tmp_path / "bundle.safetensors"
     tiny_gpt2.save_pretrained(str(path), encoder_config=None)
     # `cls.arch` lookup raises AttributeError because the ClassVar is unset.
     with pytest.raises(AttributeError):
@@ -188,7 +190,7 @@ def test_subclass_without_config_cannot_construct_from_bundle(tiny_gpt2, tmp_pat
         arch = "gpt2"  # matches the bundle so we get past arch check
         # Config intentionally NOT defined
 
-    path = tmp_path / "bundle.pt"
+    path = tmp_path / "bundle.safetensors"
     tiny_gpt2.save_pretrained(str(path), encoder_config=None)
     with pytest.raises(AttributeError):
         Incomplete.from_pretrained(str(path), device="cpu")
@@ -269,7 +271,7 @@ def test_roundtrip_preserves_forward_logits_bitwise(tiny_gpt2, ghost_config_json
     with torch.no_grad():
         ref_logits, _ = tiny_gpt2(ids)
 
-    path = tmp_path / "bundle.pt"
+    path = tmp_path / "bundle.safetensors"
     tiny_gpt2.save_pretrained(str(path), encoder_config=json.loads(ghost_config_json))
     loaded = GPT2LMHeadModel.from_pretrained(str(path), device="cpu")
     loaded.eval()

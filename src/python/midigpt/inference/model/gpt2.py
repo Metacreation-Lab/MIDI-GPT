@@ -252,10 +252,11 @@ class GPT2LMHeadModel(TransformerLMBase):
     def make_empty_kv(self) -> tuple:
         """Return zero-length past_kv for the first forward call."""
         cfg = self.cfg
+        dev = next(self.parameters()).device
         return tuple(
             (
-                torch.zeros(1, cfg.n_head, 0, cfg.head_dim),
-                torch.zeros(1, cfg.n_head, 0, cfg.head_dim),
+                torch.zeros(1, cfg.n_head, 0, cfg.head_dim, device=dev),
+                torch.zeros(1, cfg.n_head, 0, cfg.head_dim, device=dev),
             )
             for _ in range(cfg.n_layer)
         )

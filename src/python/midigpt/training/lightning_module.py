@@ -105,12 +105,12 @@ class MidiGPTLightningModule(L.LightningModule):
     #  Save packed inference bundle alongside every Lightning checkpoint
     # ------------------------------------------------------------------ #
     def on_save_checkpoint(self, checkpoint: dict) -> None:
-        """Write a packed .pt inference bundle next to the .ckpt file."""
+        """Write a safetensors inference bundle next to the .ckpt file."""
         ckpt_dir = self.trainer.checkpoint_callback.dirpath
         if ckpt_dir is None:
             return
         step = self.trainer.global_step
-        bundle_path = Path(ckpt_dir) / f"model-step={step}.pt"
+        bundle_path = Path(ckpt_dir) / f"model-step={step}.safetensors"
         enc_cfg = self.model.encoder_config
         if isinstance(enc_cfg, object) and hasattr(enc_cfg, "to_json"):
             enc_cfg = json.loads(enc_cfg.to_json())

@@ -27,7 +27,7 @@ Homepage = "https://github.com/Metacreation-Lab/MIDI-GPT"
 Paper    = "https://arxiv.org/abs/2501.17011"
 
 [project.optional-dependencies]
-inference = ["torch>=2.0", "tqdm>=4.65", "huggingface_hub>=0.22"]
+inference = ["torch>=2.0", "tqdm>=4.65", "huggingface_hub>=0.22", "safetensors>=0.4"]
 train     = ["midigpt[inference]", "lightning>=2.2",
              "datasets>=2.18", "pyarrow>=15.0", "python-dotenv>=1.0"]
 dev       = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.9"]

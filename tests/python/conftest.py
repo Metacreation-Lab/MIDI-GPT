@@ -248,7 +248,7 @@ def fake_model_factory(ghost_tokenizer):
 # --------------------------------------------------------------------------- #
 @pytest.fixture
 def packed_bundle_path(tmp_path, tiny_gpt2, ghost_config_json) -> pathlib.Path:
-    bundle = tmp_path / "tiny.pt"
+    bundle = tmp_path / "tiny.safetensors"
     tiny_gpt2.save_pretrained(str(bundle), encoder_config=json.loads(ghost_config_json))
     return bundle
 

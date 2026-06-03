@@ -20,13 +20,16 @@ the packed bundle format:
 
 from __future__ import annotations
 
+import json as _json
+import pathlib
 from dataclasses import asdict
 from typing import ClassVar
 
 import torch
 import torch.nn as nn
 
-PACKED_FORMAT_VERSION = 1
+PACKED_FORMAT_VERSION = 1          # legacy .pt pickle format (read-only, backward compat)
+SAFETENSORS_FORMAT_VERSION = 2     # current .safetensors format
 
 
 def resolve_device(device: str | torch.device | None) -> torch.device:
@@ -69,6 +72,48 @@ class TransformerLMBase(nn.Module):
         dtype: torch.dtype | None = None,
     ) -> TransformerLMBase:
         dev = resolve_device(device)
+        p = pathlib.Path(path)
+        if p.suffix == ".safetensors":
+            return cls._from_safetensors(path, dev, dtype)
+        return cls._from_pt_bundle(path, dev, dtype)
+
+    @classmethod
+    def _from_safetensors(
+        cls, path: str, dev: torch.device, dtype: torch.dtype | None
+    ) -> TransformerLMBase:
+        try:
+            from safetensors import safe_open
+            from safetensors.torch import load_file
+        except ImportError:
+            raise ImportError("pip install midigpt[inference] to enable safetensors") from None
+
+        with safe_open(path, framework="pt") as f:
+            meta = f.metadata()
+
+        fv = meta.get("format_version")
+        if fv != str(SAFETENSORS_FORMAT_VERSION):
+            raise ValueError(
+                f"{path} has format_version={fv!r}; "
+                f"expected {SAFETENSORS_FORMAT_VERSION!r}. "
+                "Re-export with save_pretrained()."
+            )
+        arch = meta.get("arch", "")
+        if arch != cls.arch:
+            raise ValueError(f"{path} has arch={arch!r}, but {cls.__name__}.arch={cls.arch!r}")
+
+        cfg = cls.Config(**_json.loads(meta["config"]))
+        model = cls(cfg)
+        model.load_state_dict(load_file(path, device="cpu"), strict=True)
+        model.encoder_config = _json.loads(meta.get("encoder_config", "null"))
+        model.eval()
+        if dtype is not None:
+            model = model.to(dtype=dtype)
+        return model.to(dev)
+
+    @classmethod
+    def _from_pt_bundle(
+        cls, path: str, dev: torch.device, dtype: torch.dtype | None
+    ) -> TransformerLMBase:
         ckpt = torch.load(path, map_location="cpu", weights_only=False)
         if not (isinstance(ckpt, dict) and ckpt.get("format_version") == PACKED_FORMAT_VERSION):
             raise ValueError(
@@ -78,10 +123,13 @@ class TransformerLMBase(nn.Module):
         arch = ckpt.get("arch") or "gpt2"
         if arch != cls.arch:
             raise ValueError(f"{path} has arch={arch!r}, but {cls.__name__}.arch={cls.arch!r}")
+        enc_cfg = ckpt.get("encoder_config")
+        if enc_cfg is None:
+            raise ValueError(f"{path} missing 'encoder_config' — cannot tokenize without it")
         cfg = cls.Config(**ckpt["config"])
         model = cls(cfg)
         model.load_state_dict(ckpt["state_dict"], strict=True)
-        model.encoder_config = ckpt.get("encoder_config")
+        model.encoder_config = enc_cfg
         model.eval()
         if dtype is not None:
             model = model.to(dtype=dtype)
@@ -92,15 +140,18 @@ class TransformerLMBase(nn.Module):
         path: str,
         encoder_config: dict | None = None,
     ) -> None:
+        try:
+            from safetensors.torch import save_file
+        except ImportError:
+            raise ImportError("pip install midigpt[inference] to enable safetensors") from None
+
         if encoder_config is None:
             encoder_config = self.encoder_config
-        torch.save(
-            {
-                "format_version": PACKED_FORMAT_VERSION,
-                "arch": self.arch,
-                "config": asdict(self.cfg),
-                "encoder_config": encoder_config,
-                "state_dict": {k: v.detach().cpu() for k, v in self.state_dict().items()},
-            },
-            path,
-        )
+        metadata = {
+            "format_version": str(SAFETENSORS_FORMAT_VERSION),
+            "arch": self.arch,
+            "config": _json.dumps(asdict(self.cfg)),
+            "encoder_config": _json.dumps(encoder_config) if encoder_config is not None else "null",
+        }
+        state_dict = {k: v.detach().cpu().contiguous() for k, v in self.state_dict().items()}
+        save_file(state_dict, path, metadata=metadata)

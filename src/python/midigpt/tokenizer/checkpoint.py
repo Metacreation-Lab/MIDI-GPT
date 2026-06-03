@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import midigpt._core as _core
+from midigpt.inference.model.transformer_lm_base import SAFETENSORS_FORMAT_VERSION
 
 
 @dataclass
@@ -28,10 +29,54 @@ def load_checkpoint(path: str, device: str | None = None) -> CheckpointBundle:
             model_path=str(model_path),
         )
 
-    if p.is_file() and p.suffix == ".pt":
-        return _load_bundle_file(p, device=device)
+    if p.is_file():
+        if p.suffix == ".safetensors":
+            return _load_safetensors_file(p, device=device)
+        if p.suffix == ".pt":
+            return _load_bundle_file(p, device=device)
 
-    raise ValueError(f"Checkpoint must be a directory or a .pt bundle file: {path}")
+    raise ValueError(f"Checkpoint must be a directory, .safetensors, or .pt file: {path}")
+
+
+def _load_safetensors_file(p: pathlib.Path, device: str | None = None) -> CheckpointBundle:
+    try:
+        from safetensors import safe_open
+        from safetensors.torch import load_file
+    except ImportError:
+        raise ImportError("pip install midigpt[inference] to enable safetensors") from None
+
+    from midigpt.inference.model import get_model_class
+    from midigpt.inference.model.transformer_lm_base import resolve_device
+
+    with safe_open(str(p), framework="pt") as f:
+        meta = f.metadata()
+
+    fv = meta.get("format_version")
+    if fv != str(SAFETENSORS_FORMAT_VERSION):
+        raise ValueError(
+            f"{p} has format_version={fv!r}; expected {SAFETENSORS_FORMAT_VERSION!r}. "
+            "Re-export with GPT2LMHeadModel.save_pretrained()."
+        )
+
+    arch = meta.get("arch", "gpt2")
+    model_cls = get_model_class(arch)
+    cfg_obj = model_cls.Config(**json.loads(meta["config"]))
+    model = model_cls(cfg_obj)
+    model.load_state_dict(load_file(str(p), device="cpu"), strict=True)
+
+    enc_cfg = json.loads(meta.get("encoder_config", "null"))
+    if enc_cfg is None:
+        raise ValueError(f"Bundle {p} missing 'encoder_config' — cannot tokenize without it")
+    model.encoder_config = enc_cfg
+    model.eval()
+
+    if device:
+        model = model.to(resolve_device(device))
+
+    return CheckpointBundle(
+        encoder_config=_core.EncoderConfig.from_json(json.dumps(enc_cfg)),
+        model=model,
+    )
 
 
 def _load_bundle_file(p: pathlib.Path, device: str | None = None) -> CheckpointBundle:
