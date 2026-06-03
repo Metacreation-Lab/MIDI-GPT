@@ -11,6 +11,23 @@ section above `[Unreleased]` before tagging.
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-06-03
+
+### Added
+- Stateless HTTP server (`midigpt[http]` install extra) with end-to-end tests.
+- `CITATION.cff` and root `CONTRIBUTING.md`.
+- MkDocs documentation site, dark slate theme, brand styling, docs badge in README.
+- Ruff + pre-commit linting setup.
+- Curated `CHANGELOG.md` — release workflow now uses per-version sections as the GitHub Release body.
+- Auto-publish GitHub Release on tag push (previously created a draft only).
+
+### Changed
+- Checkpoint format migrated to safetensors (`format_version: 2`). The `.pt` packed-bundle loader still reads `format_version: 1`.
+
+### Fixed
+- Session device mismatch on GPU inference.
+- PyPI publish environment name.
+
 ## [0.2.3] - 2026-06-01
 
 ### Fixed
