@@ -194,7 +194,12 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
         }
 
         case TokenType::NoteDuration: {
-            if (current_bar && current_track && last_token >= 0) {
+            // Dual role: attribute control (NoteDurationDist = 26) before the
+            // first Bar in a track (current_bar_idx < 0), or note duration
+            // token inside a bar. Position disambiguates.
+            if (current_track && current_bar_idx < 0) {
+                current_track->attributes["note_duration_dist"] = value;
+            } else if (current_bar && current_track && last_token >= 0) {
                 auto [lt_type, lt_value] = vocab_.decode(last_token);
                 if (lt_type == TokenType::NoteOnset || lt_type == TokenType::NotePitch) {
                     Note n;
@@ -208,14 +213,19 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
 
                     int note_idx = static_cast<int>(score.notes.size());
                     score.notes.push_back(n);
-                    // Always assign to the bar where the note starts; cross-bar
-                    // tails are clipped by encoder duration domain (e.g. 96 ticks).
                     current_bar->note_indices.push_back(note_idx);
                     current_bar->has_notes = true;
                 }
             }
             break;
         }
+
+        case TokenType::UseVelocity:
+        case TokenType::UseMicrotiming:
+            // Piece-level mode tokens — recorded for round-trip but do not
+            // affect note decoding (velocity/delta are already in the stream
+            // when present; absence means the mode was off).
+            break;
 
         case TokenType::MaskBar:
             // Masked bar — no notes to decode
@@ -261,9 +271,6 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
             break;
         case TokenType::PitchRange:          // = TrackLevelPitchRangeMax = 49
             if (current_track) current_track->attributes["pitch_range"] = value;
-            break;
-        case TokenType::NoteDuration:        // = NoteDurationDist = 26
-            if (current_track) current_track->attributes["note_duration_dist"] = value;
             break;
 
         // Token 42: BarLevelOnsetPolyphonyMax == OnsetPolyphony.

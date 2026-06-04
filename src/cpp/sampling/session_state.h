@@ -20,7 +20,9 @@ public:
         const tokenizer::Encoder&                 encoder,
         const tokenizer::Decoder&                 decoder,
         bool                                      use_span_masks = false,
-        bool                                      remove_future_bars = false
+        bool                                      remove_future_bars = false,
+        int                                       use_velocity = -1,
+        int                                       use_microtiming = -1
     );
 
     bool              complete()       const; // all bars_to_generate are done

@@ -79,6 +79,8 @@ static std::string to_string(TokenType t) {
         case TokenType::None: return "None";
         case TokenType::MaskBar: return "MaskBar";
         case TokenType::TensionDrum: return "TensionDrum";
+        case TokenType::UseVelocity: return "UseVelocity";
+        case TokenType::UseMicrotiming: return "UseMicrotiming";
         default: return "Unknown";
     }
 }
@@ -164,6 +166,8 @@ static TokenType from_string(const std::string& s) {
     if (s == "SilenceProportion") return TokenType::SilenceProportion;
     if (s == "PitchClassSet") return TokenType::PitchClassSet;
     if (s == "PieceEnd") return TokenType::PieceEnd;
+    if (s == "UseVelocity") return TokenType::UseVelocity;
+    if (s == "UseMicrotiming") return TokenType::UseMicrotiming;
 
     throw std::runtime_error("Unknown token type string: " + s);
 }
@@ -177,6 +181,10 @@ EncoderConfig EncoderConfig::from_json(const std::string& json_str) {
     if (j.contains("supports_infill")) c.supports_infill = j["supports_infill"];
     if (j.contains("supports_mask_bar_token")) c.supports_mask_bar_token = j["supports_mask_bar_token"];
     if (j.contains("velocity_sticky")) c.velocity_sticky = j["velocity_sticky"];
+    if (j.contains("switchable_velocity"))    c.switchable_velocity    = j["switchable_velocity"];
+    if (j.contains("switchable_microtiming")) c.switchable_microtiming = j["switchable_microtiming"];
+    // switchable_microtiming implies emit_delta_tokens (model trained with deltas).
+    if (c.switchable_microtiming) c.emit_delta_tokens = true;
     if (j.contains("pitch_range")) {
         auto pr = j["pitch_range"];
         if (!pr.is_array() || pr.size() != 2) {
@@ -262,10 +270,16 @@ void EncoderConfig::derive_token_domains() {
         token_domains.push_back({TokenType::TimeAbsolutePos, max_bar_ticks});
     }
 
+    // Piece-level switchable mode tokens — emitted right after PieceStart
+    // when the model supports switching velocity / microtiming on or off.
+    // Domain size 2: 0 = off, 1 = on.
+    if (switchable_velocity)    token_domains.push_back({TokenType::UseVelocity,    2});
+    if (switchable_microtiming) token_domains.push_back({TokenType::UseMicrotiming, 2});
+
     // Velocity quantization.
     token_domains.push_back({TokenType::VelocityLevel, velocity_levels});
 
-    // Delta microtiming tokens — gated on emit_delta_tokens.
+    // Delta microtiming tokens — gated on emit_delta_tokens (also implied by switchable_microtiming).
     if (emit_delta_tokens) {
         token_domains.push_back({TokenType::DeltaDirection, 2});
         // half-resolution gives sub-tick precision for both ± directions
@@ -314,6 +328,8 @@ std::string EncoderConfig::to_json() const {
     j["supports_infill"]          = supports_infill;
     j["supports_mask_bar_token"]  = supports_mask_bar_token;
     j["velocity_sticky"]          = velocity_sticky;
+    j["switchable_velocity"]      = switchable_velocity;
+    j["switchable_microtiming"]   = switchable_microtiming;
     j["pitch_range"]              = {pitch_min, pitch_max};
     j["velocity_levels"]          = velocity_levels;
     j["note_duration_max_beats"]  = note_duration_max_beats;

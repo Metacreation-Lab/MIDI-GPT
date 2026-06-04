@@ -76,6 +76,10 @@ enum class TokenType {
     MaskBar = 71,
     TensionDrum = 77,       // TOKEN_BAR_LEVEL_TENSION_DRUM
 
+    // Piece-level switchable mode tokens (future models trained on both modes).
+    UseVelocity    = 86,    // 0 = no velocity tokens, 1 = use velocity tokens
+    UseMicrotiming = 87,    // 0 = no delta tokens,    1 = use delta tokens
+
     // Aliases for refactor names if needed
     OnsetPolyphony = 42,    // Use MaxPolyphony as alias for OnsetPolyphony
     PitchRange = 49,

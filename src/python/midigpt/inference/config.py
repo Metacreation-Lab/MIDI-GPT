@@ -99,10 +99,18 @@ class TrackPrompt:
 class GenerationRequest:
     tracks: list[TrackPrompt]
     config: InferenceConfig = field(default_factory=InferenceConfig)
+    # Piece-level controls — apply uniformly to all tracks in the generation.
+    # Supported keys (future switchable models only):
+    #   "velocity"    : bool  — True = use velocity tokens, False = omit them
+    #   "microtiming" : bool  — True = use delta tokens,    False = omit them
+    # Raises RequestValidationError if the encoder does not support switching
+    # the requested feature (e.g. velocity=False on a non-switchable model).
+    controls: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, d: dict) -> "GenerationRequest":
         return cls(
             tracks=[TrackPrompt.from_dict(t) for t in d["tracks"]],
             config=InferenceConfig.from_dict(d.get("config", {})),
+            controls=dict(d.get("controls", {})),
         )

@@ -39,6 +39,14 @@ struct EncodeOptions {
     // (no tokens emitted at all). Used by the "remove" and "attention_skip"
     // mask modes where the caller builds a filtered token sequence directly.
     bool remove_future_bars = false;
+
+    // Piece-level switchable mode overrides (only meaningful when the encoder
+    // config has switchable_velocity / switchable_microtiming = true).
+    //   -1 = follow config default (on)
+    //    0 = off
+    //    1 = on
+    int use_velocity    = -1;
+    int use_microtiming = -1;
 };
 
 struct EncodeResult {

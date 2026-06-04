@@ -194,6 +194,51 @@ def validate_request(
             "/'attention_skip'/'remove')."
         )
 
+    # ---------------- piece-level controls ----------------
+    piece_controls = getattr(request, "controls", {}) or {}
+    _switchable_velocity    = bool(cfg_dict.get("switchable_velocity", False))
+    _switchable_microtiming = bool(cfg_dict.get("switchable_microtiming", False))
+    _has_velocity    = int(cfg_dict.get("velocity_levels", 0)) > 0
+    _has_microtiming = bool(cfg_dict.get("emit_delta_tokens", False)) or _switchable_microtiming
+
+    for k, v in piece_controls.items():
+        if k == "velocity":
+            if not isinstance(v, bool):
+                raise RequestValidationError(
+                    f"controls['velocity'] must be a bool, got {type(v).__name__}"
+                )
+            if v is True and not _has_velocity:
+                raise RequestValidationError(
+                    "controls['velocity']=True but encoder has no VelocityLevel token domain "
+                    "(velocity_levels=0)"
+                )
+            if v is False and not _switchable_velocity:
+                raise RequestValidationError(
+                    "controls['velocity']=False requires the model to have been trained with "
+                    "switchable velocity (switchable_velocity=true in encoder config). "
+                    "Disabling velocity on a non-switchable model is out-of-distribution."
+                )
+        elif k == "microtiming":
+            if not isinstance(v, bool):
+                raise RequestValidationError(
+                    f"controls['microtiming'] must be a bool, got {type(v).__name__}"
+                )
+            if v is True and not _has_microtiming:
+                raise RequestValidationError(
+                    "controls['microtiming']=True but encoder has no Delta token domain "
+                    "(emit_delta_tokens=false and switchable_microtiming=false)"
+                )
+            if v is False and not _switchable_microtiming:
+                raise RequestValidationError(
+                    "controls['microtiming']=False requires the model to have been trained with "
+                    "switchable microtiming (switchable_microtiming=true in encoder config). "
+                    "Disabling microtiming on a non-switchable model is out-of-distribution."
+                )
+        else:
+            raise RequestValidationError(
+                f"Unknown piece-level control {k!r}. Supported: 'velocity', 'microtiming'."
+            )
+
     # ---------------- time signatures ----------------
     allowed_ts = _time_signatures(cfg_dict)
     if allowed_ts:

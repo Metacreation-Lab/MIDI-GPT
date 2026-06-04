@@ -289,6 +289,13 @@ class MidiGPTDataset:
         max_tracks: int = 12,
         min_tracks: int = 1,
         min_fill_ratio: float = 0.75,
+        # Switchable mode dropout probabilities (only used when the encoder
+        # config has switchable_velocity / switchable_microtiming = true).
+        # Each value is the probability that the feature is turned OFF for a
+        # given training sample, so the model sees both modes during training.
+        # 0.0 = always on (no dropout); 0.5 = equal mix; 1.0 = always off.
+        velocity_off_probability: float = 0.0,
+        microtiming_off_probability: float = 0.0,
     ):
         try:
             import datasets as hf
@@ -304,6 +311,8 @@ class MidiGPTDataset:
         self._max_tracks = max_tracks
         self._min_tracks = min_tracks
         self._min_fill_ratio = min_fill_ratio
+        self._velocity_off_prob = velocity_off_probability
+        self._microtiming_off_prob = microtiming_off_probability
 
         cfg_dict = json.loads(tokenizer._vocab.config().to_json())
         raw_map = cfg_dict.get("num_bars_map") or [4]
@@ -322,6 +331,19 @@ class MidiGPTDataset:
                     "the MaskBar token. Set mask_bar_config=None or use a "
                     "masking-capable checkpoint."
                 )
+
+        self._switchable_velocity    = bool(cfg_dict.get("switchable_velocity",    False))
+        self._switchable_microtiming = bool(cfg_dict.get("switchable_microtiming", False))
+        if velocity_off_probability > 0.0 and not self._switchable_velocity:
+            raise ValueError(
+                "velocity_off_probability > 0 but encoder config has switchable_velocity=false. "
+                "Only set this for models trained with switchable velocity."
+            )
+        if microtiming_off_probability > 0.0 and not self._switchable_microtiming:
+            raise ValueError(
+                "microtiming_off_probability > 0 but encoder config has switchable_microtiming=false. "
+                "Only set this for models trained with switchable microtiming."
+            )
 
         ts_list = cfg_dict.get("time_signatures")
         valid_ts: frozenset[str] | None = frozenset(ts_list) if ts_list else None
@@ -398,6 +420,12 @@ class MidiGPTDataset:
                 encode_opts = _core.EncodeOptions()
                 if is_infill and infill_bars:
                     encode_opts.multi_fill = infill_bars
+                # Switchable mode dropout: randomly disable velocity/microtiming
+                # so the model sees both modes during training.
+                if self._switchable_velocity and self._velocity_off_prob > 0.0:
+                    encode_opts.use_velocity = 0 if random.random() < self._velocity_off_prob else 1
+                if self._switchable_microtiming and self._microtiming_off_prob > 0.0:
+                    encode_opts.use_microtiming = 0 if random.random() < self._microtiming_off_prob else 1
                 try:
                     tokens = self._tokenizer.encode(window, opts=encode_opts)
                 except Exception:
@@ -418,7 +446,14 @@ class MidiGPTDataset:
             score, self._num_bars_choices[-1], self._min_tracks, self._min_fill_ratio
         )
         try:
-            tokens = self._tokenizer.encode(window if window else score)[: self._max_seq_len]
+            fallback_opts = _core.EncodeOptions()
+            if self._switchable_velocity and self._velocity_off_prob > 0.0:
+                fallback_opts.use_velocity = 0 if random.random() < self._velocity_off_prob else 1
+            if self._switchable_microtiming and self._microtiming_off_prob > 0.0:
+                fallback_opts.use_microtiming = 0 if random.random() < self._microtiming_off_prob else 1
+            tokens = self._tokenizer.encode(
+                window if window else score, opts=fallback_opts
+            )[: self._max_seq_len]
         except Exception as exc:
             raise ValueError(f"Failed to encode sample {idx} after all retries") from exc
         return {"input_ids": tokens, "labels": tokens}

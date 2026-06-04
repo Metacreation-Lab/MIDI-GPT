@@ -15,7 +15,8 @@ static void encode_bar_notes(
     std::vector<int>& tokens, const Score& score, const Bar& bar,
     bool is_drum, const EncoderConfig& config,
     const std::function<int(TokenType, int)>& clamp_encode,
-    const Vocabulary& vocab_)
+    const Vocabulary& vocab_,
+    bool eff_velocity, bool eff_microtiming)
 {
     std::map<int, std::vector<int>> notes_by_onset;
     std::vector<int> onset_order;
@@ -40,7 +41,7 @@ static void encode_bar_notes(
         }
         for (int ni : notes_by_onset[onset]) {
             const auto& note = score.notes[ni];
-            if (vocab_.has(TokenType::VelocityLevel)) {
+            if (eff_velocity && vocab_.has(TokenType::VelocityLevel)) {
                 int vel_domain = vocab_.domain_size(TokenType::VelocityLevel);
                 VelocityQuantizer vq(vel_domain);
                 int mapped_vel = vq.encode(note.velocity);
@@ -51,7 +52,7 @@ static void encode_bar_notes(
                     last_velocity = mapped_vel;
                 }
             }
-            if (config.emit_delta_tokens && note.delta != 0) {
+            if (eff_microtiming && config.emit_delta_tokens && note.delta != 0) {
                 int d = note.delta;
                 if (d < 0 && vocab_.has(TokenType::DeltaDirection)) {
                     tokens.push_back(vocab_.encode(TokenType::DeltaDirection, 0));
@@ -102,6 +103,18 @@ EncodeResult Encoder::encode_full(const Score& score,
             ? std::min(1, vocab_.domain_size(TokenType::PieceStart) - 1)
             : 0;
         tokens.push_back(vocab_.encode(TokenType::PieceStart, ps_val));
+    }
+
+    // --- PIECE-LEVEL SWITCHABLE MODE TOKENS ---
+    // Resolve effective velocity/microtiming mode: opts override takes precedence;
+    // default is 1 (on) since switchable models default to the feature being active.
+    const bool eff_velocity    = (opts.use_velocity    >= 0) ? (opts.use_velocity    != 0) : true;
+    const bool eff_microtiming = (opts.use_microtiming >= 0) ? (opts.use_microtiming != 0) : true;
+    if (vocab_.has(TokenType::UseVelocity)) {
+        tokens.push_back(vocab_.encode(TokenType::UseVelocity, eff_velocity ? 1 : 0));
+    }
+    if (vocab_.has(TokenType::UseMicrotiming)) {
+        tokens.push_back(vocab_.encode(TokenType::UseMicrotiming, eff_microtiming ? 1 : 0));
     }
 
     // --- NUM_BARS ---
@@ -226,7 +239,8 @@ EncodeResult Encoder::encode_full(const Score& score,
             else if (bar.future && vocab_.has(TokenType::MaskBar)) {
                 tokens.push_back(vocab_.encode(TokenType::MaskBar, 0));
             } else if (!is_infill) {
-                encode_bar_notes(tokens, score, bar, is_drum, config, clamp_encode, vocab_);
+                encode_bar_notes(tokens, score, bar, is_drum, config, clamp_encode, vocab_,
+                                 eff_velocity, eff_microtiming);
             }
 
             if (vocab_.has(TokenType::BarEnd)) {
@@ -258,7 +272,8 @@ EncodeResult Encoder::encode_full(const Score& score,
             if (vocab_.has(TokenType::FillInStart)) {
                 tokens.push_back(vocab_.encode(TokenType::FillInStart, 0));
             }
-            encode_bar_notes(tokens, score, track.bars[b_idx], is_drum, config, clamp_encode, vocab_);
+            encode_bar_notes(tokens, score, track.bars[b_idx], is_drum, config, clamp_encode, vocab_,
+                             eff_velocity, eff_microtiming);
             if (vocab_.has(TokenType::FillInEnd)) {
                 tokens.push_back(vocab_.encode(TokenType::FillInEnd, 0));
             }

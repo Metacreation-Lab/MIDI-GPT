@@ -222,7 +222,9 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("multi_fill", &EncodeOptions::multi_fill)
       .def_readwrite("window_bars", &EncodeOptions::window_bars)
       .def_readwrite("use_span_masks", &EncodeOptions::use_span_masks)
-      .def_readwrite("remove_future_bars", &EncodeOptions::remove_future_bars);
+      .def_readwrite("remove_future_bars", &EncodeOptions::remove_future_bars)
+      .def_readwrite("use_velocity",    &EncodeOptions::use_velocity)
+      .def_readwrite("use_microtiming", &EncodeOptions::use_microtiming);
 
   py::class_<Vocabulary>(m, "Vocabulary")
       .def(py::init<const EncoderConfig &>())
@@ -317,11 +319,13 @@ PYBIND11_MODULE(_core, m) {
       .def(
           py::init<Score, const GenerationStep &, const Vocabulary &,
                    const ConstraintGraph &, const Encoder &, const Decoder &,
-                   bool, bool>(),
+                   bool, bool, int, int>(),
           py::arg("context"), py::arg("step"), py::arg("vocab"),
           py::arg("constraints"), py::arg("encoder"), py::arg("decoder"),
           py::arg("use_span_masks") = false,
-          py::arg("remove_future_bars") = false)
+          py::arg("remove_future_bars") = false,
+          py::arg("use_velocity") = -1,
+          py::arg("use_microtiming") = -1)
       .def("complete", &SessionState::complete)
       .def("context_tokens", &SessionState::context_tokens)
       .def("hidden_spans", &SessionState::hidden_spans)
