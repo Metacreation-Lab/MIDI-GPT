@@ -234,17 +234,19 @@ for bar_idx, bar_entry in enumerate(report["bars"]):
 
 ## Notes on aliases and disambiguation
 
-Some token types share the same integer value due to legacy naming:
+Several token types share an integer with a shorter alias defined in `types.h`. These are intentional — the alias is the canonical Python-facing name, and the longer name describes the architectural role:
 
-| Name A | Name B | Integer | Notes |
-|--------|--------|---------|-------|
-| `BarLevelOnsetPolyphonyMax` | `OnsetPolyphony` | 42 | Disambiguated in decoder by position: before first `Bar` → track-level; after → bar-level |
-| `BarLevelPitchClassSet` | `PitchClassSet` | 51 | Same slot |
-| `TrackLevelSilenceProportionMax` | `SilenceProportion` | 53 | Same slot |
-| `TrackLevelPitchRangeMax` | `PitchRange` | 49 | Same slot |
-| `NoteDurationDist` | `NoteDuration` | 26 | Same slot |
+| Canonical alias | Full name | Integer |
+|----------------|-----------|---------|
+| `OnsetPolyphony` | `BarLevelOnsetPolyphonyMax` | 42 |
+| `PitchClassSet` | `BarLevelPitchClassSet` | 51 |
+| `SilenceProportion` | `TrackLevelSilenceProportionMax` | 53 |
+| `PitchRange` | `TrackLevelPitchRangeMax` | 49 |
+| `NoteDurationDist` | `NoteDuration` | 26 |
 
-Avoid introducing new aliases. If you need a bar-level and a track-level variant of the same concept, they must have different integers (see `BarLevelOnsetDensity = 40` vs `TrackLevelOnsetDensity = 43`).
+Because `OnsetPolyphony = 42` is the same integer as `BarLevelOnsetPolyphonyMax`, the decoder uses token position to disambiguate: a token 42 before the first `Bar` in a track writes `"onset_polyphony"` (track-level); after a `Bar` token it writes `"bar_BarLevelOnsetPolyphonyMax_N"` (bar-level).
+
+Do not introduce new aliases. Bar-level and track-level variants of the same concept need distinct integers (e.g. `BarLevelOnsetDensity = 40` vs `TrackLevelOnsetDensity = 43`).
 
 ---
 
