@@ -51,10 +51,14 @@ class PolyphonyQuantile(BaseAttribute):
         self.mode = mode
         self.level = level
         self.track_type = track_type
-        prefix = "bar_" if level == "bar" else ""
-        suffix = "Bar" if level == "bar" else ""
-        self.name = f"{prefix}{mode}_polyphony"
-        self.token_type = ("Min" if mode == "min" else "Max") + "Polyphony" + suffix
+        self.name = f"{'bar_' if level == 'bar' else ''}{mode}_polyphony"
+        if level == "bar":
+            self.token_type = (
+                "BarLevelOnsetPolyphonyMin" if mode == "min" else "BarLevelOnsetPolyphonyMax"
+            )
+        else:
+            self.token_type = "Min" if mode == "min" else "Max"
+            self.token_type += "Polyphony"
 
     def _get_nz_polyphony(self, score: Score, track_idx: int) -> list[int]:
         track = score.tracks[track_idx]
@@ -222,7 +226,7 @@ class NoteDensityQuantile(BaseAttribute):
         self.level = level
         self.track_type = track_type
         self.name = "bar_note_density" if level == "bar" else "note_density"
-        self.token_type = "NoteDensityBar" if level == "bar" else "NoteDensity"
+        self.token_type = "BarLevelOnsetDensity" if level == "bar" else "NoteDensity"
 
     def _density_bin(self, nc: int, qindex: int) -> int:
         qs = DENSITY_QUANTILES.get(qindex, DENSITY_QUANTILES[0])

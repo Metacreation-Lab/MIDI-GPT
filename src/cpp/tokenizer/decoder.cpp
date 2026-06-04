@@ -69,6 +69,7 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
     int delta_total = 0;
     int beat_length = 4;
     int track_count = 0;
+    int current_bar_idx = -1;  // -1 = before first bar in current track
     int last_token = -1;
     bool is_drum_track = false;
 
@@ -83,6 +84,7 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
             delta_direction = 1;
             delta_total = 0;
             current_velocity_level = 0;
+            current_bar_idx = -1;
 
             if (track_count >= static_cast<int>(score.tracks.size())) {
                 score.tracks.emplace_back();
@@ -117,6 +119,7 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
             delta_direction = 1;
             delta_total = 0;
             beat_length = 4; // default, overridden by TimeSig
+            current_bar_idx++;
 
             if (current_track) {
                 current_track->bars.emplace_back();
@@ -226,6 +229,15 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
 
         // Attribute controls: preserve into track.attributes so encode→decode→encode
         // is a fixed point.
+        //
+        // Track-level: key = Python attribute name (e.g. "min_polyphony").
+        // Bar-level:   key = "bar_{token_type_string}_{bar_idx}" matching the
+        //              format used by AttributeAnalyzer.compute_bar_tokens().
+        //
+        // Token 42 (BarLevelOnsetPolyphonyMax / OnsetPolyphony) is disambiguated
+        // by position: track-level attrs appear before any Bar token
+        // (current_bar_idx == -1); bar-level appear after.
+
         case TokenType::NoteDensity:
             if (current_track) current_track->attributes["note_density"] = value;
             break;
@@ -240,6 +252,65 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
             break;
         case TokenType::MaxNoteDuration:
             if (current_track) current_track->attributes["max_note_duration"] = value;
+            break;
+        case TokenType::SilenceProportion:   // = TrackLevelSilenceProportionMax = 53
+            if (current_track) current_track->attributes["silence_proportion"] = value;
+            break;
+        case TokenType::KeySignature:
+            if (current_track) current_track->attributes["key_signature"] = value;
+            break;
+        case TokenType::PitchRange:          // = TrackLevelPitchRangeMax = 49
+            if (current_track) current_track->attributes["pitch_range"] = value;
+            break;
+        case TokenType::NoteDuration:        // = NoteDurationDist = 26
+            if (current_track) current_track->attributes["note_duration_dist"] = value;
+            break;
+
+        // Token 42: BarLevelOnsetPolyphonyMax == OnsetPolyphony.
+        // Position disambiguates: before first Bar → track-level "onset_polyphony";
+        // after a Bar token → bar-level "bar_BarLevelOnsetPolyphonyMax_N".
+        case TokenType::BarLevelOnsetPolyphonyMax:
+            if (current_track) {
+                if (current_bar_idx < 0) {
+                    current_track->attributes["onset_polyphony"] = value;
+                } else {
+                    current_track->attributes[
+                        "bar_BarLevelOnsetPolyphonyMax_" + std::to_string(current_bar_idx)
+                    ] = value;
+                }
+            }
+            break;
+
+        case TokenType::BarLevelOnsetDensity:
+            if (current_track && current_bar_idx >= 0)
+                current_track->attributes[
+                    "bar_BarLevelOnsetDensity_" + std::to_string(current_bar_idx)
+                ] = value;
+            break;
+
+        case TokenType::BarLevelOnsetPolyphonyMin:
+            if (current_track && current_bar_idx >= 0)
+                current_track->attributes[
+                    "bar_BarLevelOnsetPolyphonyMin_" + std::to_string(current_bar_idx)
+                ] = value;
+            break;
+
+        case TokenType::BarLevelPitchClassSet:  // = PitchClassSet = 51
+            if (current_track && current_bar_idx >= 0)
+                current_track->attributes[
+                    "bar_PitchClassSet_" + std::to_string(current_bar_idx)
+                ] = value;
+            break;
+
+        case TokenType::TrackLevelSilenceProportionMin:
+            if (current_track) current_track->attributes["silence_proportion_min"] = value;
+            break;
+
+        case TokenType::TrackLevelOnsetDensity:
+            if (current_track) current_track->attributes["track_onset_density"] = value;
+            break;
+        case TokenType::TrackLevelOnsetPolyphonyMin:
+            if (current_track) current_track->attributes["track_onset_polyphony_min"] = value;
             break;
 
         default:

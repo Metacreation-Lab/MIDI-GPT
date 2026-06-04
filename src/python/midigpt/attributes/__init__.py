@@ -44,14 +44,14 @@ TOKEN_TYPE_TO_ATTRIBUTE = {
     "KeySignature": ("key_signature", {}),
     "NoteDurationDist": ("note_duration_dist", {}),
     "OnsetPolyphony": ("onset_polyphony", {}),
-    # bar-level
-    "PitchClassSet": ("pitch_class_set", {}),  # default level="bar"
-    "NoteDensityBar": ("note_density_quantile", {"level": "bar"}),
-    "MinPolyphonyBar": ("polyphony_quantile", {"mode": "min", "level": "bar"}),
-    "MaxPolyphonyBar": ("polyphony_quantile", {"mode": "max", "level": "bar"}),
-    "SilenceProportionBar": ("silence_proportion", {"level": "bar"}),
-    "MinNoteDurationBar": ("note_duration_quantile", {"mode": "min", "level": "bar"}),
-    "MaxNoteDurationBar": ("note_duration_quantile", {"mode": "max", "level": "bar"}),
+    # bar-level (C++ TokenType names)
+    "PitchClassSet": ("pitch_class_set", {}),  # = BarLevelPitchClassSet = 51
+    "BarLevelOnsetDensity": ("note_density_quantile", {"level": "bar"}),
+    "BarLevelOnsetPolyphonyMin": ("polyphony_quantile", {"mode": "min", "level": "bar"}),
+    "BarLevelOnsetPolyphonyMax": ("polyphony_quantile", {"mode": "max", "level": "bar"}),
+    # SilenceProportionBar, MinNoteDurationBar, MaxNoteDurationBar, PitchClassSetTrack:
+    # no C++ token type yet — supported as Python classes for future models but not
+    # auto-inferred from checkpoints until corresponding C++ entries are added.
 }
 
 __all__ = [

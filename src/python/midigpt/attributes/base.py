@@ -137,6 +137,66 @@ class AttributeAnalyzer:
             specs.append((attr.token_type, int(size)))
         return specs
 
+    def report(
+        self,
+        result_score: Score,
+        track_idx: int,
+        requested: dict[str, int] | None = None,
+    ) -> dict:
+        """Compare sampled attribute tokens against realized (note-derived) values.
+
+        Returns a dict with two keys:
+          "track": {attr_name: {"sampled", "realized", "requested", "consistent", "achieved"}}
+          "bars":  [{attr_name: {...}}, ...]  — one dict per bar
+
+        "sampled"    = quantized value the model emitted (from track.attributes).
+        "realized"   = quantized value computed from the actual notes.
+        "requested"  = quantized value the caller forced / requested (if provided).
+        "consistent" = sampled == realized.
+        "achieved"   = realized == requested (None when no request was made).
+        """
+        if track_idx >= len(result_score.tracks):
+            return {"track": {}, "bars": []}
+
+        track = result_score.tracks[track_idx]
+        attrs_map = track.attributes  # dict[str, int] populated by decoder
+
+        def _entry(sampled, realized, req):
+            return {
+                "sampled": sampled,
+                "realized": realized,
+                "requested": req,
+                "consistent": sampled == realized if sampled is not None else None,
+                "achieved": (realized == req) if req is not None else None,
+            }
+
+        # --- track-level ---
+        track_report: dict[str, dict] = {}
+        for attr in self._attrs.values():
+            if attr.level != "track":
+                continue
+            sampled = attrs_map.get(attr.name)
+            raw = attr.compute(result_score, track_idx)
+            realized = attr.quantize(raw)
+            req = (requested or {}).get(attr.name)
+            track_report[attr.name] = _entry(sampled, realized, req)
+
+        # --- bar-level ---
+        n_bars = len(track.bars)
+        bar_reports: list[dict[str, dict]] = [{} for _ in range(n_bars)]
+        bar_attrs = [a for a in self._attrs.values() if a.level == "bar"]
+        req_bars = (requested or {}).get("bar_attributes") or {}
+        for bar_idx in range(n_bars):
+            for attr in bar_attrs:
+                key = f"bar_{attr.token_type}_{bar_idx}"
+                sampled = attrs_map.get(key)
+                raw = attr.compute(result_score, track_idx, bar_idx)
+                realized = attr.quantize(raw)
+                req_bar = req_bars.get(bar_idx, {}).get(attr.name)
+                bar_reports[bar_idx][attr.name] = _entry(sampled, realized, req_bar)
+
+        return {"track": track_report, "bars": bar_reports}
+
     @staticmethod
     def from_config(config) -> "AttributeAnalyzer":
         """Build an analyzer from an EncoderConfig.
