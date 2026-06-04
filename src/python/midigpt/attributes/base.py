@@ -61,10 +61,18 @@ class AttributeAnalyzer:
         return result
 
     def compute_bar_tokens(self, score: Score, track_idx: int, bar_idx: int) -> dict[str, int]:
+        track = score.tracks[track_idx]
+        from midigpt._core import TrackType
+        if hasattr(track, "track_type"):
+            is_drum = track.track_type == "drum"
+        else:
+            is_drum = track.type == TrackType.Drum
         return {
             attr.token_type: attr.quantize(attr.compute(score, track_idx, bar_idx))
             for attr in self._attrs.values()
             if attr.level == "bar"
+            and not (getattr(attr, "track_type", "both") == "drum" and not is_drum)
+            and not (getattr(attr, "track_type", "both") == "melodic" and is_drum)
         }
 
     def compute_all(self, score: Score) -> list[dict[str, float | int]]:
@@ -161,6 +169,20 @@ class AttributeAnalyzer:
         track = result_score.tracks[track_idx]
         attrs_map = track.attributes  # dict[str, int] populated by decoder
 
+        from midigpt._core import TrackType
+        if hasattr(track, "track_type"):
+            is_drum = track.track_type == "drum"
+        else:
+            is_drum = track.type == TrackType.Drum
+
+        def _applies(attr) -> bool:
+            tt = getattr(attr, "track_type", "both")
+            if tt == "drum" and not is_drum:
+                return False
+            if tt == "melodic" and is_drum:
+                return False
+            return True
+
         def _entry(sampled, realized, req):
             return {
                 "sampled": sampled,
@@ -173,7 +195,7 @@ class AttributeAnalyzer:
         # --- track-level ---
         track_report: dict[str, dict] = {}
         for attr in self._attrs.values():
-            if attr.level != "track":
+            if attr.level != "track" or not _applies(attr):
                 continue
             sampled = attrs_map.get(attr.name)
             raw = attr.compute(result_score, track_idx)
@@ -184,7 +206,7 @@ class AttributeAnalyzer:
         # --- bar-level ---
         n_bars = len(track.bars)
         bar_reports: list[dict[str, dict]] = [{} for _ in range(n_bars)]
-        bar_attrs = [a for a in self._attrs.values() if a.level == "bar"]
+        bar_attrs = [a for a in self._attrs.values() if a.level == "bar" and _applies(a)]
         req_bars = (requested or {}).get("bar_attributes") or {}
         for bar_idx in range(n_bars):
             for attr in bar_attrs:
