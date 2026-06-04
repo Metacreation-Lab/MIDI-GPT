@@ -13,7 +13,8 @@ SessionState::SessionState(
     bool                                      use_span_masks,
     bool                                      remove_future_bars,
     int                                       use_velocity,
-    int                                       use_microtiming
+    int                                       use_microtiming,
+    int                                       genre
 ) : context_(std::move(context)), step_(step), vocab_(vocab),
     constraints_(constraints), encoder_(encoder), decoder_(decoder),
     remove_future_bars_(remove_future_bars)
@@ -80,6 +81,7 @@ SessionState::SessionState(
     encode_opts.remove_future_bars = remove_future_bars_;
     encode_opts.use_velocity    = use_velocity;
     encode_opts.use_microtiming = use_microtiming;
+    encode_opts.genre           = genre;
 
     if (step_.is_autoregressive) {
         // --- Autoregressive step: suffix-AR encoding ---

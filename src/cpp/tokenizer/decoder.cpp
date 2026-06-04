@@ -222,9 +222,8 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
 
         case TokenType::UseVelocity:
         case TokenType::UseMicrotiming:
-            // Piece-level mode tokens — recorded for round-trip but do not
-            // affect note decoding (velocity/delta are already in the stream
-            // when present; absence means the mode was off).
+        case TokenType::Genre:
+            // Piece-level tokens — no effect on note decoding.
             break;
 
         case TokenType::MaskBar:

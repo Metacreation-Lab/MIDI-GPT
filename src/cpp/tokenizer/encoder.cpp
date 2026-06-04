@@ -116,6 +116,9 @@ EncodeResult Encoder::encode_full(const Score& score,
     if (vocab_.has(TokenType::UseMicrotiming)) {
         tokens.push_back(vocab_.encode(TokenType::UseMicrotiming, eff_microtiming ? 1 : 0));
     }
+    if (opts.genre >= 0 && vocab_.has(TokenType::Genre)) {
+        tokens.push_back(clamp_encode(TokenType::Genre, opts.genre));
+    }
 
     // --- NUM_BARS ---
     // Window size for this encode call. Source order:

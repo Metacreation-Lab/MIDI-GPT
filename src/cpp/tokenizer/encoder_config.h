@@ -50,6 +50,7 @@ struct EncoderConfig {
     // Domain transforms — configurable per model
     std::optional<TimeSignatureList>  time_signatures;
     std::optional<InstrumentGrouping> instrument_grouping;
+    std::optional<GenreGrouping>      genre_grouping;
     std::optional<ValueMapper>        num_bars_map;
 
     static EncoderConfig from_json(const std::string& json_str);

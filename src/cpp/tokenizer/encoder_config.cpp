@@ -206,6 +206,9 @@ EncoderConfig EncoderConfig::from_json(const std::string& json_str) {
         // Identity mapping: every MIDI program is its own group (128 groups).
         c.instrument_grouping = InstrumentGrouping(std::vector<std::vector<int>>{}, 128);
     }
+    if (j.contains("genre_groups")) {
+        c.genre_grouping = GenreGrouping::from_json(j["genre_groups"]);
+    }
     if (j.contains("num_bars_map")) {
         c.num_bars_map = ValueMapper(j["num_bars_map"].get<std::vector<int>>());
     }
@@ -275,6 +278,12 @@ void EncoderConfig::derive_token_domains() {
     // Domain size 2: 0 = off, 1 = on.
     if (switchable_velocity)    token_domains.push_back({TokenType::UseVelocity,    2});
     if (switchable_microtiming) token_domains.push_back({TokenType::UseMicrotiming, 2});
+
+    // Genre token — emitted after piece-level mode tokens when a grouping
+    // is configured. Domain size = number of canonical genre labels.
+    if (genre_grouping && genre_grouping->num_genres() > 0) {
+        token_domains.push_back({TokenType::Genre, genre_grouping->num_genres()});
+    }
 
     // Velocity quantization.
     token_domains.push_back({TokenType::VelocityLevel, velocity_levels});
@@ -354,6 +363,9 @@ std::string EncoderConfig::to_json() const {
     }
     if (instrument_grouping) {
         j["instrument_merge_groups"] = instrument_grouping->to_json();
+    }
+    if (genre_grouping) {
+        j["genre_groups"] = genre_grouping->to_json();
     }
     return j.dump(4);
 }

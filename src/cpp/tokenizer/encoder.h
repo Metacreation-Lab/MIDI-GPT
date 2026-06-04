@@ -47,6 +47,11 @@ struct EncodeOptions {
     //    1 = on
     int use_velocity    = -1;
     int use_microtiming = -1;
+
+    // Piece-level genre override. -1 = not set (no Genre token emitted).
+    // N >= 0 = emit Genre(N) token after mode tokens.
+    // The caller is responsible for validating N against the grouping.
+    int genre = -1;
 };
 
 struct EncodeResult {

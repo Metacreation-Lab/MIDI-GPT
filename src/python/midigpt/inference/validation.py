@@ -201,6 +201,8 @@ def validate_request(
     _has_velocity    = int(cfg_dict.get("velocity_levels", 0)) > 0
     _has_microtiming = bool(cfg_dict.get("emit_delta_tokens", False)) or _switchable_microtiming
 
+    _genre_grouping = getattr(encoder_config, "genre_grouping", None)
+
     for k, v in piece_controls.items():
         if k == "velocity":
             if not isinstance(v, bool):
@@ -234,9 +236,23 @@ def validate_request(
                     "switchable microtiming (switchable_microtiming=true in encoder config). "
                     "Disabling microtiming on a non-switchable model is out-of-distribution."
                 )
+        elif k == "genre":
+            if not isinstance(v, str):
+                raise RequestValidationError(
+                    f"controls['genre'] must be a str, got {type(v).__name__}"
+                )
+            if _genre_grouping is None:
+                raise RequestValidationError(
+                    "controls['genre'] requires genre_groups to be configured in the encoder config"
+                )
+            if not _genre_grouping.contains(v):
+                raise RequestValidationError(
+                    f"controls['genre']={v!r} is not a known genre. "
+                    f"Add it to genre_groups in the encoder config."
+                )
         else:
             raise RequestValidationError(
-                f"Unknown piece-level control {k!r}. Supported: 'velocity', 'microtiming'."
+                f"Unknown piece-level control {k!r}. Supported: 'velocity', 'microtiming', 'genre'."
             )
 
     # ---------------- time signatures ----------------

@@ -22,7 +22,8 @@ public:
         bool                                      use_span_masks = false,
         bool                                      remove_future_bars = false,
         int                                       use_velocity = -1,
-        int                                       use_microtiming = -1
+        int                                       use_microtiming = -1,
+        int                                       genre = -1
     );
 
     bool              complete()       const; // all bars_to_generate are done

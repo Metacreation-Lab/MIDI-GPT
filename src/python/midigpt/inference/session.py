@@ -343,45 +343,29 @@ class SamplingSession:
         mask_mode = getattr(self._request.config, "mask_mode", "token")
         use_span_masks = mask_mode in ("attention", "attention_approx", "attention_skip")
 
-        # Piece-level switchable controls: injected into EncodeOptions so
-        # UseVelocity / UseMicrotiming tokens carry the correct value in the
-        # encoded context. -1 = follow config default (on).
+        # Piece-level controls: injected into EncodeOptions so piece-level tokens
+        # (UseVelocity, UseMicrotiming, Genre) carry the correct value in context.
         piece_controls = getattr(self._request, "controls", {}) or {}
         _use_velocity    = (1 if piece_controls["velocity"]    else 0) if "velocity"    in piece_controls else -1
         _use_microtiming = (1 if piece_controls["microtiming"] else 0) if "microtiming" in piece_controls else -1
+        _genre = -1
+        if "genre" in piece_controls:
+            grouping = self._engine._tokenizer._vocab.config().genre_grouping
+            if grouping is not None:
+                _genre = grouping.encode(piece_controls["genre"])
 
-        _ss_kwargs = dict(
+        state = _core.SessionState(
+            to_cpp(score), step,
+            self._engine._tokenizer._vocab,
+            self._build_constraints(step),
+            self._engine._tokenizer._encoder,
+            self._engine._tokenizer._decoder,
             use_span_masks=use_span_masks,
             remove_future_bars=(mask_mode == "remove"),
+            use_velocity=_use_velocity,
+            use_microtiming=_use_microtiming,
+            genre=_genre,
         )
-        # use_velocity / use_microtiming require the C++ extension to be rebuilt
-        # with the new SessionState constructor params. Guard for backward compat.
-        if _use_velocity != -1 or _use_microtiming != -1:
-            try:
-                state = _core.SessionState(
-                    to_cpp(score), step,
-                    self._engine._tokenizer._vocab,
-                    self._build_constraints(step),
-                    self._engine._tokenizer._encoder,
-                    self._engine._tokenizer._decoder,
-                    **_ss_kwargs,
-                    use_velocity=_use_velocity,
-                    use_microtiming=_use_microtiming,
-                )
-            except TypeError:
-                raise RuntimeError(
-                    "controls['velocity'/'microtiming'] requires the C++ extension "
-                    "to be rebuilt with switchable-mode SessionState support."
-                )
-        else:
-            state = _core.SessionState(
-                to_cpp(score), step,
-                self._engine._tokenizer._vocab,
-                self._build_constraints(step),
-                self._engine._tokenizer._encoder,
-                self._engine._tokenizer._decoder,
-                **_ss_kwargs,
-            )
 
         context_len = len(state.context_tokens())
         spans = state.hidden_spans() if use_span_masks else []

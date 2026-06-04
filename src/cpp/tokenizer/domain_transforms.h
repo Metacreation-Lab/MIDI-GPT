@@ -7,6 +7,7 @@
 #include <utility>
 #include <stdexcept>
 #include <algorithm>
+#include <cctype>
 #include <nlohmann/json.hpp>
 
 namespace midigpt::tokenizer {
@@ -269,6 +270,87 @@ public:
 private:
     std::vector<int> values_;
     std::map<int, int> to_index_;
+};
+
+// ============================================================
+// GenreGrouping
+// Maps raw genre strings (from GigaMIDI music_styles_curated) to
+// dense token IDs. Each group has one canonical name (the map key)
+// and zero or more alias strings. Lookup is case-insensitive.
+//
+// Config format: {"rock": ["rock", "punk", "metal"], "jazz": [...]}
+// Dense IDs are assigned in sorted key order.
+// ============================================================
+class GenreGrouping {
+public:
+    GenreGrouping() = default;
+
+    explicit GenreGrouping(std::map<std::string, std::vector<std::string>> groups)
+        : raw_groups_(std::move(groups))
+    {
+        int id = 0;
+        for (const auto& [canonical, aliases] : raw_groups_) {
+            canonical_names_.push_back(canonical);
+            forward_[lower(canonical)] = id;
+            for (const auto& alias : aliases) {
+                forward_[lower(alias)] = id;
+            }
+            ++id;
+        }
+        num_genres_ = id;
+    }
+
+    int encode(const std::string& genre) const {
+        auto it = forward_.find(lower(genre));
+        if (it != forward_.end()) return it->second;
+        throw std::runtime_error("Unknown genre: '" + genre +
+            "'. Add it to genre_groups in the encoder config.");
+    }
+
+    bool contains(const std::string& genre) const {
+        return forward_.find(lower(genre)) != forward_.end();
+    }
+
+    std::string decode(int id) const {
+        if (id < 0 || id >= num_genres_) {
+            throw std::runtime_error("Genre id out of range: " + std::to_string(id));
+        }
+        return canonical_names_[id];
+    }
+
+    int num_genres() const { return num_genres_; }
+
+    static GenreGrouping from_json(const nlohmann::json& j) {
+        std::map<std::string, std::vector<std::string>> groups;
+        for (auto& [key, val] : j.items()) {
+            std::vector<std::string> aliases;
+            for (const auto& a : val) {
+                aliases.push_back(a.get<std::string>());
+            }
+            groups[key] = std::move(aliases);
+        }
+        return GenreGrouping(std::move(groups));
+    }
+
+    nlohmann::json to_json() const {
+        nlohmann::json j = nlohmann::json::object();
+        for (const auto& [canonical, aliases] : raw_groups_) {
+            j[canonical] = aliases;
+        }
+        return j;
+    }
+
+private:
+    static std::string lower(std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+        return s;
+    }
+
+    std::map<std::string, std::vector<std::string>> raw_groups_;
+    std::map<std::string, int> forward_;      // lowercased string → id
+    std::vector<std::string>   canonical_names_; // id → canonical name
+    int num_genres_ = 0;
 };
 
 } // namespace midigpt::tokenizer

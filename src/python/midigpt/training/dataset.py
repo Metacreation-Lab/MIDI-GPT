@@ -296,6 +296,11 @@ class MidiGPTDataset:
         # 0.0 = always on (no dropout); 0.5 = equal mix; 1.0 = always off.
         velocity_off_probability: float = 0.0,
         microtiming_off_probability: float = 0.0,
+        # Genre injection probability (only used when encoder config has
+        # genre_groups configured). When the sample has a recognized genre,
+        # include the Genre token with this probability, omit with 1-p.
+        # 1.0 = always include when known; 0.0 = never include.
+        genre_probability: float = 1.0,
     ):
         try:
             import datasets as hf
@@ -313,6 +318,7 @@ class MidiGPTDataset:
         self._min_fill_ratio = min_fill_ratio
         self._velocity_off_prob = velocity_off_probability
         self._microtiming_off_prob = microtiming_off_probability
+        self._genre_probability = genre_probability
 
         cfg_dict = json.loads(tokenizer._vocab.config().to_json())
         raw_map = cfg_dict.get("num_bars_map") or [4]
@@ -344,6 +350,9 @@ class MidiGPTDataset:
                 "microtiming_off_probability > 0 but encoder config has switchable_microtiming=false. "
                 "Only set this for models trained with switchable microtiming."
             )
+        if not (0.0 <= genre_probability <= 1.0):
+            raise ValueError(f"genre_probability must be in [0, 1] (got {genre_probability})")
+        self._genre_grouping = tokenizer._vocab.config().genre_grouping  # None or GenreGrouping
 
         ts_list = cfg_dict.get("time_signatures")
         valid_ts: frozenset[str] | None = frozenset(ts_list) if ts_list else None
@@ -374,6 +383,18 @@ class MidiGPTDataset:
             return self._encode_one(idx)
         except Exception:
             return self.__getitem__(random.randrange(len(self._data)), _depth + 1)
+
+    def _genre_token(self, idx: int) -> int:
+        """Return genre token id for sample idx, or -1 if unavailable/omitted."""
+        if self._genre_grouping is None or random.random() >= self._genre_probability:
+            return -1
+        raw = self._data[idx].get("music_styles_curated") or []
+        if not raw:
+            return -1
+        label = raw[0] if isinstance(raw, list) else str(raw)
+        if self._genre_grouping.contains(label):
+            return self._genre_grouping.encode(label)
+        return -1
 
     def _encode_one(self, idx: int) -> dict:
         score = Score.from_bytes(self._data[idx]["music"])
@@ -426,6 +447,7 @@ class MidiGPTDataset:
                     encode_opts.use_velocity = 0 if random.random() < self._velocity_off_prob else 1
                 if self._switchable_microtiming and self._microtiming_off_prob > 0.0:
                     encode_opts.use_microtiming = 0 if random.random() < self._microtiming_off_prob else 1
+                encode_opts.genre = self._genre_token(idx)
                 try:
                     tokens = self._tokenizer.encode(window, opts=encode_opts)
                 except Exception:
@@ -451,6 +473,7 @@ class MidiGPTDataset:
                 fallback_opts.use_velocity = 0 if random.random() < self._velocity_off_prob else 1
             if self._switchable_microtiming and self._microtiming_off_prob > 0.0:
                 fallback_opts.use_microtiming = 0 if random.random() < self._microtiming_off_prob else 1
+            fallback_opts.genre = self._genre_token(idx)
             tokens = self._tokenizer.encode(
                 window if window else score, opts=fallback_opts
             )[: self._max_seq_len]

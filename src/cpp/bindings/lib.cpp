@@ -21,6 +21,7 @@
 #include "../sampling/step_planner.h"
 #include "../tokenizer/decoder.h"
 #include "../tokenizer/encoder.h"
+#include "../tokenizer/domain_transforms.h"
 #include "../tokenizer/encoder_config.h"
 #include "../tokenizer/vocabulary.h"
 
@@ -139,7 +140,9 @@ PYBIND11_MODULE(_core, m) {
       .value("NoteDurationDist", TokenType::NoteDurationDist)
       .value("SilenceProportion", TokenType::SilenceProportion)
       .value("PitchClassSet", TokenType::PitchClassSet)
-      .value("PieceEnd", TokenType::PieceEnd);
+      .value("PieceEnd", TokenType::PieceEnd)
+      .value("UseVelocity", TokenType::UseVelocity)
+      .value("UseMicrotiming", TokenType::UseMicrotiming);
 
   py::enum_<TrackType>(m, "TrackType")
       .value("Melodic", TrackType::Melodic)
@@ -174,6 +177,13 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("instrument", &Track::instrument)
       .def_readwrite("type", &Track::type)
       .def_readwrite("attributes", &Track::attributes);
+
+  py::class_<GenreGrouping>(m, "GenreGrouping")
+      .def(py::init<>())
+      .def("encode",     &GenreGrouping::encode)
+      .def("decode",     &GenreGrouping::decode)
+      .def("contains",   &GenreGrouping::contains)
+      .def("num_genres", &GenreGrouping::num_genres);
 
   py::class_<Score>(m, "Score")
       .def(py::init<>())
@@ -211,7 +221,12 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("note_duration_max_beats",  &EncoderConfig::note_duration_max_beats)
       .def_readwrite("attribute_controls_json",  &EncoderConfig::attribute_controls_json)
       .def("derive_token_domains",               &EncoderConfig::derive_token_domains)
-      .def("add_attribute_token_domains",        &EncoderConfig::add_attribute_token_domains);
+      .def("add_attribute_token_domains",        &EncoderConfig::add_attribute_token_domains)
+      .def_property_readonly("genre_grouping",
+          [](const EncoderConfig& c) -> py::object {
+              if (c.genre_grouping) return py::cast(*c.genre_grouping);
+              return py::none();
+          });
 
   py::class_<EncodeOptions>(m, "EncodeOptions")
       .def(py::init<>())
@@ -224,7 +239,8 @@ PYBIND11_MODULE(_core, m) {
       .def_readwrite("use_span_masks", &EncodeOptions::use_span_masks)
       .def_readwrite("remove_future_bars", &EncodeOptions::remove_future_bars)
       .def_readwrite("use_velocity",    &EncodeOptions::use_velocity)
-      .def_readwrite("use_microtiming", &EncodeOptions::use_microtiming);
+      .def_readwrite("use_microtiming", &EncodeOptions::use_microtiming)
+      .def_readwrite("genre",           &EncodeOptions::genre);
 
   py::class_<Vocabulary>(m, "Vocabulary")
       .def(py::init<const EncoderConfig &>())
@@ -319,13 +335,14 @@ PYBIND11_MODULE(_core, m) {
       .def(
           py::init<Score, const GenerationStep &, const Vocabulary &,
                    const ConstraintGraph &, const Encoder &, const Decoder &,
-                   bool, bool, int, int>(),
+                   bool, bool, int, int, int>(),
           py::arg("context"), py::arg("step"), py::arg("vocab"),
           py::arg("constraints"), py::arg("encoder"), py::arg("decoder"),
           py::arg("use_span_masks") = false,
           py::arg("remove_future_bars") = false,
           py::arg("use_velocity") = -1,
-          py::arg("use_microtiming") = -1)
+          py::arg("use_microtiming") = -1,
+          py::arg("genre") = -1)
       .def("complete", &SessionState::complete)
       .def("context_tokens", &SessionState::context_tokens)
       .def("hidden_spans", &SessionState::hidden_spans)

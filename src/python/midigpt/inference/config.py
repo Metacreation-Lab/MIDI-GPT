@@ -100,11 +100,14 @@ class GenerationRequest:
     tracks: list[TrackPrompt]
     config: InferenceConfig = field(default_factory=InferenceConfig)
     # Piece-level controls — apply uniformly to all tracks in the generation.
-    # Supported keys (future switchable models only):
+    # Supported keys:
     #   "velocity"    : bool  — True = use velocity tokens, False = omit them
+    #                           (requires switchable_velocity=true in encoder config)
     #   "microtiming" : bool  — True = use delta tokens,    False = omit them
-    # Raises RequestValidationError if the encoder does not support switching
-    # the requested feature (e.g. velocity=False on a non-switchable model).
+    #                           (requires switchable_microtiming=true in encoder config)
+    #   "genre"       : str   — canonical genre label from the encoder's genre_groups
+    #                           (requires genre_groups configured in encoder config)
+    # Raises RequestValidationError if the control is invalid or unsupported.
     controls: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
