@@ -10,6 +10,7 @@ Goals:
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 
 import pytest
@@ -374,3 +375,79 @@ def long_piano_score() -> Score:
 @pytest.fixture
 def edge_drums_and_melodic_score() -> Score:
     return Score.from_midi(str(_midi("edge_drums_and_melodic.mid")))
+
+
+# --------------------------------------------------------------------------- #
+#  Parquet data — built on-the-fly from the shipped MIDI fixtures
+# --------------------------------------------------------------------------- #
+
+@pytest.fixture(scope="session")
+def training_parquet(tmp_path_factory) -> pathlib.Path:
+    """Session-scoped parquet built from the MIDI files in tests/midi/.
+
+    Each row holds the raw MIDI bytes plus the three metadata columns that
+    MidiGPTDataset uses for its two-phase filter.  No external data needed:
+    the parquet is reconstructed every test session from committed fixtures.
+
+    Falls back to MIDIGPT_TEST_PARQUET if set, for benchmarking with a full
+    GigaMIDI shard on a development machine.
+    """
+    env = os.environ.get("MIDIGPT_TEST_PARQUET", "")
+    if env:
+        p = pathlib.Path(env)
+        if p.exists():
+            return p
+
+    try:
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+    except ImportError:
+        pytest.skip("pyarrow not available — cannot build training parquet fixture")
+
+    from midigpt._types import Score
+
+    midi_files = sorted(
+        f for f in MIDI_DIR.glob("*.mid") if f.stem != "empty"
+    )
+    if not midi_files:
+        pytest.skip("No MIDI files found in tests/midi/")
+
+    music_col: list[bytes] = []
+    num_tracks_col: list[int] = []
+    total_notes_col: list[int] = []
+    beats_col: list[float] = []
+
+    for midi_path in midi_files:
+        try:
+            raw = midi_path.read_bytes()
+            score = Score.from_bytes(raw)
+            if not score.tracks:
+                continue
+            n_notes = sum(
+                len(bar.notes) for t in score.tracks for bar in t.bars
+            )
+            if n_notes == 0:
+                continue
+            max_bars = max(len(t.bars) for t in score.tracks)
+            music_col.append(raw)
+            num_tracks_col.append(len(score.tracks))
+            total_notes_col.append(n_notes)
+            # Conservative: 4 beats per bar
+            beats_col.append(float(max_bars * 4))
+        except Exception:
+            continue
+
+    if not music_col:
+        pytest.skip("No usable MIDI files could be parsed from tests/midi/")
+
+    table = pa.table(
+        {
+            "music": pa.array(music_col, type=pa.large_binary()),
+            "num_tracks": pa.array(num_tracks_col, type=pa.int32()),
+            "total_notes": pa.array(total_notes_col, type=pa.int64()),
+            "loop_duration_beats": pa.array(beats_col, type=pa.float64()),
+        }
+    )
+    out = tmp_path_factory.mktemp("parquet") / "midi_fixtures.parquet"
+    pq.write_table(table, str(out))
+    return out
