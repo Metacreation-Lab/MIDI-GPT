@@ -68,7 +68,39 @@ case TokenType::MyNewAttribute: return "MyNewAttribute";
 
 This is the exact string Python must use as `token_type`. A mismatch causes a `std::runtime_error` at vocab-build time.
 
-### 3. Handle the token in `decoder.cpp`
+### 3. Wire the token into `encoder.cpp`
+
+File: `src/cpp/tokenizer/encoder.cpp`
+
+The encoder pulls quantized values out of `track.attributes` and emits them as tokens. You must register your attribute in one of two places depending on its level. **Skipping this step is silent**: Python will compute the value, the decoder will know how to read it back, but no token will ever reach the model.
+
+**Track-level**: extend the `post_inst_attrs` table (in the per-track loop, after the `Instrument` token):
+
+```cpp
+const std::vector<std::pair<std::string, TokenType>> post_inst_attrs = {
+    {"min_polyphony",     TokenType::MinPolyphony},
+    ...
+    {"my_new_attribute",  TokenType::MyNewAttribute},  // ← add here
+};
+```
+
+The string key MUST equal the Python class's `name` field. The `vocab_.has(type)` and `track.attributes.count(key)` guards mean: nothing is emitted when the model's vocab doesn't include the type, or when Python didn't compute a value for this track.
+
+**Bar-level**: extend the `bar_attrs` table inside the per-bar loop:
+
+```cpp
+const std::vector<std::pair<std::string, TokenType>> bar_attrs = {
+    {"bar_Tension_" + idx_str,       TokenType::Tension},
+    ...
+    {"bar_MyNewAttribute_" + idx_str, TokenType::MyNewAttribute},  // ← add here
+};
+```
+
+The bar-level key convention is `"bar_<TokenType_string>_<bar_idx>"` — using the exact string from `to_string(TokenType)`, NOT the Python `name`. This must match what the decoder writes (step 4) so that encode → decode → encode is a fixed point.
+
+If your attribute differentiates per track type (e.g. `Tension` for melodic, `TensionDrum` for drums), add BOTH bar-key/TokenType pairs — the encoder simply emits whichever key the Python side populated, and Python's track-type filter ensures only one is populated per track.
+
+### 4. Handle the token in `decoder.cpp`
 
 File: `src/cpp/tokenizer/decoder.cpp`
 
@@ -93,7 +125,7 @@ case TokenType::MyNewAttribute:
 
 The string key must match the Python attribute's `name` field (track-level) or follow the `"bar_{token_type}_{bar_idx}"` convention (bar-level). This is what enables the encode → decode → encode fixed-point and powers `AttributeAnalyzer.report()`.
 
-### 4. Write the Python attribute class
+### 5. Write the Python attribute class
 
 File: create or extend a file in `src/python/midigpt/attributes/`
 
@@ -135,7 +167,7 @@ Key contracts:
 - `token_type` must be the exact string returned by C++ `to_string()`.
 - `name` is the dict key used in `track.attributes` (decoder → Python).
 
-### 5. Register in `__init__.py`
+### 6. Register in `__init__.py`
 
 File: `src/python/midigpt/attributes/__init__.py`
 
@@ -162,7 +194,7 @@ TOKEN_TYPE_TO_ATTRIBUTE = {
 
 Add the class to `__all__` as well.
 
-### 6. Configure a model to use it
+### 7. Configure a model to use it
 
 In an encoder config JSON, add the attribute to `attribute_controls_json`:
 
@@ -176,7 +208,7 @@ In an encoder config JSON, add the attribute to `attribute_controls_json`:
 
 Or, if the model's `token_domains` already includes `"MyNewAttribute"`, `from_config()` auto-instantiates it with default params via `TOKEN_TYPE_TO_ATTRIBUTE` — no explicit `attribute_controls_json` needed.
 
-### 7. Use it at inference
+### 8. Use it at inference
 
 ```python
 from midigpt import generate, TrackPrompt
@@ -194,7 +226,7 @@ The validation layer checks:
 - Track-level attributes go in `tp.attributes`, bar-level in `tp.bar_attributes` (wrong placement raises `ValueError`)
 - `achievable_range()` is called to warn (not reject) when a target is physically infeasible given the fixed bars
 
-### 8. Inspect results with `report()`
+### 9. Inspect results with `report()`
 
 After generation, compare what the model sampled against what the notes actually encode:
 
@@ -222,6 +254,7 @@ for bar_idx, bar_entry in enumerate(report["bars"]):
 
 - [ ] Add `MyNewAttribute = N` to `TokenType` enum in `types.h`
 - [ ] Add to `from_string()` and `to_string()` in `encoder_config.cpp`
+- [ ] **Add the encoder lookup in `encoder.cpp`** (track-level → `post_inst_attrs`; bar-level → `bar_attrs`). Skipping this is silent: Python computes, decoder reads, but the model never sees a token.
 - [ ] Add `case TokenType::MyNewAttribute:` in `decoder.cpp`
 - [ ] Write `MyNewAttribute(BaseAttribute)` class with `compute()`, `quantize()`, `size`, `name`, `token_type`
 - [ ] Add to `ATTRIBUTE_REGISTRY` and `TOKEN_TYPE_TO_ATTRIBUTE` in `__init__.py`
@@ -229,6 +262,7 @@ for bar_idx, bar_entry in enumerate(report["bars"]):
 - [ ] Test: `pytest tests/python/test_attributes.py`
 - [ ] Add a config entry and verify `from_config()` instantiates the attribute correctly
 - [ ] Run `report()` on a generated sample and inspect `consistent` / `achieved`
+- [ ] **Round-trip test**: encode a score with your attribute populated, decode, confirm `decoded.tracks[t].attributes[<key>]` matches the input quantized value
 
 ---
 

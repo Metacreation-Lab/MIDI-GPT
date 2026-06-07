@@ -1,5 +1,4 @@
 import os
-import sys
 import tempfile
 
 import numpy as np
@@ -7,25 +6,15 @@ import symusic
 
 from midigpt._types import Score
 from midigpt.attributes.base import BaseAttribute
-
-# tension_model lives in a sibling repo. Import lazily so this module loads
-# (and the Tension class can be registered) even when tension_model is not
-# installed — only `.compute()` actually requires it.
-_TENSION_MODEL_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../../../../tension_model")
+from midigpt.attributes.tension._features import compute_track_tension
+from midigpt.attributes.tension._timing import (
+    _load_symusic_maps,
+    _ticks_to_seconds,
+    get_bar_starts_seconds,
+    interval_level_average,
 )
 
-
-def _ttm():
-    if _TENSION_MODEL_PATH not in sys.path:
-        sys.path.append(_TENSION_MODEL_PATH)
-    import testTensionModel as ttm  # noqa: N813
-
-    return ttm
-
-
-# Cache to avoid re-evaluating the whole track for every bar
-_TENSION_CACHE = {}
+_TENSION_CACHE: dict = {}
 
 
 def score_to_temp_midi(score: Score) -> str:
@@ -52,7 +41,9 @@ def score_to_temp_midi(score: Score) -> str:
             bar_len = int(bar.ts_numerator * (score.resolution * 4 / bar.ts_denominator))
             s.time_signatures.append(
                 symusic.TimeSignature(
-                    time=abs_tick, numerator=bar.ts_numerator, denominator=bar.ts_denominator
+                    time=abs_tick,
+                    numerator=bar.ts_numerator,
+                    denominator=bar.ts_denominator,
                 )
             )
             abs_tick += bar_len
@@ -62,25 +53,6 @@ def score_to_temp_midi(score: Score) -> str:
     os.close(fd)
     s.dump_midi(path)
     return path
-
-
-def get_bar_starts_seconds(midi_path: str):
-    tpq, tempo_ticks, mspq, ts_ticks, nums, dens, end_tick = _ttm()._load_symusic_maps(midi_path)
-    bar_ticks = []
-    for i in range(len(ts_ticks)):
-        start = int(ts_ticks[i])
-        end = int(ts_ticks[i + 1]) if i + 1 < len(ts_ticks) else end_tick
-        num = int(nums[i])
-        den = int(dens[i])
-        ticks_per_bar = round(tpq * (4.0 / den) * num)
-        if ticks_per_bar <= 0:
-            continue
-        t = start
-        while t < end:
-            bar_ticks.append(t)
-            t += ticks_per_bar
-    bar_ticks = np.unique(np.asarray(bar_ticks, dtype=np.int64))
-    return _ttm()._ticks_to_seconds(bar_ticks, tempo_ticks, mspq, tpq)
 
 
 class Tension(BaseAttribute):
@@ -99,17 +71,21 @@ class Tension(BaseAttribute):
             midi_path = score_to_temp_midi(score)
             track = score.tracks[track_idx]
             try:
-                is_drum_track = track.track_type == "drum"
-                t_sec, tension = _ttm().compute_track_tension(midi_path, track_idx, is_drum_track)
+                is_drum = track.track_type == "drum"
+                try:
+                    t_sec, tension = compute_track_tension(midi_path, track_idx, is_drum)
+                except Exception:
+                    # Farbood model can fail on extremely sparse tracks (numpy
+                    # polyfit length mismatch on short feature vectors).
+                    _TENSION_CACHE[cache_key] = []
+                    return 0.0
                 if t_sec.size > 0 and tension.size > 0:
                     bar_starts_sec = get_bar_starts_seconds(midi_path)
                     if bar_starts_sec.size > 0:
                         max_t = float(t_sec[-1])
                         bar_starts_sec = bar_starts_sec[bar_starts_sec <= max_t + 1e-9]
                         if bar_starts_sec.size >= 2:
-                            _, bar_tension = _ttm().interval_level_average(
-                                tension, t_sec, bar_starts_sec
-                            )
+                            _, bar_tension = interval_level_average(tension, t_sec, bar_starts_sec)
                             _TENSION_CACHE[cache_key] = bar_tension.tolist()
                         else:
                             _TENSION_CACHE[cache_key] = []
@@ -126,15 +102,12 @@ class Tension(BaseAttribute):
         return 0.0
 
     def quantize(self, value: float | int) -> int:
-        # Original model normalized features but kept tension raw.
-        # Assuming tension roughly spans [-2, 2], map to [0, 9]
         norm_val = (value + 2.0) / 4.0
         return max(0, min(9, int(norm_val * 10)))
 
 
 class TensionDrum(Tension):
-    """Drum-track variant of Tension. Same computation; distinct token
-    type so the model can specialize attention separately for drum tracks."""
+    """Drum-track variant — same computation, distinct token type."""
 
     name = "tension_drum"
     token_type = "TensionDrum"

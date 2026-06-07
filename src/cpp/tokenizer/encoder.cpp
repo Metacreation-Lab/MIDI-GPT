@@ -168,13 +168,18 @@ EncodeResult Encoder::encode_full(const Score& score,
             tokens.push_back(clamp_encode(TokenType::Instrument, inst));
         }
 
-        // Track-level attribute tokens AFTER instrument (matches original order)
+        // Track-level attribute tokens AFTER instrument (matches original order).
+        // Keys are the Python attribute `name` field (set by AttributeAnalyzer.compute_track_tokens).
         const std::vector<std::pair<std::string, TokenType>> post_inst_attrs = {
             {"min_polyphony",     TokenType::MinPolyphony},
             {"max_polyphony",     TokenType::MaxPolyphony},
             {"min_note_duration", TokenType::MinNoteDuration},
             {"max_note_duration", TokenType::MaxNoteDuration},
             {"note_density",      TokenType::NoteDensity},
+            {"onset_polyphony",   TokenType::OnsetPolyphony},
+            {"pitch_range",       TokenType::PitchRange},
+            {"key_signature",     TokenType::KeySignature},
+            {"silence_proportion", TokenType::SilenceProportion},
         };
         // Only emit attributes that are explicitly in track.attributes — matches
         // original encoder semantics where each Yellow/Expressive variant selects
@@ -208,12 +213,22 @@ EncodeResult Encoder::encode_full(const Score& score,
                 tokens.push_back(vocab_.encode(TokenType::Bar, 0));
             }
 
-            // Bar-level attribute tokens (tension, pitch class set, etc.)
-            if (vocab_.has(TokenType::Tension) && track.attributes.count("bar_tension_" + std::to_string(bar_idx))) {
-                tokens.push_back(clamp_encode(TokenType::Tension, track.attributes.at("bar_tension_" + std::to_string(bar_idx))));
-            }
-            if (vocab_.has(TokenType::PitchClassSet) && track.attributes.count("bar_pcs_" + std::to_string(bar_idx))) {
-                tokens.push_back(clamp_encode(TokenType::PitchClassSet, track.attributes.at("bar_pcs_" + std::to_string(bar_idx))));
+            // Bar-level attribute tokens (tension, pitch class set, etc.).
+            // Key convention: "bar_<TokenType_string>_<bar_idx>" — matches the
+            // format produced by AttributeAnalyzer.compute_bar_tokens() (Python)
+            // and consumed by decoder.cpp. Track-type dispatch (Tension for
+            // melodic, TensionDrum for drum) is handled in Python — the encoder
+            // simply emits whichever key is present.
+            const std::string idx_str = std::to_string(bar_idx);
+            const std::vector<std::pair<std::string, TokenType>> bar_attrs = {
+                {"bar_Tension_" + idx_str,        TokenType::Tension},
+                {"bar_TensionDrum_" + idx_str,    TokenType::TensionDrum},
+                {"bar_PitchClassSet_" + idx_str,  TokenType::PitchClassSet},
+            };
+            for (const auto& [key, type] : bar_attrs) {
+                if (vocab_.has(type) && track.attributes.count(key)) {
+                    tokens.push_back(clamp_encode(type, track.attributes.at(key)));
+                }
             }
 
             // TIME_SIGNATURE

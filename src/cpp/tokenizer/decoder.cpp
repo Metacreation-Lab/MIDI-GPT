@@ -308,6 +308,20 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
                 ] = value;
             break;
 
+        case TokenType::Tension:
+            if (current_track && current_bar_idx >= 0)
+                current_track->attributes[
+                    "bar_Tension_" + std::to_string(current_bar_idx)
+                ] = value;
+            break;
+
+        case TokenType::TensionDrum:
+            if (current_track && current_bar_idx >= 0)
+                current_track->attributes[
+                    "bar_TensionDrum_" + std::to_string(current_bar_idx)
+                ] = value;
+            break;
+
         case TokenType::TrackLevelSilenceProportionMin:
             if (current_track) current_track->attributes["silence_proportion_min"] = value;
             break;

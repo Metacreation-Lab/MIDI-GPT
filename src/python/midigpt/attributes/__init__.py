@@ -11,6 +11,7 @@ from midigpt.attributes.quantile import (
     PolyphonyQuantile,
 )
 from midigpt.attributes.silence import SilenceProportion
+from midigpt.attributes.tension import Tension, TensionDrum
 
 # Name → class registry used by AttributeAnalyzer.from_config().
 # Encoder configs reference these names in the "attribute_controls" list.
@@ -25,6 +26,8 @@ ATTRIBUTE_REGISTRY = {
     "note_density_quantile": NoteDensityQuantile,
     "polyphony_quantile": PolyphonyQuantile,
     "note_duration_quantile": NoteDurationQuantile,
+    "tension": Tension,
+    "tension_drum": TensionDrum,
 }
 
 # TokenType (name) → (registry_key, params) used by AttributeAnalyzer
@@ -49,6 +52,8 @@ TOKEN_TYPE_TO_ATTRIBUTE = {
     "BarLevelOnsetDensity": ("note_density_quantile", {"level": "bar"}),
     "BarLevelOnsetPolyphonyMin": ("polyphony_quantile", {"mode": "min", "level": "bar"}),
     "BarLevelOnsetPolyphonyMax": ("polyphony_quantile", {"mode": "max", "level": "bar"}),
+    "Tension": ("tension", {}),
+    "TensionDrum": ("tension_drum", {}),
     # SilenceProportionBar, MinNoteDurationBar, MaxNoteDurationBar, PitchClassSetTrack:
     # no C++ token type yet — supported as Python classes for future models but not
     # auto-inferred from checkpoints until corresponding C++ entries are added.
@@ -70,4 +75,6 @@ __all__ = [
     "PitchRange",
     "PolyphonyQuantile",
     "SilenceProportion",
+    "Tension",
+    "TensionDrum",
 ]

@@ -122,6 +122,8 @@ def test_attribute_registry_contains_expected_keys():
         "note_density_quantile",
         "polyphony_quantile",
         "note_duration_quantile",
+        "tension",
+        "tension_drum",
     }
     assert set(ATTRIBUTE_REGISTRY.keys()) == expected
     # Every value is a BaseAttribute subclass
