@@ -29,6 +29,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 
 def _load_encoder_config(checkpoint: str | None, encoder_config: str | None) -> dict:
@@ -44,15 +45,24 @@ def _load_encoder_config(checkpoint: str | None, encoder_config: str | None) -> 
     return {}
 
 
+def _preprocess_shard(args: tuple[str, Any]) -> tuple[str, int, float]:
+    """Worker function: process a single shard. Returns (path, n_valid, elapsed)."""
+    path, kwargs = args
+    from midigpt.training.dataset import _load_or_build_valid_indices
+
+    t0 = time.time()
+    valid = _load_or_build_valid_indices(path, **kwargs)
+    return path, len(valid), time.time() - t0
+
+
 def preprocess(
     parquet_paths: list[str],
     checkpoint: str | None = None,
     encoder_config: str | None = None,
     min_bars: int = 4,
     min_tracks: int = 1,
+    workers: int = 1,
 ) -> None:
-    from midigpt.training.dataset import _load_or_build_valid_indices
-
     cfg = _load_encoder_config(checkpoint, encoder_config)
     ts_list = cfg.get("time_signatures")
     valid_ts: frozenset[str] | None = frozenset(ts_list) if ts_list else None
@@ -61,24 +71,32 @@ def preprocess(
     effective_min_bars = min(min(int(x) for x in num_bars_map), min_bars)
 
     print(f"Encoder time signatures: {len(valid_ts) if valid_ts else 'all (no check)'}")
-    print(f"Filter params: min_bars={effective_min_bars}, min_tracks={min_tracks}")
+    print(f"Filter params: min_bars={effective_min_bars}, min_tracks={min_tracks}, workers={workers}")
     print()
 
-    total_kept = 0
-    for path in parquet_paths:
-        print(f"[{path}]")
-        t0 = time.time()
-        valid = _load_or_build_valid_indices(
-            path,
-            min_bars=effective_min_bars,
-            min_tracks=min_tracks,
-            valid_time_sigs=valid_ts,
-        )
-        elapsed = time.time() - t0
-        total_kept += len(valid)
-        print(f"  → {len(valid)} valid rows in {elapsed:.1f}s\n")
+    shard_kwargs = dict(min_bars=effective_min_bars, min_tracks=min_tracks, valid_time_sigs=valid_ts)
+    work = [(p, shard_kwargs) for p in parquet_paths]
 
-    print(f"Total valid rows across {len(parquet_paths)} shard(s): {total_kept}")
+    total_kept = 0
+    if workers > 1:
+        import multiprocessing
+
+        ctx = multiprocessing.get_context("spawn")
+        with ctx.Pool(workers) as pool:
+            for path, n_valid, elapsed in pool.imap_unordered(_preprocess_shard, work):
+                total_kept += n_valid
+                print(f"[{path}]  → {n_valid} valid rows in {elapsed:.1f}s")
+    else:
+        for path, kwargs in work:
+            print(f"[{path}]")
+            t0 = time.time()
+            from midigpt.training.dataset import _load_or_build_valid_indices
+            valid = _load_or_build_valid_indices(path, **kwargs)
+            elapsed = time.time() - t0
+            total_kept += len(valid)
+            print(f"  → {len(valid)} valid rows in {elapsed:.1f}s\n")
+
+    print(f"\nTotal valid rows across {len(parquet_paths)} shard(s): {total_kept}")
 
 
 def main() -> None:
@@ -104,6 +122,13 @@ def main() -> None:
     )
     parser.add_argument("--min-bars", type=int, default=4)
     parser.add_argument("--min-tracks", type=int, default=1)
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Number of parallel shard workers (default: 1). Each shard is independent.",
+    )
     args = parser.parse_args()
 
     if args.checkpoint and args.encoder_config:
@@ -126,6 +151,7 @@ def main() -> None:
         encoder_config=args.encoder_config,
         min_bars=args.min_bars,
         min_tracks=args.min_tracks,
+        workers=args.workers,
     )
 
 
