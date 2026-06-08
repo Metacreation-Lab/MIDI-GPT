@@ -25,43 +25,36 @@ def _metadata_valid_mask(parquet_path: str, min_bars: int, min_tracks: int) -> l
     """Metadata-only filter — no MIDI parsing (avoids C++ crashes on corrupt rows).
 
     GigaMIDI parquet columns used:
-      num_tracks          — track count
-      total_notes         — excludes silent/empty files
-      loop_duration_beats — conservative bar estimate (floor: 2 beats/bar)
+      num_tracks   — track count
+      total_notes  — excludes silent/empty files
+
+    Bar-count filtering requires parsing the score and is done in Phase 2.
     """
     import pyarrow.compute as pc
 
     meta = pq.read_table(
         parquet_path,
-        columns=["num_tracks", "total_notes", "loop_duration_beats"],
+        columns=["num_tracks", "total_notes"],
     )
 
     m_tracks = pc.greater_equal(meta["num_tracks"], min_tracks).to_pylist()
     m_notes = pc.greater(meta["total_notes"], 0).to_pylist()
 
-    beats_threshold = float(min_bars * 2)
-
-    def _beats_ok(x) -> bool:
-        if isinstance(x, list):
-            mx = max((float(v) for v in x if v is not None), default=0.0)
-        else:
-            mx = float(x) if x is not None else 0.0
-        return mx >= beats_threshold
-
-    raw_beats = meta["loop_duration_beats"].to_pylist()
-    return [t and n and _beats_ok(b) for t, n, b in zip(m_tracks, m_notes, raw_beats, strict=False)]
+    return [t and n for t, n in zip(m_tracks, m_notes, strict=False)]
 
 
 def _probe_chunk(
     parquet_path: str,
     chunk: list[int],
     valid_ts: frozenset[str] | None,
+    min_bars: int = 1,
 ) -> list[int]:
     """Parse and validate a chunk in a subprocess; bisect on segfault.
 
     Checks:
       - Score.from_bytes() succeeds (Python exceptions are tolerated — only
         SIGSEGV kills the subprocess and triggers bisection).
+      - Every track has at least min_bars bars.
       - If valid_ts is provided, every (ts_num/ts_den) in the parsed score is
         in the allowed set.
     """
@@ -75,6 +68,7 @@ def _probe_chunk(
     parquet_repr = repr(parquet_path)
     chunk_repr = repr(chunk)
     ts_repr = repr(valid_ts_list)
+    min_bars_repr = repr(min_bars)
 
     script = "\n".join(
         [
@@ -83,6 +77,7 @@ def _probe_chunk(
             "import datasets as hf",
             "from midigpt._types import Score",
             f"_vts = {ts_repr}",
+            f"_min_bars = {min_bars_repr}",
             "valid_ts = set(_vts) if _vts is not None else None",
             f"data = hf.load_dataset('parquet', data_files={parquet_repr}, split='train')",
             f"chunk = {chunk_repr}",
@@ -90,6 +85,8 @@ def _probe_chunk(
             "for i in chunk:",
             "    try:",
             "        score = Score.from_bytes(data[i]['music'])",
+            "        if not all(len(t.bars) >= _min_bars for t in score.tracks):",
+            "            continue",
             "        if valid_ts is not None:",
             "            ts_in = {str(b.ts_numerator)+'/'+str(b.ts_denominator) for t in score.tracks for b in t.bars}",
             "            if not ts_in.issubset(valid_ts):",
@@ -116,8 +113,8 @@ def _probe_chunk(
     if len(chunk) == 1:
         return []  # single index caused segfault — drop it
     mid = len(chunk) // 2
-    return _probe_chunk(parquet_path, chunk[:mid], valid_ts) + _probe_chunk(
-        parquet_path, chunk[mid:], valid_ts
+    return _probe_chunk(parquet_path, chunk[:mid], valid_ts, min_bars) + _probe_chunk(
+        parquet_path, chunk[mid:], valid_ts, min_bars
     )
 
 
@@ -166,7 +163,7 @@ def _load_or_build_valid_indices(
         it = range(0, len(candidates), chunk_size)
     for start in it:
         chunk = candidates[start : start + chunk_size]
-        valid.extend(_probe_chunk(parquet_path, chunk, valid_time_sigs))
+        valid.extend(_probe_chunk(parquet_path, chunk, valid_time_sigs, min_bars))
 
     dropped = len(candidates) - len(valid)
     print(f"  dataset filter: dropped {dropped} rows (parse errors / bad TS) — {len(valid)} kept")
