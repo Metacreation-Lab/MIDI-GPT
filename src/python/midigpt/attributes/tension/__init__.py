@@ -16,6 +16,22 @@ from midigpt.attributes.tension._timing import (
 
 _TENSION_CACHE: dict = {}
 
+# Interior decile edges of N(0, 1): scipy.stats.norm.ppf([0.1, 0.2, …, 0.9]).
+# The tension model z-score normalizes its output per track (see _model.py),
+# so each track's values are ~N(0, 1). Equi-probable (decile) bins use the
+# token budget far better than equi-distant ones, which crowd the middle bins.
+_TENSION_BIN_EDGES = np.array([
+    -1.2815515655446004,
+    -0.8416212335729143,
+    -0.5244005127080407,
+    -0.2533471031357997,
+    0.0,
+    0.2533471031357997,
+    0.5244005127080407,
+    0.8416212335729143,
+    1.2815515655446004,
+])
+
 
 def score_to_temp_midi(score: Score) -> str:
     s = symusic.Score(score.resolution)
@@ -102,8 +118,7 @@ class Tension(BaseAttribute):
         return 0.0
 
     def quantize(self, value: float | int) -> int:
-        norm_val = (value + 2.0) / 4.0
-        return max(0, min(9, int(norm_val * 10)))
+        return int(np.digitize(value, _TENSION_BIN_EDGES))
 
 
 class TensionDrum(Tension):
