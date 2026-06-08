@@ -383,15 +383,18 @@ class MidiGPTDataset:
 
     def _genre_token(self, idx: int) -> int:
         """Return genre token id for sample idx, or -1 if unavailable/omitted."""
+        from urllib.parse import unquote
+
         if self._genre_grouping is None or random.random() >= self._genre_probability:
             return -1
-        raw = self._data[idx].get("music_styles_curated") or []
+        raw = self._data[idx].get("music_style_scraped") or ""
         if not raw:
             return -1
-        label = raw[0] if isinstance(raw, list) else str(raw)
-        if self._genre_grouping.contains(label):
-            return self._genre_grouping.encode(label)
-        return -1
+        genres = [g.strip() for g in unquote(raw).split(",") if g.strip()]
+        known = [g for g in genres if self._genre_grouping.contains(g)]
+        if not known:
+            return -1
+        return self._genre_grouping.encode(random.choice(known))
 
     def _encode_one(self, idx: int) -> dict:
         score = Score.from_bytes(self._data[idx]["music"])
