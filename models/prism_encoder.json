@@ -1,0 +1,151 @@
+{
+  "attribute_controls": [
+    { "name": "key_signature" },
+    { "name": "pitch_range" },
+    { "name": "silence_proportion" },
+    { "name": "note_duration_quantile", "params": { "mode": "min" } },
+    { "name": "note_duration_quantile", "params": { "mode": "max" } },
+    { "name": "onset_polyphony" },
+    { "name": "note_density_quantile",  "params": { "level": "bar" } },
+    { "name": "polyphony_quantile",     "params": { "mode": "min", "level": "bar" } },
+    { "name": "polyphony_quantile",     "params": { "mode": "max", "level": "bar" } },
+    { "name": "pitch_class_set" }
+  ],
+  "genre_groups": {
+    "asian": [
+      "japanese", "k pop", "chinese pop", "indian"
+    ],
+    "baroque": [
+      "baroque"
+    ],
+    "blues": [
+      "blues", "blues contemporary"
+    ],
+    "christian": [
+      "christian-gospel", "praise and worship"
+    ],
+    "classical": [
+      "classical", "classical music", "early 20th century", "early_20th_century",
+      "modern", "romantic", "ancient", "medieval", "non-western_classical",
+      "newage", "instrumental", "instrumentals", "pf", "piano"
+    ],
+    "country": [
+      "country", "bluegrass", "honky-tonk", "rockabilly"
+    ],
+    "dance-electronic": [
+      "dance-eletric", "disco", "electronica", "techno electronic", "techno",
+      "line dance"
+    ],
+    "european": [
+      "italian", "french", "spanish", "german", "greek", "croatian",
+      "the netherlands", "musette"
+    ],
+    "folk": [
+      "folk", "traditional", "traditional_(folk)", "world", "irish", "celtic",
+      "danish"
+    ],
+    "hip-hop": [
+      "hip-hop-rap", "hip hop rap", "rap", "funk", "rnb-soul",
+      "classic modern rb", "reggae-ska", "reggae", "ska", "calypso", "caribbean"
+    ],
+    "jazz": [
+      "jazz", "fusion", "swing", "big band swing", "big-band",
+      "easylistening", "ultra lounge"
+    ],
+    "latin": [
+      "latino", "latin", "mexican", "brazil", "waltz"
+    ],
+    "metal": [
+      "metal", "hardcore", "grunge", "grundge"
+    ],
+    "pop": [
+      "pop", "hits of the 2000s", "hits of the 1970s", "hits of the 1980s",
+      "hits of the 1960s", "hits of 2011 2020", "hits of the 1990s",
+      "hits of the 1950s", "golden oldies", "oldies", "one hit wonders",
+      "best of british", "australian artists", "the beatles", "medley",
+      "medleys", "love songs", "party songs sing a longs", "pride playlist",
+      "wedding songs", "songs of motown", "christmas festive", "doo-wop",
+      "vocal", "duets", "novelty songs", "midi karaoke"
+    ],
+    "punk": [
+      "punk", "alternative-indie", "rock; punk; alternative-indie"
+    ],
+    "renaissance": [
+      "renaissance"
+    ],
+    "rock": [
+      "rock"
+    ],
+    "soundtrack": [
+      "film", "film/tv", "tv", "tv and movie soundtracks", "soundtrack",
+      "musical", "broadway and stage"
+    ]
+  },
+  "decode_resolution": 1920,
+  "emit_delta_tokens": false,
+  "instrument_merge_groups": [
+    [0, 1, 2],
+    [4, 5],
+    [16, 17, 18],
+    [19, 20],
+    [33, 34],
+    [36, 37],
+    [38, 39],
+    [48, 49],
+    [50, 51],
+    [62, 63],
+    [88, 89, 90, 91, 92, 93, 94, 95]
+  ],
+  "note_duration_max_beats": 8,
+  "num_bars_map": [4, 8],
+  "pitch_range": [0, 127],
+  "resolution": 12,
+  "supports_infill": true,
+  "supports_mask_bar_token": false,
+  "time_signatures": [
+    "1/2", "1/4", "1/8", "1/16",
+    "2/1", "2/2", "2/4", "2/8",
+    "3/1", "3/2", "3/4", "3/8",
+    "4/2", "4/4", "4/8",
+    "5/4", "5/8",
+    "6/2", "6/4", "6/8",
+    "7/4", "7/8",
+    "8/4", "8/8",
+    "9/4", "9/8", "9/16",
+    "10/4", "10/8",
+    "11/8",
+    "12/4", "12/8",
+    "13/16", "15/16",
+    "16/4", "17/16"
+  ],
+  "token_domains": [
+    { "type": "PieceStart",               "domain_size": 2   },
+    { "type": "Genre",                    "domain_size": 18  },
+    { "type": "Track",                    "domain_size": 2   },
+    { "type": "TrackEnd",                 "domain_size": 1   },
+    { "type": "Bar",                      "domain_size": 1   },
+    { "type": "BarEnd",                   "domain_size": 1   },
+    { "type": "TimeSig",                  "domain_size": 36  },
+    { "type": "Instrument",               "domain_size": 109 },
+    { "type": "NumBars",                  "domain_size": 2   },
+    { "type": "NoteOnset",                "domain_size": 128 },
+    { "type": "NoteDuration",             "domain_size": 96  },
+    { "type": "TimeAbsolutePos",          "domain_size": 192 },
+    { "type": "VelocityLevel",            "domain_size": 32  },
+    { "type": "FillInPlaceholder",        "domain_size": 1   },
+    { "type": "FillInStart",              "domain_size": 1   },
+    { "type": "FillInEnd",               "domain_size": 1   },
+    { "type": "KeySignature",             "domain_size": 25  },
+    { "type": "PitchRange",              "domain_size": 128 },
+    { "type": "SilenceProportion",        "domain_size": 10  },
+    { "type": "MinNoteDuration",          "domain_size": 6   },
+    { "type": "MaxNoteDuration",          "domain_size": 6   },
+    { "type": "OnsetPolyphony",           "domain_size": 10  },
+    { "type": "BarLevelOnsetDensity",     "domain_size": 10  },
+    { "type": "BarLevelOnsetPolyphonyMin","domain_size": 10  },
+    { "type": "BarLevelOnsetPolyphonyMax","domain_size": 10  },
+    { "type": "PitchClassSet",            "domain_size": 13  }
+  ],
+  "velocity_levels": 32,
+  "velocity_sticky": true
+}
