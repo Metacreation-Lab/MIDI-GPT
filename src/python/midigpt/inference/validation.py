@@ -246,9 +246,11 @@ def validate_request(
                     "controls['genre'] requires genre_groups to be configured in the encoder config"
                 )
             if not _genre_grouping.contains(v):
+                known = [_genre_grouping.decode(i) for i in range(_genre_grouping.num_genres())]
                 raise RequestValidationError(
                     f"controls['genre']={v!r} is not a known genre. "
-                    f"Add it to genre_groups in the encoder config."
+                    f"Pass a canonical genre name or one of its aliases. "
+                    f"Canonical genres for this model: {known}"
                 )
         else:
             raise RequestValidationError(
