@@ -51,7 +51,7 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
     const std::vector<int>& resolved = resolve_infill(tokens, vocab_);
 
     Score score;
-    score.resolution = vocab_.config().resolution;
+    score.resolution = vocab_.config().decode_resolution;
 
     Track* current_track = nullptr;
     Bar* current_bar = nullptr;
