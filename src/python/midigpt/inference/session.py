@@ -354,6 +354,7 @@ class SamplingSession:
             if grouping is not None:
                 _genre = grouping.encode(piece_controls["genre"])
 
+        score = self._engine._tokenizer.normalize_input(score)
         state = _core.SessionState(
             to_cpp(score), step,
             self._engine._tokenizer._vocab,
@@ -538,7 +539,7 @@ class SamplingSession:
                     _next_pos += 1
 
         t_dec = time.perf_counter()
-        result = from_cpp(state.result())
+        result = self._engine._tokenizer.normalize_output(from_cpp(state.result()))
         if self.enable_profiling:
             self.decode_time += time.perf_counter() - t_dec
         return result

@@ -1,3 +1,5 @@
+import copy
+
 import midigpt._core as _core
 from midigpt._converters import from_cpp, to_cpp
 from midigpt._types import Score
@@ -43,12 +45,38 @@ class Tokenizer:
         self._decoder = _core.Decoder(self._vocab)
         self._analyzer = analyzer
 
+    def normalize_input(self, score: Score) -> Score:
+        """Return score resampled to model resolution.
+
+        If the score is already at model resolution, the original object is
+        returned unchanged.  Otherwise a deep copy is made and resampled so
+        the caller's score is never mutated.
+        """
+        cfg = self._vocab.config()
+        if score.resolution == cfg.resolution:
+            return score
+        return resample_delta(copy.deepcopy(score), score.resolution, cfg.resolution)
+
+    def normalize_output(self, score: Score) -> Score:
+        """Return score resampled from model resolution to decode_resolution.
+
+        The C++ decoder always outputs at cfg.resolution (model-internal PPQ).
+        This resamples to cfg.decode_resolution so callers receive notes at the
+        documented output resolution.  If they are equal, the original object
+        is returned unchanged.
+        """
+        cfg = self._vocab.config()
+        if cfg.resolution == cfg.decode_resolution:
+            return score
+        return resample_delta(score, cfg.resolution, cfg.decode_resolution)
+
     def encode(
         self,
         score: Score,
         opts: "_core.EncodeOptions | None" = None,
         compute_attributes: bool = True,
     ) -> list[int]:
+        score = self.normalize_input(score)
         if compute_attributes and self._analyzer:
             for t_idx, track in enumerate(score.tracks):
                 # Pybind11 std::map returns a copy, so we must assign the whole dict back
@@ -65,9 +93,8 @@ class Tokenizer:
 
     def decode(self, tokens: list[int], resample: bool = True) -> Score:
         score = from_cpp(self._decoder.decode(tokens))
-        cfg = self._vocab.config()
-        if resample and cfg.resolution != cfg.decode_resolution:
-            score = resample_delta(score, cfg.resolution, cfg.decode_resolution)
+        if resample:
+            score = self.normalize_output(score)
         return score
 
     def vocab_size(self) -> int:
