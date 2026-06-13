@@ -305,6 +305,7 @@ class MidiGPTDataset:
             raise ImportError("pip install midigpt[train]") from None
         paths = _resolve_paths(parquet_path)
         self._data = hf.load_dataset("parquet", data_files=paths, split="train")
+        self._encoder_config_json: str = tokenizer._vocab.config().to_json()
         self._tokenizer = tokenizer
         self._infill_prob = infill_probability
         self._infill_frac = infill_bar_fraction
@@ -370,6 +371,23 @@ class MidiGPTDataset:
             offset += n
         self._data = self._data.select(all_valid)
 
+    def __getstate__(self) -> dict:
+        state = self.__dict__.copy()
+        # C++ pybind11 objects are not picklable; strip them so spawn workers
+        # can receive the dataset. _ensure_tokenizer() rebuilds them lazily.
+        state["_tokenizer"] = None
+        state["_genre_grouping"] = None
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        self.__dict__.update(state)
+
+    def _ensure_tokenizer(self) -> None:
+        if self._tokenizer is None:
+            cfg = _core.EncoderConfig.from_json(self._encoder_config_json)
+            self._tokenizer = Tokenizer(cfg)
+            self._genre_grouping = self._tokenizer._vocab.config().genre_grouping
+
     def __len__(self) -> int:
         return len(self._data)
 
@@ -385,6 +403,7 @@ class MidiGPTDataset:
         """Return genre token id for sample idx, or -1 if unavailable/omitted."""
         from urllib.parse import unquote
 
+        self._ensure_tokenizer()
         if self._genre_grouping is None or random.random() >= self._genre_probability:
             return -1
         raw = self._data[idx].get("music_style_scraped") or ""
@@ -397,6 +416,7 @@ class MidiGPTDataset:
         return self._genre_grouping.encode(random.choice(known))
 
     def _encode_one(self, idx: int) -> dict:
+        self._ensure_tokenizer()
         score = Score.from_bytes(self._data[idx]["music"])
         score = copy.deepcopy(score)
 

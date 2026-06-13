@@ -137,6 +137,8 @@ Optional. Enables piece-level genre conditioning. If present, add `Genre` to `to
 **Format rules:**
 - Keys are **canonical genre names** — these are what the model learns and what inference accepts.
 - Values are **alias lists** — raw strings (from the dataset) that map to that canonical name. Lookup is **case-insensitive**. An alias may appear in only one group.
+- **Canonical names self-register automatically.** The C++ `GenreGrouping` always adds the canonical key to its lookup table regardless of whether it appears in the alias list. So `encode("rock")` works even if `"rock"` is not listed under `"rock"`. You do not need to repeat the key in its own alias list.
+- **Unknown genres are silently skipped during training.** `_genre_token()` calls `contains()` before `encode()` — dataset rows with genres not in any alias list simply emit no genre token (genre = -1). The C++ `encode()` would throw for unknown genres, but training never reaches it.
 - Dense IDs are assigned in **alphabetical key order** — `metal` = 0, `pop` = 1, `rock` = 2 in the example above. Token ID assignment is fixed once training begins.
 - `domain_size` in `token_domains` must equal the number of keys.
 

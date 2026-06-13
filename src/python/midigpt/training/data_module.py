@@ -89,6 +89,7 @@ class MidiGPTDataModule(L.LightningDataModule):
             pin_memory=self._pin_memory,
             collate_fn=self._collator,
             persistent_workers=self._num_workers > 0,
+            multiprocessing_context="spawn" if self._num_workers > 0 else None,
         )
 
     def val_dataloader(self) -> DataLoader | None:
@@ -102,6 +103,7 @@ class MidiGPTDataModule(L.LightningDataModule):
             pin_memory=self._pin_memory,
             collate_fn=self._collator,
             persistent_workers=self._num_workers > 0,
+            multiprocessing_context="spawn" if self._num_workers > 0 else None,
         )
 
     @property

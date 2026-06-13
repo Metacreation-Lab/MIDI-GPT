@@ -29,7 +29,7 @@ class TrainConfig:
     per_device_batch_size: int = 4
     gradient_accumulation_steps: int = 8
     seed: int = 42
-    num_workers: int = 0  # C++ MIDI parser is not fork-safe; must be 0
+    num_workers: int = 0  # use spawn context (data_module.py) to safely go above 0
 
     # ── Model architecture ────────────────────────────────────────────────
     n_embd: int = 512
