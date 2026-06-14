@@ -111,6 +111,7 @@ class MidiGPTLightningModule(L.LightningModule):
             return
         step = self.trainer.global_step
         bundle_path = Path(ckpt_dir) / f"model-step={step}.safetensors"
+        bundle_path.parent.mkdir(parents=True, exist_ok=True)
         enc_cfg = self.model.encoder_config
         if isinstance(enc_cfg, object) and hasattr(enc_cfg, "to_json"):
             enc_cfg = json.loads(enc_cfg.to_json())

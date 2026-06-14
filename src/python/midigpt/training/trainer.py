@@ -9,15 +9,20 @@ from typing import Any, Literal
 
 log = logging.getLogger(__name__)
 
+try:
+    from lightning.pytorch.loggers import Logger as _LightningLogger
+except ImportError:
+    _LightningLogger = object  # type: ignore[assignment,misc]
 
-class JSONLinesLogger:
+
+class JSONLinesLogger(_LightningLogger):
     """Always-on file logger: appends one JSON object per step to metrics.jsonl."""
 
     def __init__(self, save_dir: str) -> None:
+        super().__init__()
         self._path = Path(save_dir) / "metrics.jsonl"
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
-    # ── Lightning Logger protocol ─────────────────────────────────────────
     @property
     def name(self) -> str:
         return "jsonl"
@@ -25,6 +30,10 @@ class JSONLinesLogger:
     @property
     def version(self) -> str:
         return ""
+
+    @property
+    def save_dir(self) -> str:
+        return str(self._path.parent)
 
     @property
     def root_dir(self) -> str:
