@@ -12,8 +12,8 @@
     "lr_scheduler_type": "cosine",
 
     "num_epochs": 5,
-    "per_device_batch_size": 16,
-    "gradient_accumulation_steps": 8,
+    "per_device_batch_size": 8,
+    "gradient_accumulation_steps": 16,
     "seed": 42,
     "num_workers": 2,
 
@@ -25,7 +25,7 @@
     "logging_steps": 50,
     "logger": "wandb",
     "wandb_project": "midi-gpt",
-    "wandb_entity": "paul-triana",
+    "wandb_entity": "metacreation-lab",
 
     "max_tracks": 12,
     "min_tracks": 1,
