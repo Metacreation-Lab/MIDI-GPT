@@ -182,7 +182,12 @@ def _build_loggers(config: TrainConfig) -> list:
         import wandb as _wandb
         from lightning.pytorch.loggers import WandbLogger
 
-        init_kwargs: dict = dict(project=config.wandb_project, dir=config.output_dir)
+        run_name = Path(config.output_dir).name
+        init_kwargs: dict = dict(
+            project=config.wandb_project,
+            name=run_name,
+            dir=config.output_dir,
+        )
         if config.wandb_entity:
             init_kwargs["entity"] = config.wandb_entity
         try:
