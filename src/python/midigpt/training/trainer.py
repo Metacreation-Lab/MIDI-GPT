@@ -1,12 +1,52 @@
 from __future__ import annotations
 
+import json
 import logging
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 log = logging.getLogger(__name__)
+
+
+class JSONLinesLogger:
+    """Always-on file logger: appends one JSON object per step to metrics.jsonl."""
+
+    def __init__(self, save_dir: str) -> None:
+        self._path = Path(save_dir) / "metrics.jsonl"
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+
+    # ── Lightning Logger protocol ─────────────────────────────────────────
+    @property
+    def name(self) -> str:
+        return "jsonl"
+
+    @property
+    def version(self) -> str:
+        return ""
+
+    @property
+    def root_dir(self) -> str:
+        return str(self._path.parent)
+
+    @property
+    def log_dir(self) -> str:
+        return str(self._path.parent)
+
+    def log_hyperparams(self, params: Any, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def log_metrics(self, metrics: dict[str, float], step: int | None = None) -> None:
+        record = {"step": step, **metrics}
+        with self._path.open("a") as f:
+            f.write(json.dumps(record) + "\n")
+
+    def save(self) -> None:
+        pass
+
+    def finalize(self, status: str) -> None:
+        pass
 
 
 @dataclass
@@ -122,22 +162,33 @@ def _precision_str(precision: str) -> str:
     return {"fp16": "16-mixed", "bf16": "bf16-mixed", "fp32": "32"}[precision]
 
 
-def _build_logger(config: TrainConfig):
+def _build_loggers(config: TrainConfig) -> list:
+    loggers: list = [JSONLinesLogger(config.output_dir)]
+
     if config.logger == "tensorboard":
         from lightning.pytorch.loggers import TensorBoardLogger
 
-        return TensorBoardLogger(save_dir=config.output_dir, name="logs")
-    if config.logger == "wandb":
+        loggers.append(TensorBoardLogger(save_dir=config.output_dir, name="logs"))
+    elif config.logger == "wandb":
+        import wandb as _wandb
         from lightning.pytorch.loggers import WandbLogger
 
-        kwargs = dict(
-            project=config.wandb_project,
-            save_dir=config.output_dir,
-        )
+        init_kwargs: dict = dict(project=config.wandb_project, dir=config.output_dir)
         if config.wandb_entity:
-            kwargs["entity"] = config.wandb_entity
-        return WandbLogger(**kwargs)
-    return False
+            init_kwargs["entity"] = config.wandb_entity
+        try:
+            run = _wandb.init(**init_kwargs)
+        except Exception as exc:
+            log.warning(
+                "wandb online init failed (%s); switching to offline mode"
+                " — run `wandb sync %s` after training to upload.",
+                exc,
+                config.output_dir,
+            )
+            run = _wandb.init(**init_kwargs, mode="offline")
+        loggers.append(WandbLogger(experiment=run))
+
+    return loggers
 
 
 def _load_dotenv() -> None:
@@ -246,7 +297,7 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
     lit_module = MidiGPTLightningModule(model, config)
     lit_module.total_steps = total_steps
 
-    logger = _build_logger(config)
+    loggers = _build_loggers(config)
     callbacks = [
         ModelCheckpoint(
             dirpath=Path(config.output_dir) / "checkpoints",
@@ -254,9 +305,8 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
             save_top_k=-1,
             filename="step={step}",
         ),
+        LearningRateMonitor(logging_interval="step"),
     ]
-    if logger:
-        callbacks.append(LearningRateMonitor(logging_interval="step"))
 
     trainer = L.Trainer(
         max_epochs=config.num_epochs,
@@ -267,7 +317,7 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
         log_every_n_steps=config.logging_steps,
         default_root_dir=config.output_dir,
         callbacks=callbacks,
-        logger=logger,
+        logger=loggers,
     )
 
     trainer.fit(lit_module, data_module)

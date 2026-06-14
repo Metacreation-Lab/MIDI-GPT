@@ -1,0 +1,40 @@
+{
+    "encoder_config_path": "models/yellow_encoder.json",
+
+    "n_embd": 1024,
+    "n_layer": 24,
+    "n_head": 16,
+
+    "learning_rate": 1e-4,
+    "weight_decay": 0.01,
+    "max_grad_norm": 1.0,
+    "warmup_steps": 2000,
+    "lr_scheduler_type": "cosine",
+
+    "num_epochs": 5,
+    "per_device_batch_size": 16,
+    "gradient_accumulation_steps": 8,
+    "seed": 42,
+    "num_workers": 2,
+
+    "precision": "bf16",
+    "max_seq_len": 2048,
+
+    "save_steps": 2000,
+    "eval_steps": 500,
+    "logging_steps": 50,
+    "logger": "wandb",
+    "wandb_project": "midi-gpt",
+    "wandb_entity": "paul-triana",
+
+    "max_tracks": 12,
+    "min_tracks": 1,
+    "min_fill_ratio": 0.75,
+
+    "infill_probability": 0.75,
+    "infill_bar_fraction": 0.5,
+    "mask_apply_probability": 0.0,
+    "mask_mode": 2,
+    "mask_bar_fraction": 0.25,
+    "mask_max_lookahead": 4
+}
