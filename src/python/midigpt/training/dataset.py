@@ -417,8 +417,10 @@ class MidiGPTDataset:
 
     def _encode_one(self, idx: int) -> dict:
         self._ensure_tokenizer()
+        # Score.from_bytes() already returns a fresh, owned object; the
+        # subsequent augmentations mutate copies, so an extra deepcopy here is
+        # pure overhead (~1.5 ms/sample).
         score = Score.from_bytes(self._data[idx]["music"])
-        score = copy.deepcopy(score)
 
         score = _TRANSPOSE(score)
         score = _VELOCITY(score)

@@ -90,7 +90,13 @@ class MidiGPTLightningModule(L.LightningModule):
             lr=cfg.learning_rate,
             weight_decay=cfg.weight_decay,
         )
-        lr_lambda = _make_lr_lambda(cfg.warmup_steps, self.total_steps, cfg.lr_scheduler_type)
+        # total_steps is computed from the full (un-sharded) dataset. Under DDP
+        # the dataset is sharded across ranks, so the real number of optimizer
+        # steps per epoch is divided by world_size; the cosine/linear schedule
+        # length must match or the LR decays too slowly on multi-GPU.
+        world_size = max(1, getattr(self.trainer, "world_size", 1))
+        total_steps = math.ceil(self.total_steps / world_size)
+        lr_lambda = _make_lr_lambda(cfg.warmup_steps, total_steps, cfg.lr_scheduler_type)
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
         return {
             "optimizer": optimizer,

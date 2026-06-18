@@ -96,6 +96,10 @@ class TrainConfig:
     # ── Checkpointing / logging ──────────────────────────────────────────
     save_steps: int = 1000
     eval_steps: int = 500
+    # Cap validation to this many batches per eval (0 = full validation set).
+    # Validating the entire set every eval_steps is dominated by val cost when
+    # the val set is large; a few hundred batches give a stable loss estimate.
+    limit_val_batches: int = 0
     logging_steps: int = 50
     logger: Literal["tensorboard", "wandb", "none"] = "none"
     # WandB-specific (ignored when logger != "wandb")
@@ -215,7 +219,12 @@ def _load_dotenv() -> None:
         pass
 
 
-def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
+def train(
+    config: TrainConfig,
+    train_path: str,
+    eval_path: str | None = None,
+    resume_from: str | None = None,
+):
     """Train GPT2LMHeadModel using PyTorch Lightning."""
     _load_dotenv()
 
@@ -328,13 +337,14 @@ def train(config: TrainConfig, train_path: str, eval_path: str | None = None):
         accumulate_grad_batches=config.gradient_accumulation_steps,
         gradient_clip_val=config.max_grad_norm if config.max_grad_norm > 0 else None,
         val_check_interval=config.eval_steps if eval_path else None,
+        limit_val_batches=config.limit_val_batches or 1.0,
         log_every_n_steps=config.logging_steps,
         default_root_dir=config.output_dir,
         callbacks=callbacks,
         logger=loggers,
     )
 
-    trainer.fit(lit_module, data_module)
+    trainer.fit(lit_module, data_module, ckpt_path=resume_from)
 
     import json as _json
 
@@ -360,10 +370,35 @@ if __name__ == "__main__":
     parser.add_argument("--train-data", required=True, help="Parquet shard(s): path, list, or glob")
     parser.add_argument("--eval-data", default=None, help="Optional eval parquet shard")
     parser.add_argument("--output-dir", default=None, help="Override output_dir from config")
+    parser.add_argument(
+        "--grad-accum",
+        type=int,
+        default=None,
+        help="Override gradient_accumulation_steps from config. Use with multi-GPU "
+        "(DDP) so per_device_batch x grad_accum x num_gpus keeps the effective batch.",
+    )
+    parser.add_argument(
+        "--resume-from",
+        default=None,
+        help="Path to a .ckpt to resume from. Use 'auto' to pick the latest "
+        "checkpoint in <output-dir>/checkpoints.",
+    )
     args = parser.parse_args()
 
     cfg = TrainConfig.from_file(args.config)
     if args.output_dir:
         cfg.output_dir = args.output_dir
+    if args.grad_accum is not None:
+        cfg.gradient_accumulation_steps = args.grad_accum
 
-    train(cfg, args.train_data, args.eval_data)
+    resume_from = args.resume_from
+    if resume_from == "auto":
+        ckpt_dir = Path(cfg.output_dir) / "checkpoints"
+        ckpts = sorted(
+            ckpt_dir.glob("*.ckpt"),
+            key=lambda p: p.stat().st_mtime,
+        )
+        resume_from = str(ckpts[-1]) if ckpts else None
+        logging.getLogger(__name__).info("Resuming from %s", resume_from or "(none found)")
+
+    train(cfg, args.train_data, args.eval_data, resume_from=resume_from)
