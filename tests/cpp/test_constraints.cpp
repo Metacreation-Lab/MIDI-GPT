@@ -312,6 +312,27 @@ TEST_CASE("Grammar non-AR: FillInStart reachable from BarEnd") {
     CHECK(none_masked(graph.get_mask(vocab), vocab.range(TT::FillInStart)));
 }
 
+TEST_CASE("Grammar infill: NoteOnset reachable directly after FillInStart (onset==0)") {
+    // Encoder skips TimeAbsolutePos when onset==0, so FillInStart must allow
+    // NoteOnset/NotePitch without an intervening TimeAbsolutePos.
+    auto cfg = full_config();
+    Vocabulary vocab(cfg);
+    auto g = std::make_shared<GrammarConstraint>();
+    g->set_autoregressive_mode(false);
+    g->set_require_notes(false);
+    ConstraintGraph graph; graph.add_constraint(g);
+    graph.step(vocab.encode(TT::Track, 0), vocab);
+    graph.step(vocab.encode(TT::Bar, 0), vocab);
+    graph.step(vocab.encode(TT::BarEnd, 0), vocab);
+    graph.step(vocab.encode(TT::FillInStart, 0), vocab);
+    auto m = graph.get_mask(vocab);
+    CHECK(none_masked(m, vocab.range(TT::NoteOnset)));
+    CHECK(none_masked(m, vocab.range(TT::NotePitch)));
+    // FillInEnd must still be blocked (require_notes_ guards this downstream,
+    // and FillInStart itself never allows it directly).
+    CHECK(all_masked(m, vocab.range(TT::FillInEnd)));
+}
+
 // ---------------------------------------------------------------------------
 // Drum-flag derivation (Track value=1) + set_fillin_drum override
 // ---------------------------------------------------------------------------

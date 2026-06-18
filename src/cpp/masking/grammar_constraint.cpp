@@ -275,10 +275,15 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             break;
 
         case TokenType::FillInStart:
-            // orig: FillInStart -> {TimeAbsolutePos, VelocityLevel} only.
-            // Forbidding immediate FillInEnd prevents early termination with 0 notes.
+            // Encoder skips TimeAbsolutePos when onset==0 (same as Bar), so
+            // note tokens must be reachable directly. FillInEnd is withheld
+            // here (and by require_notes_ downstream) to prevent empty fills.
             allow(TokenType::TimeAbsolutePos);
             allow(TokenType::VelocityLevel);
+            allow(TokenType::NoteOnset);
+            allow(TokenType::NotePitch);
+            allow(TokenType::DeltaDirection);
+            allow(TokenType::Delta);
             break;
 
         case TokenType::FillInEnd:
