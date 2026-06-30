@@ -55,6 +55,46 @@ class Score:
 
         _core.MidiWriter().write(to_cpp(self), path)
 
+    def resample(self, target_tpq: int) -> "Score":
+        """Return a copy of this score with all tick values rescaled to target_tpq.
+
+        Attribute formulas are expressed in music-theory units (beats, subdivisions)
+        that are independent of any encoder's internal grid. Resampling to a common
+        TPQ before attribute computation means individual attributes never need to
+        divide by score.resolution themselves.
+        """
+        if self.resolution == target_tpq:
+            return self
+        scale = target_tpq / self.resolution
+        new_tracks = []
+        for track in self.tracks:
+            new_bars = []
+            for bar in track.bars:
+                new_notes = [
+                    Note(
+                        pitch=n.pitch,
+                        velocity=n.velocity,
+                        onset_ticks=round(n.onset_ticks * scale),
+                        duration_ticks=max(1, round(n.duration_ticks * scale)),
+                        delta=n.delta,
+                    )
+                    for n in bar.notes
+                ]
+                new_bars.append(Bar(
+                    notes=new_notes,
+                    ts_numerator=bar.ts_numerator,
+                    ts_denominator=bar.ts_denominator,
+                    beat_length=bar.beat_length,
+                    future=bar.future,
+                ))
+            new_tracks.append(Track(
+                bars=new_bars,
+                instrument=track.instrument,
+                track_type=track.track_type,
+                attributes=dict(track.attributes),
+            ))
+        return Score(tracks=new_tracks, resolution=target_tpq, tempo=self.tempo)
+
     @classmethod
     def from_dict(cls, d: dict) -> Score:
         # Basic serialization logic for datasets

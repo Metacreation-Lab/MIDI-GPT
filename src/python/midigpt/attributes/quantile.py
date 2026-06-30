@@ -169,12 +169,16 @@ class NoteDurationQuantile(BaseAttribute):
         else:
             is_drum = track.type == TrackType.Drum
 
+        # score.resolution is ticks-per-quarter-note (MIDI standard), so dividing by it
+        # gives duration in quarter notes — independent of time signature and encoder TPQ.
+        # Bin mapping: 0=32nd (0.125 qn), 1=16th, 2=8th, 3=quarter (1 qn), 4=half, 5=whole (4 qn)
+        tpq = max(score.resolution, 1)
         bars = [track.bars[bar_idx]] if bar_idx is not None else track.bars
         durations = []
         for bar in bars:
             for note in _bar_notes(bar, score):
-                d = 1.0 if is_drum else float(note.duration_ticks)
-                durations.append(int(max(0.0, min(5.0, midigpt_log2(max(d / 3.0, 1e-6)) + 1.0))))
+                d_quarter_notes = 1.0 if is_drum else float(note.duration_ticks) / tpq
+                durations.append(int(max(0.0, min(5.0, midigpt_log2(max(d_quarter_notes, 1e-6)) + 3.0))))
         return durations
 
     def compute(self, score: Score, track_idx: int, bar_idx: int | None = None) -> float | int:
