@@ -48,6 +48,9 @@ cmake_install.cmake
 .idea/
 *.swp
 
+# Local scratch / helper scripts (benchmarks, one-off tooling)
+tmp/
+
 # Secrets / local config
 .env
 .mcp.json
