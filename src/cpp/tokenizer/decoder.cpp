@@ -333,6 +333,10 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
             if (current_track) current_track->attributes["track_onset_polyphony_min"] = value;
             break;
 
+        case TokenType::TrackLevelNomml:
+            if (current_track) current_track->attributes["nomml"] = value;
+            break;
+
         default:
             // PieceStart, PieceEnd, NumBars — skip
             break;

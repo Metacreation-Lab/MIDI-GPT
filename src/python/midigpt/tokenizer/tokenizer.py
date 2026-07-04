@@ -6,27 +6,42 @@ from midigpt._types import Score
 from midigpt.attributes.base import AttributeAnalyzer
 
 
-def resample_delta(score: Score, source_res: int, target_res: int) -> Score:
-    """Resample note timings from source to target resolution, applying deltas.
+def resample_delta(score: Score, source_res: int, target_res: int, use_delta: bool) -> Score:
+    """Resample note timings from source to target resolution.
 
-    For each note, new_time = (target_res * onset_ticks / source_res) + delta,
-    clamped to >= 0. Duration is scaled proportionally.
+    ``use_delta`` gates whether ``note.delta`` (a microtiming residual, in
+    units of 1/source_res of one source_res grid cell) is folded into the
+    rescale. When False, delta is ignored entirely and onset is truncated the
+    same way regardless of whatever delta an upstream reader populated -- this
+    is required so configs with emit_delta_tokens=false get byte-identical
+    output to before microtiming residuals existed.
+
+    When True, the true continuous position (onset_ticks + delta/source_res)
+    is rescaled to target_res and truncated; the new leftover fraction becomes
+    the note's delta, again in units of 1/target_res of one target_res cell.
     """
     if source_res == target_res and all(
         n.delta == 0 for t in score.tracks for b in t.bars for n in b.notes
     ):
         return score
 
+    scale = target_res / source_res
     score.resolution = target_res
     for track in score.tracks:
         for bar in track.bars:
             for note in bar.notes:
-                new_onset = int(target_res * note.onset_ticks / source_res)
-                new_onset = max(0, new_onset + note.delta)
-                new_dur = max(1, int(target_res * note.duration_ticks / source_res))
-                note.onset_ticks = new_onset
-                note.duration_ticks = new_dur
-                note.delta = 0
+                if use_delta:
+                    true_pos = (note.onset_ticks + note.delta / source_res) * scale
+                    new_onset = int(true_pos)
+                    new_onset = max(0, new_onset)
+                    residual = true_pos - new_onset
+                    note.onset_ticks = new_onset
+                    note.delta = int(round(residual * target_res))
+                else:
+                    new_onset = max(0, int(target_res * note.onset_ticks / source_res))
+                    note.onset_ticks = new_onset
+                    note.delta = 0
+                note.duration_ticks = max(1, int(target_res * note.duration_ticks / source_res))
     return score
 
 
@@ -55,7 +70,10 @@ class Tokenizer:
         cfg = self._vocab.config()
         if score.resolution == cfg.resolution:
             return score
-        return resample_delta(copy.deepcopy(score), score.resolution, cfg.resolution)
+        return resample_delta(
+            copy.deepcopy(score), score.resolution, cfg.resolution,
+            use_delta=cfg.emit_delta_tokens,
+        )
 
     def normalize_output(self, score: Score) -> Score:
         """Return score resampled from model resolution to decode_resolution.
@@ -68,7 +86,10 @@ class Tokenizer:
         cfg = self._vocab.config()
         if cfg.resolution == cfg.decode_resolution:
             return score
-        return resample_delta(score, cfg.resolution, cfg.decode_resolution)
+        return resample_delta(
+            score, cfg.resolution, cfg.decode_resolution,
+            use_delta=cfg.emit_delta_tokens,
+        )
 
     def encode(
         self,

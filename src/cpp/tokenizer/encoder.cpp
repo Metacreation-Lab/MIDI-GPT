@@ -180,6 +180,7 @@ EncodeResult Encoder::encode_full(const Score& score,
             {"pitch_range",       TokenType::PitchRange},
             {"key_signature",     TokenType::KeySignature},
             {"silence_proportion", TokenType::SilenceProportion},
+            {"nomml",             TokenType::TrackLevelNomml},
         };
         // Only emit attributes that are explicitly in track.attributes — matches
         // original encoder semantics where each Yellow/Expressive variant selects

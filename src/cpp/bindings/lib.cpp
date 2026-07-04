@@ -142,7 +142,8 @@ PYBIND11_MODULE(_core, m) {
       .value("PitchClassSet", TokenType::PitchClassSet)
       .value("PieceEnd", TokenType::PieceEnd)
       .value("UseVelocity", TokenType::UseVelocity)
-      .value("UseMicrotiming", TokenType::UseMicrotiming);
+      .value("UseMicrotiming", TokenType::UseMicrotiming)
+      .value("TrackLevelNomml", TokenType::TrackLevelNomml);
 
   py::enum_<TrackType>(m, "TrackType")
       .value("Melodic", TrackType::Melodic)

@@ -1,6 +1,7 @@
 from midigpt.attributes.base import AttributeAnalyzer, BaseAttribute
 from midigpt.attributes.density import NoteDensity
 from midigpt.attributes.key_signature import KeySignature
+from midigpt.attributes.nomml import Nomml
 from midigpt.attributes.note_duration import NoteDurationDistribution
 from midigpt.attributes.pitch_class_set import BarLevelPitchClassSet, PitchClassSet
 from midigpt.attributes.pitch_range import PitchRange
@@ -28,6 +29,7 @@ ATTRIBUTE_REGISTRY = {
     "note_duration_quantile": NoteDurationQuantile,
     "tension": Tension,
     "tension_drum": TensionDrum,
+    "nomml": Nomml,
 }
 
 # TokenType (name) → (registry_key, params) used by AttributeAnalyzer
@@ -54,6 +56,7 @@ TOKEN_TYPE_TO_ATTRIBUTE = {
     "BarLevelOnsetPolyphonyMax": ("polyphony_quantile", {"mode": "max", "level": "bar"}),
     "Tension": ("tension", {}),
     "TensionDrum": ("tension_drum", {}),
+    "TrackLevelNomml": ("nomml", {}),
     # SilenceProportionBar, MinNoteDurationBar, MaxNoteDurationBar, PitchClassSetTrack:
     # no C++ token type yet — supported as Python classes for future models but not
     # auto-inferred from checkpoints until corresponding C++ entries are added.
@@ -70,6 +73,7 @@ __all__ = [
     "NoteDensityQuantile",
     "NoteDurationDistribution",
     "NoteDurationQuantile",
+    "Nomml",
     "OnsetPolyphony",
     "PitchClassSet",
     "PitchRange",

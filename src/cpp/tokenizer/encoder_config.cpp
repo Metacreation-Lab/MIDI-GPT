@@ -81,6 +81,7 @@ static std::string to_string(TokenType t) {
         case TokenType::TensionDrum: return "TensionDrum";
         case TokenType::UseVelocity: return "UseVelocity";
         case TokenType::UseMicrotiming: return "UseMicrotiming";
+        case TokenType::TrackLevelNomml: return "TrackLevelNomml";
         default: return "Unknown";
     }
 }
@@ -168,6 +169,7 @@ static TokenType from_string(const std::string& s) {
     if (s == "PieceEnd") return TokenType::PieceEnd;
     if (s == "UseVelocity") return TokenType::UseVelocity;
     if (s == "UseMicrotiming") return TokenType::UseMicrotiming;
+    if (s == "TrackLevelNomml") return TokenType::TrackLevelNomml;
 
     throw std::runtime_error("Unknown token type string: " + s);
 }

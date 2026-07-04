@@ -183,7 +183,16 @@ Score MidiReader::from_symusic(const symusic::Score<symusic::Tick>& s) const {
             int offset_abs_quantized = (int)round(offset_bar_abs_raw) + offset_quantized;
 
             n.duration_ticks = std::max(1, offset_abs_quantized - onset_abs_quantized);
-            n.delta = 0;
+
+            // Microtiming residual: how far the true onset falls from the
+            // nearest out.resolution grid point, expressed as an integer
+            // fraction of one grid cell (scaled by out.resolution so the
+            // magnitude fits the Delta token domain, sized resolution/2).
+            // Harmless for configs that don't emit Delta tokens: encoder.cpp
+            // only reads note.delta when emit_delta_tokens is set, and
+            // tokenizer.py's resample_delta ignores it entirely otherwise.
+            double onset_residual = rel_onset_raw - std::round(rel_onset_raw);
+            n.delta = (int)std::lround(onset_residual * out.resolution);
 
             // Debugging output
             LOG_DEBUG("Note: pitch=" + std::to_string(snote.pitch)

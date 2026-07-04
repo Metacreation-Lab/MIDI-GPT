@@ -157,7 +157,7 @@ def test_resample_delta_noop_returns_same_object_when_resolutions_match() -> Non
     onset_before = score.tracks[0].bars[0].notes[0].onset_ticks
     dur_before = score.tracks[0].bars[0].notes[0].duration_ticks
 
-    out = resample_delta(score, source_res=12, target_res=12)
+    out = resample_delta(score, source_res=12, target_res=12, use_delta=False)
 
     # Fast-path: returns the same object (identity), nothing rewritten.
     assert out is score
@@ -169,7 +169,7 @@ def test_resample_delta_noop_returns_same_object_when_resolutions_match() -> Non
 def test_resample_delta_12_to_480_scales_onset_and_duration_by_40() -> None:
     """At resolution 12: onset=12, dur=12 -> at 480: onset=480, dur=480."""
     score = _make_zero_delta_score(res=12)
-    out = resample_delta(score, source_res=12, target_res=480)
+    out = resample_delta(score, source_res=12, target_res=480, use_delta=False)
 
     assert out.resolution == 480
     notes = out.tracks[0].bars[0].notes
@@ -189,7 +189,7 @@ def test_resample_delta_480_to_12_scales_down_and_floors() -> None:
     n.onset_ticks = 481  # → int(12 * 481 / 480) = int(12.025) = 12
     n.duration_ticks = 481  # → 12
 
-    out = resample_delta(score, source_res=480, target_res=12)
+    out = resample_delta(score, source_res=480, target_res=12, use_delta=False)
 
     assert out.resolution == 12
     resampled = out.tracks[0].bars[0].notes[0]
@@ -197,31 +197,75 @@ def test_resample_delta_480_to_12_scales_down_and_floors() -> None:
     assert resampled.duration_ticks == 12
 
 
+def test_resample_delta_ignores_delta_when_use_delta_false() -> None:
+    """use_delta=False must ignore note.delta entirely, even cross-resolution.
+
+    This is the guarantee that lets emit_delta_tokens=false configs (yellow,
+    prism, ghost) get byte-identical output regardless of what an upstream
+    reader populates into note.delta.
+    """
+    score = _make_zero_delta_score(res=480)
+    n = score.tracks[0].bars[0].notes[0]
+    n.onset_ticks = 481
+    n.delta = 200  # would corrupt onset badly if ever added in raw form
+
+    out = resample_delta(score, source_res=480, target_res=12, use_delta=False)
+
+    resampled = out.tracks[0].bars[0].notes[0]
+    assert resampled.onset_ticks == 12  # unchanged vs. the zero-delta case
+    assert resampled.delta == 0
+
+
+def test_resample_delta_use_delta_true_folds_residual_across_resolutions() -> None:
+    """use_delta=True: true continuous position is preserved across a rescale.
+
+    onset=481 raw ticks at source_res=480 with no delta is the true position
+    481/480 = 1.0021 (in target_res=12 units: 12*481/480 = 12.025). Encode
+    that same true position instead as onset=480 (exact) + delta capturing
+    the "+1 raw tick" leftover, and confirm resampling to 12 recovers the
+    same truncated onset (12) plus a nonzero leftover delta rather than
+    silently discarding it.
+    """
+    score = _make_zero_delta_score(res=480)
+    n = score.tracks[0].bars[0].notes[0]
+    n.onset_ticks = 480
+    n.delta = 1  # true position = 480 + 1/480 source_res units
+
+    out = resample_delta(score, source_res=480, target_res=12, use_delta=True)
+
+    resampled = out.tracks[0].bars[0].notes[0]
+    # true_pos = (480 + 1/480) * (12/480) = 12.025 -> truncates to 12.
+    assert resampled.onset_ticks == 12
+    # leftover residual (0.025 of a target_res cell) becomes the new delta.
+    assert resampled.delta == round(0.025 * 12)
+
+
 def test_resample_delta_applies_delta_to_onset() -> None:
-    """Positive delta shifts onset forward after the scale step."""
+    """use_delta=True folds delta/source_res into the true position before
+    rescaling; at scale=1 with |delta| < source_res this is an identity
+    (nothing to truncate away), unlike the old "add raw delta post-rescale"
+    contract this superseded (that contract mixed units and was only ever
+    exercised at scale=1, never by the real 480<->12<->1920 pipeline).
+    """
     score = _make_zero_delta_score(res=12)
-    # Note 1 at onset=12 with delta=+5 -> at target 12 stays 12, +5 = 17.
     score.tracks[0].bars[0].notes[1].delta = 5
 
-    out = resample_delta(score, source_res=12, target_res=12)
+    out = resample_delta(score, source_res=12, target_res=12, use_delta=True)
 
-    # Note: noop fast-path only triggers when ALL deltas are zero; with a
-    # nonzero delta we must take the rewrite path.
     n0, n1 = out.tracks[0].bars[0].notes
     assert n0.onset_ticks == 0
     assert n0.delta == 0
-    assert n1.onset_ticks == 12 + 5
-    assert n1.delta == 0  # delta consumed
+    assert n1.onset_ticks == 12  # unchanged: identity at scale=1
+    assert n1.delta == 5  # round-trips: residual = 5/12, *12 = 5
 
 
 def test_resample_delta_clamps_negative_at_zero() -> None:
     """A large negative delta must clamp resulting onset at 0, not go negative."""
     score = _make_zero_delta_score(res=12)
-    # Onset 12 - 1000 would be -988; must clamp to 0.
+    # Onset 12 - 1000/12 would be deeply negative; must clamp to 0.
     score.tracks[0].bars[0].notes[1].delta = -1000
 
-    out = resample_delta(score, source_res=12, target_res=12)
+    out = resample_delta(score, source_res=12, target_res=12, use_delta=True)
 
     n1 = out.tracks[0].bars[0].notes[1]
     assert n1.onset_ticks == 0
-    assert n1.delta == 0

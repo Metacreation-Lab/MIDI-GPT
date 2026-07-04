@@ -415,12 +415,31 @@ class MidiGPTDataset:
             return -1
         return self._genre_grouping.encode(random.choice(known))
 
+    def _stash_nomml(self, score: Score, idx: int) -> None:
+        """Seed track.attributes["_nomml_raw"] from GigaMIDI's precomputed
+        per-track NOMML column so Nomml.compute() uses ground truth instead
+        of recomputing from an already bar-quantized Score (which would lose
+        the fine onset alignment the metric depends on). -1 entries (no valid
+        value for that track) are left unset, falling back to Nomml.compute's
+        own (lower-fidelity) recomputation.
+        """
+        values = self._data[idx].get("NOMML")
+        if not values:
+            return
+        for t_idx, track in enumerate(score.tracks):
+            if t_idx >= len(values):
+                break
+            v = values[t_idx]
+            if v is not None and v != -1:
+                track.attributes["_nomml_raw"] = int(v)
+
     def _encode_one(self, idx: int) -> dict:
         self._ensure_tokenizer()
         # Score.from_bytes() already returns a fresh, owned object; the
         # subsequent augmentations mutate copies, so an extra deepcopy here is
         # pure overhead (~1.5 ms/sample).
         score = Score.from_bytes(self._data[idx]["music"])
+        self._stash_nomml(score, idx)
 
         score = _TRANSPOSE(score)
         score = _VELOCITY(score)

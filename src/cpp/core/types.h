@@ -80,6 +80,9 @@ enum class TokenType {
     UseVelocity    = 86,    // 0 = no velocity tokens, 1 = use velocity tokens
     UseMicrotiming = 87,    // 0 = no delta tokens,    1 = use delta tokens
 
+    // Track-level expressiveness control (NOMML median metric depth, 0-12).
+    TrackLevelNomml = 88,
+
     // Aliases for refactor names if needed
     OnsetPolyphony = 42,    // Use MaxPolyphony as alias for OnsetPolyphony
     PitchRange = 49,

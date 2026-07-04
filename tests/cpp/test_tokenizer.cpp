@@ -466,3 +466,30 @@ TEST_CASE("Encoder/Decoder: bar-level density/polyphony attributes roundtrip") {
     CHECK(attrs.at("bar_BarLevelOnsetPolyphonyMax_0") == 3);
     CHECK(attrs.at("bar_BarLevelOnsetPolyphonyMax_1") == 9);
 }
+
+TEST_CASE("Encoder/Decoder: track-level nomml attribute roundtrip") {
+    auto cfg = std_config();
+    cfg.token_domains.push_back({TT::TrackLevelNomml, 13});
+    Vocabulary vocab(cfg);
+    Encoder enc(vocab);
+    Decoder dec(vocab);
+
+    Score s; s.resolution = 480;
+    Note n; n.pitch = 60; n.velocity = 64;
+    n.onset_ticks = 0; n.duration_ticks = 240;
+    s.notes.push_back(n);
+
+    Track t; t.instrument = 0; t.type = TrackType::Melodic;
+    Bar b; b.ts_numerator = 4; b.ts_denominator = 4;
+    b.note_indices.push_back(0);
+    t.bars.push_back(b);
+    t.attributes["nomml"] = 12;  // expressive
+    s.tracks.push_back(t);
+
+    auto tokens = enc.encode(s);
+    CHECK(count_type(tokens, vocab, TT::TrackLevelNomml) == 1);
+
+    Score back = dec.decode(tokens);
+    REQUIRE(back.tracks.size() == 1);
+    CHECK(back.tracks[0].attributes.at("nomml") == 12);
+}
