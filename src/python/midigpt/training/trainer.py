@@ -75,6 +75,7 @@ class TrainConfig:
 
     # ── Training loop ────────────────────────────────────────────────────
     num_epochs: int = 10
+    max_steps: int = 0  # if > 0, overrides num_epochs; LR schedule uses this as total_steps
     per_device_batch_size: int = 4
     gradient_accumulation_steps: int = 8
     seed: int = 42
@@ -315,7 +316,7 @@ def train(
         / config.per_device_batch_size
         / config.gradient_accumulation_steps
     )
-    total_steps = steps_per_epoch * config.num_epochs
+    total_steps = config.max_steps if config.max_steps > 0 else steps_per_epoch * config.num_epochs
 
     lit_module = MidiGPTLightningModule(model, config)
     lit_module.total_steps = total_steps
@@ -332,7 +333,7 @@ def train(
     ]
 
     trainer = L.Trainer(
-        max_epochs=config.num_epochs,
+        max_steps=total_steps,
         precision=_precision_str(config.precision),
         accumulate_grad_batches=config.gradient_accumulation_steps,
         gradient_clip_val=config.max_grad_norm if config.max_grad_norm > 0 else None,

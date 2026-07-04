@@ -409,3 +409,60 @@ TEST_CASE("Encoder partial_encode: only emits a prefix of bars, no TrackEnd") {
     CHECK(count_type(tokens, vocab, TT::Bar) == 2);
     CHECK(count_type(tokens, vocab, TT::TrackEnd) == 0);
 }
+
+// ---------------------------------------------------------------------------
+// Bar-level density/polyphony attribute roundtrip
+//
+// Regression test: encoder.cpp's bar_attrs table previously only emitted
+// Tension/TensionDrum/PitchClassSet, silently dropping BarLevelOnsetDensity
+// and BarLevelOnsetPolyphonyMin/Max even though the decoder already handled
+// them and the token domains existed in the vocab.
+// ---------------------------------------------------------------------------
+
+TEST_CASE("Encoder/Decoder: bar-level density/polyphony attributes roundtrip") {
+    auto cfg = std_config();
+    cfg.token_domains.push_back({TT::BarLevelOnsetDensity, 10});
+    cfg.token_domains.push_back({TT::BarLevelOnsetPolyphonyMin, 10});
+    cfg.token_domains.push_back({TT::BarLevelOnsetPolyphonyMax, 10});
+    Vocabulary vocab(cfg);
+    Encoder enc(vocab);
+    Decoder dec(vocab);
+
+    Score s; s.resolution = 480;
+    for (int i = 0; i < 2; ++i) {
+        Note n; n.pitch = 60 + i; n.velocity = 64;
+        n.onset_ticks = 0; n.duration_ticks = 240;
+        s.notes.push_back(n);
+    }
+    Track t; t.instrument = 0; t.type = TrackType::Melodic;
+    for (int i = 0; i < 2; ++i) {
+        Bar b; b.ts_numerator = 4; b.ts_denominator = 4;
+        b.note_indices.push_back(i);
+        t.bars.push_back(b);
+    }
+    // Distinct per-bar values so a decode mix-up between bars is caught.
+    t.attributes["bar_BarLevelOnsetDensity_0"] = 2;
+    t.attributes["bar_BarLevelOnsetDensity_1"] = 7;
+    t.attributes["bar_BarLevelOnsetPolyphonyMin_0"] = 1;
+    t.attributes["bar_BarLevelOnsetPolyphonyMin_1"] = 4;
+    t.attributes["bar_BarLevelOnsetPolyphonyMax_0"] = 3;
+    t.attributes["bar_BarLevelOnsetPolyphonyMax_1"] = 9;
+    s.tracks.push_back(t);
+
+    auto tokens = enc.encode(s);
+    CHECK(count_type(tokens, vocab, TT::BarLevelOnsetDensity) == 2);
+    CHECK(count_type(tokens, vocab, TT::BarLevelOnsetPolyphonyMin) == 2);
+    // BarLevelOnsetPolyphonyMax shares its underlying id with OnsetPolyphony;
+    // both bar-level emissions land in this same token range.
+    CHECK(count_type(tokens, vocab, TT::BarLevelOnsetPolyphonyMax) == 2);
+
+    Score back = dec.decode(tokens);
+    REQUIRE(back.tracks.size() == 1);
+    const auto& attrs = back.tracks[0].attributes;
+    CHECK(attrs.at("bar_BarLevelOnsetDensity_0") == 2);
+    CHECK(attrs.at("bar_BarLevelOnsetDensity_1") == 7);
+    CHECK(attrs.at("bar_BarLevelOnsetPolyphonyMin_0") == 1);
+    CHECK(attrs.at("bar_BarLevelOnsetPolyphonyMin_1") == 4);
+    CHECK(attrs.at("bar_BarLevelOnsetPolyphonyMax_0") == 3);
+    CHECK(attrs.at("bar_BarLevelOnsetPolyphonyMax_1") == 9);
+}

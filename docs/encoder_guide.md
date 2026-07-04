@@ -23,7 +23,7 @@ Encoder configs live in `models/`. Name them `<name>_encoder.json`. The `<name>`
 
 Existing encoders:
 - `models/yellow_encoder.json` — 5 track-level attributes, no genre
-- `models/prism_encoder.json` — 10 attributes (bar + track level), 18-genre control
+- `models/prism_encoder.json` — 9 attributes (bar + track level), 18-genre control
 
 ---
 
@@ -99,7 +99,6 @@ Tells the Python `AttributeAnalyzer` which attributes to compute during training
   { "name": "pitch_range" },
   { "name": "note_duration_quantile", "params": { "mode": "min" } },
   { "name": "note_duration_quantile", "params": { "mode": "max" } },
-  { "name": "onset_polyphony" },
   { "name": "note_density_quantile",  "params": { "level": "bar" } },
   { "name": "polyphony_quantile",     "params": { "mode": "min", "level": "bar" } },
   { "name": "polyphony_quantile",     "params": { "mode": "max", "level": "bar" } },

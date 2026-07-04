@@ -221,9 +221,12 @@ EncodeResult Encoder::encode_full(const Score& score,
             // simply emits whichever key is present.
             const std::string idx_str = std::to_string(bar_idx);
             const std::vector<std::pair<std::string, TokenType>> bar_attrs = {
-                {"bar_Tension_" + idx_str,        TokenType::Tension},
-                {"bar_TensionDrum_" + idx_str,    TokenType::TensionDrum},
-                {"bar_PitchClassSet_" + idx_str,  TokenType::PitchClassSet},
+                {"bar_Tension_" + idx_str,                   TokenType::Tension},
+                {"bar_TensionDrum_" + idx_str,               TokenType::TensionDrum},
+                {"bar_PitchClassSet_" + idx_str,             TokenType::PitchClassSet},
+                {"bar_BarLevelOnsetDensity_" + idx_str,      TokenType::BarLevelOnsetDensity},
+                {"bar_BarLevelOnsetPolyphonyMin_" + idx_str, TokenType::BarLevelOnsetPolyphonyMin},
+                {"bar_BarLevelOnsetPolyphonyMax_" + idx_str, TokenType::BarLevelOnsetPolyphonyMax},
             };
             for (const auto& [key, type] : bar_attrs) {
                 if (vocab_.has(type) && track.attributes.count(key)) {
