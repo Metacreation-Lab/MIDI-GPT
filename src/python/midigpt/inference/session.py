@@ -817,6 +817,151 @@ class SamplingSession:
 
         return result
 
+    def score_from_tokens(
+        self,
+        token_ids: list,
+        step_idx: int = 0,
+        use_velocity: int = -1,
+    ) -> dict:
+        """Teacher-forced log P(token_ids | context from this session).
+
+        Uses a single forward pass over [context_tokens + token_ids], then
+        steps the grammar state token-by-token to get per-position masks.
+        Returns log P of each token_id under the masked distribution (T=1).
+
+        step_idx: which planner step to use (0 = first/cold-start, which is
+                  the most informative for cross-conditional scoring).
+        """
+        import copy
+        try:
+            import torch
+        except ImportError:
+            raise ImportError("pip install midigpt[inference]") from None
+
+        cfg  = self._request.config
+        mask = self._build_selection_mask()
+        import json as _json
+        enc_cfg = self._engine._tokenizer._vocab.config()
+        try:
+            dims = sorted(
+                set(_json.loads(enc_cfg.to_json()).get("num_bars_map") or []),
+                reverse=True,
+            )
+        except Exception:
+            dims = []
+        candidates = [d for d in dims if d <= cfg.model_dim] or [cfg.model_dim]
+        enc_cfg.model_dim = candidates[0]
+
+        planner = _core.StepPlanner(
+            mask, enc_cfg, cfg.bars_per_step, cfg.tracks_per_step
+        )
+        steps = list(planner.plan())
+        if step_idx >= len(steps) or not token_ids:
+            return {"log_probs": [], "total_logp": 0.0, "n_tokens": 0, "per_type": {}}
+        step = steps[step_idx]
+
+        # Build score + SessionState (minimal setup — no analyzer attributes)
+        py_score = self._score if isinstance(self._score, Score) else from_cpp(self._score)
+        score = self._engine._tokenizer.normalize_input(copy.deepcopy(py_score))
+
+        # _build_constraints uses self._full_ar_ids; infill scoring has none
+        self._full_ar_ids = set()
+        state = _core.SessionState(
+            to_cpp(score), step,
+            self._engine._tokenizer._vocab,
+            self._build_constraints(step),
+            self._engine._tokenizer._encoder,
+            self._engine._tokenizer._decoder,
+            use_span_masks=False,
+            remove_future_bars=False,
+            use_velocity=use_velocity, use_microtiming=-1, genre=-1,
+        )
+        context_tokens = list(state.context_tokens())
+        ctx_len = len(context_tokens)
+
+        # Prefill over the full sequence [ctx + token_ids]. Generation never
+        # exceeds the positional window (it stops at the budget), but replay
+        # scoring can: fall back to sliding-window scoring with stride =
+        # half window, so every position keeps at least half a window of
+        # left context.
+        full_seq = context_tokens + list(token_ids)
+        dev = next(self._engine._model.parameters()).device
+
+        def _forward(seq):
+            inp = torch.tensor([seq], dtype=torch.long, device=dev)
+            with torch.no_grad():
+                try:
+                    out = self._engine._model(inp)
+                except Exception:
+                    try:
+                        out = self._engine._model(inp, None)
+                    except Exception:
+                        out = self._engine._model(inp.cpu())
+            if not isinstance(out, tuple):
+                out = (out,)
+            return out[0].cpu()[0]  # [seq_len, vocab]
+
+        n_pos = self._model_max_context()
+        if len(full_seq) <= n_pos:
+            _logits_seq = _forward(full_seq)
+
+            def _logits_at(p):
+                return _logits_seq[p]
+        else:
+            _stride = max(1, n_pos // 2)
+            _window_cache: dict[int, torch.Tensor] = {}
+
+            def _logits_at(p):
+                if p < n_pos:
+                    start = 0
+                else:
+                    # smallest stride-aligned start that keeps >= n_pos - stride
+                    # tokens of left context for position p
+                    start = ((p - n_pos + 1 + _stride - 1) // _stride) * _stride
+                if start not in _window_cache:
+                    _window_cache[start] = _forward(full_seq[start:start + n_pos])
+                return _window_cache[start][p - start]
+
+        vocab = self._engine._tokenizer._vocab
+        log_probs: list[float] = []
+        per_type: dict[str, list] = {}
+
+        for i, tid in enumerate(token_ids):
+            logit_pos = ctx_len - 1 + i
+            logits = _logits_at(logit_pos)
+
+            mask_cpu = torch.as_tensor(state.logit_mask(), dtype=torch.bool)
+            n_legal = int(mask_cpu.sum().item())
+            if n_legal > 0:
+                masked_logits = logits.masked_fill(~mask_cpu, float("-inf"))
+            else:
+                masked_logits = logits
+
+            log_p_dist = torch.log_softmax(masked_logits, dim=-1)
+            lp = float(log_p_dist[int(tid)].item())
+            log_probs.append(lp)
+
+            try:
+                tt = vocab.get_type(int(tid)).name
+            except Exception:
+                tt = "?"
+            per_type.setdefault(tt, []).append(lp)
+
+            try:
+                state.advance(int(tid))
+            except Exception:
+                break
+
+        return {
+            "log_probs": log_probs,
+            "total_logp": float(sum(log_probs)),
+            "n_tokens": len(log_probs),
+            "per_type": {
+                k: {"mean": sum(v) / len(v), "sum": sum(v), "n": len(v)}
+                for k, v in per_type.items()
+            },
+        }
+
     def _snapshot_prompt_state(self, step) -> dict:
         """Per-bar prompt state for the current step, post-mask_bars patch.
 
