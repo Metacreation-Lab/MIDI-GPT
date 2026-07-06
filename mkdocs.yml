@@ -36,7 +36,10 @@ nav:
   - Training: training.md
   - OSC Server: osc.md
   - HTTP Server: http.md
-  - Contributing: contributing.md
+  - Contributing:
+    - Contributing Guide: contributing.md
+    - Attribute Controls implementation Guide: attribute_controls_guide.md
+    - Encoder Config Design Guide: encoder_guide.md
 
 markdown_extensions:
   - admonition

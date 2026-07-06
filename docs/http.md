@@ -11,7 +11,7 @@ pip install "midigpt[http]"
 ### Local checkpoint
 
 ```bash
-midigpt-http --ckpt models/yellow.pt --port 8000
+midigpt-http --ckpt checkpoints/run_001/model_final.safetensors --port 8000
 ```
 
 ### Pretrained from HuggingFace Hub
@@ -39,12 +39,13 @@ midigpt-http --pretrained yellow --device cpu    # force CPU
 
 | Flag | Default | Description |
 |---|---|---|
-| `--ckpt PATH` | — | Local `.pt` bundle or checkpoint directory (mutually exclusive with `--pretrained`) |
+| `--ckpt PATH` | — | Local `.safetensors`, `.pt` bundle, or checkpoint directory (mutually exclusive with `--pretrained`) |
 | `--pretrained NAME_OR_REPO` | — | Short name (`yellow`) or HuggingFace repo ID |
 | `--hf-filename FILE` | — | Filename within the HF repo (required when `--pretrained` is a full repo ID) |
 | `--device DEVICE` | auto | `cpu`, `cuda`, `mps`, or `auto` |
 | `--host HOST` | `0.0.0.0` | Bind address |
 | `--port PORT` | `8000` | TCP port |
+| `--idle-timeout SECONDS` | `0` (off) | Shut down automatically after this many seconds of inactivity |
 | `--log-level` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 
 ---

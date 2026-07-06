@@ -76,6 +76,7 @@ The first 16 entries above are required for all encoders. Attribute tokens are a
 | `KeySignature` | 25 | track | `KeySignature` |
 | `OnsetPolyphony` | 10 | track | `OnsetPolyphony` |
 | `PitchClassSetTrack` | 13 | track | `PitchClassSet(level="track")` |
+| `TrackLevelNomml` | 13 | track | `Nomml` |
 | `BarLevelOnsetDensity` | 10 | bar | `NoteDensityQuantile(level="bar")` |
 | `BarLevelOnsetPolyphonyMin` | 10 | bar | `PolyphonyQuantile(mode="min", level="bar")` |
 | `BarLevelOnsetPolyphonyMax` | 10 | bar | `PolyphonyQuantile(mode="max", level="bar")` |
@@ -83,6 +84,8 @@ The first 16 entries above are required for all encoders. Attribute tokens are a
 | `Tension` | 10 | bar | `Tension` |
 | `TensionDrum` | 10 | bar | `TensionDrum` |
 | `Genre` | N | piece | `genre_grouping.num_genres()` |
+| `UseVelocity` | 2 | piece | *(structural switch: 0=no, 1=yes)* |
+| `UseMicrotiming` | 2 | piece | *(structural switch: 0=no, 1=yes)* |
 
 Note: `PitchClassSetTrack` has no C++ entry yet — it cannot be used in `token_domains` until one is added. See `attribute_controls_guide.md` § "Token types with no C++ entry yet".
 

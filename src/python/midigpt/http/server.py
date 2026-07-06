@@ -153,6 +153,7 @@ class HttpServer:
                 "checkpoint": self._ckpt_label,
                 "capabilities": self._capabilities(),
                 "attributes": self._engine._analyzer.attribute_sizes(),
+                "resolution": self._engine._tokenizer._vocab.config().resolution,
             }
 
         @app.post("/generate", tags=["generation"])

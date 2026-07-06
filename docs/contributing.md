@@ -115,6 +115,9 @@ tests/
 
 A few things worth knowing before modifying the code:
 
+- **Guides for extending tokenization/conditioning:**
+  - For implementing a new attribute control end-to-end, follow the [Attribute Controls Guide](attribute_controls_guide.md).
+  - For designing and validating encoder configurations, follow the [Encoder Config Guide](encoder_guide.md).
 - **Token IDs and vocabularies live exclusively in C++.** `EncoderConfig.from_json(str)` is the entry point. `Tokenizer.vocab_size()` is authoritative — do not recompute it from `sum(token_domains[*].domain_size)`.
 - **`_types.Score` vs. `_core.Score`:** The Python side uses `_types.Score` (dataclasses). The C++ bindings use `_core.Score`. `_converters.to_cpp()` and `from_cpp()` convert between them. `SamplingSession._run_step()` normalises to `_types.Score` on entry.
 - **`model_dim` is a generation-window parameter,** not a score bar count. Tests that use small scores must pad to at least `model_dim` bars.

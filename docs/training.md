@@ -68,7 +68,7 @@ train(
 )
 ```
 
-`train()` uses PyTorch Lightning internally. At the end of training it writes a packed `.pt` bundle (`model_final.pt`) containing the weights, architecture config, and encoder config. Intermediate checkpoints are saved every `save_steps` steps.
+`train()` uses PyTorch Lightning internally. At the end of training it writes a packed `.safetensors` bundle (`model_final.safetensors`) containing the weights, architecture config, and encoder config. Intermediate checkpoints are saved every `save_steps` steps.
 
 ---
 
@@ -127,23 +127,22 @@ train(
 
 ## Checkpoint format
 
-Packed `.pt` bundles written by training embed everything needed to run inference:
+By default, training output is saved as a `.safetensors` bundle (`format_version: 2`) containing the weights and metadata:
 
-```python
-{
-    "format_version": 1,
-    "arch":           "gpt2",
-    "config":         { "vocab_size": ..., "n_positions": 2048, ... },
-    "encoder_config": { ... },   # full encoder JSON
-    "state_dict":     { ... },   # HuggingFace GPT-2 key layout
-}
-```
+* **Weights:** Stored natively in SafeTensors format.
+* **Metadata:** Inside the SafeTensors file header, the following string keys are defined:
+  * `format_version`: `"2"`
+  * `arch`: `"gpt2"`
+  * `config`: A JSON string representing the model architecture configuration (e.g., `n_embd`, `n_layer`, `n_head`).
+  * `encoder_config`: A JSON string representing the full encoder configuration (vocabulary domains, resolution, etc.).
 
 Load with:
 
 ```python
 from midigpt.inference import InferenceEngine
-engine = InferenceEngine.from_checkpoint("checkpoints/run_001/model_final.pt")
+engine = InferenceEngine.from_checkpoint("checkpoints/run_001/model_final.safetensors")
 ```
 
-`load_checkpoint(path)` also accepts a legacy directory containing `config.json` + `model.pt`.
+The loader also remains backwards-compatible with:
+* Legacy `.pt` packed-bundle files (`format_version: 1`) containing a pickled dict of weights, architecture, and encoder configuration.
+* A directory containing `config.json` + `model.pt` (legacy TorchScript representation).

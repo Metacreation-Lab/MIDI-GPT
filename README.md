@@ -15,7 +15,7 @@ A transformer model for **computer-assisted multitrack music composition**.
 - **Fill in missing bars** while preserving your existing arrangement
 - **Generate new tracks** from scratch, conditioned on musical attributes
 - **Steer the output** by controlling note density, polyphony, and note duration — globally or per bar
-- **Integrate with your DAW** via a real-time OSC server
+- **Run a MIDI-GPT API server** via a HTTP server
 - **One-line setup** — load pretrained models from HuggingFace Hub, no compiler needed
 
 ---
@@ -30,8 +30,8 @@ Pre-built wheels for CPython 3.10–3.12 on Linux (x86_64), macOS (x86_64 + arm6
 
 | Extra | What it adds |
 |---|---|
-| `inference` | `torch>=2.0`, `tqdm`, `huggingface_hub` |
-| `train` | PyTorch Lightning, HuggingFace `datasets`, `pyarrow`, `python-dotenv` |
+| `inference` | `torch>=2.0`, `tqdm`, `huggingface_hub`, `safetensors` |
+| `train` | PyTorch Lightning, HuggingFace `datasets`, `pyarrow`, `python-dotenv`, `wandb` |
 | `realtime` | `python-osc`, Flask, Flask-SocketIO |
 | `http` | FastAPI, uvicorn |
 | `dev` | `pytest`, `ruff`, `mypy` |
@@ -75,9 +75,9 @@ The model is downloaded once and cached by `huggingface_hub` in `~/.cache/huggin
 |---|---|---|---|---|
 | `yellow` | 4, 8 | yes | note density, polyphony (min/max), note duration (min/max) | [yellow.pt](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow.pt) |
 | `ghost` | 4, 8, 12, 16 | yes | note density, polyphony (min/max), note duration (min/max) | coming soon |
-| `expressive` | 4, 8 | yes | note density, polyphony (min/max), note duration (min/max) | coming soon |
+| `expressive` | 4, 8 | yes | key signature, pitch range, silence, note duration, note density (bar), polyphony (bar), pitch class set, nomml, genre | coming soon |
 
-`model_dim` in `InferenceConfig` is the context window in bars, not a vocabulary dimension — pass a value from the model's `num_bars_map`. `expressive` additionally encodes sub-grid timing via delta tokens.
+`model_dim` in `InferenceConfig` is the context window in bars, not a vocabulary dimension — pass a value from the model's `num_bars_map`. `expressive` additionally encodes sub-grid timing via delta tokens and supports switchable velocity/microtiming controls.
 
 ---
 
@@ -89,8 +89,8 @@ The model is downloaded once and cached by `huggingface_hub` in `~/.cache/huggin
 # By name (downloads from Metacreation/MIDI-GPT on HuggingFace Hub)
 engine = InferenceEngine.from_pretrained("yellow")   # or "ghost", "expressive"
 
-# From a local .pt bundle
-engine = InferenceEngine.from_checkpoint("path/to/model.pt")
+# From a local checkpoint (.safetensors or .pt bundle)
+engine = InferenceEngine.from_checkpoint("path/to/model.safetensors")
 ```
 
 ### Infill existing bars
@@ -224,7 +224,7 @@ config = TrainConfig.from_file("models/train_config.json")
 train(config, train_path="/data/train/00000.parquet", eval_path="/data/valid/00000.parquet")
 ```
 
-`train()` uses PyTorch Lightning and writes a packed `.pt` bundle at the end of training containing weights, architecture config, and encoder config.
+`train()` uses PyTorch Lightning and writes a packed `.safetensors` bundle at the end of training containing weights, architecture config, and encoder config.
 
 ### Key `TrainConfig` fields
 
@@ -245,8 +245,8 @@ train(config, train_path="/data/train/00000.parquet", eval_path="/data/valid/000
 ```bash
 pip install "midigpt[http]"
 
-# From a local checkpoint
-midigpt-http --ckpt models/yellow.pt --port 8000
+# From a local checkpoint (.safetensors or .pt)
+midigpt-http --ckpt checkpoints/run_001/model_final.safetensors --port 8000
 
 # From HuggingFace Hub (by name or repo ID)
 midigpt-http --pretrained yellow --port 8000

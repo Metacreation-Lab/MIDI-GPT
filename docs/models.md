@@ -10,7 +10,7 @@ midigpt ships three pretrained checkpoints, each trained on a different encoder 
 | `ghost` | 4, 8, 12, 16 | yes | no | 32 | coming soon |
 | `expressive` | 4, 8 | no | yes | 128 | coming soon |
 
-All three models condition on the same attribute set: **note density**, **min/max polyphony**, and **min/max note duration**.
+The `yellow` and `ghost` models condition on: **note density**, **min/max polyphony**, and **min/max note duration**. The `expressive` model supports a wider set of attribute controls: **key signature**, **pitch range**, **silence proportion**, **note duration**, **note density (bar-level)**, **polyphony (bar-level)**, **pitch class set (bar-level)**, **NOMML** (median metric depth), and **genre** groups.
 
 ---
 
@@ -42,7 +42,7 @@ An extended checkpoint trained with larger context windows (up to 16 bars) and a
 
 ## Expressive
 
-A microtiming-aware checkpoint. The encoder emits `delta` offset tokens that capture note placement at sub-grid resolution, and uses 128 velocity bins (vs. 32 for the other models). This produces output that feels more "human" and less quantized.
+A microtiming-aware checkpoint. The encoder emits `delta` offset tokens that capture note placement at sub-grid resolution, and uses 128 velocity bins (vs. 32 for the other models). It includes a `nomml` attribute control (median metric depth) to govern the degree of expressive timing vs. quantization. It also supports piece-level switchable controls for velocity and microtiming. This produces output that feels more "human" and less quantized.
 
 **When to use:** When timbral and rhythmic nuance matters more than structural control — e.g. jazz, solo piano, or any music where expressive timing is essential.
 
@@ -93,16 +93,15 @@ InferenceConfig(model_dim=16, mask_mode="token")   # ghost supports "token"
 
 ## Checkpoint format
 
-Packed `.pt` bundles embed the encoder config alongside the model weights:
+By default, checkpoints are packaged as `.safetensors` files (`format_version: 2`) embedding the weights and metadata:
 
-```python
-{
-    "format_version": 1,
-    "arch":           "gpt2",
-    "config":         {"vocab_size": ..., "n_positions": 2048, "n_embd": 512, ...},
-    "encoder_config": { ... },   # full encoder JSON — source of truth for vocab sizes
-    "state_dict":     { ... },   # HuggingFace GPT-2 key layout
-}
-```
+* **Weights:** Stored natively in SafeTensors format.
+* **Metadata:** Stored inside the SafeTensors file header with the following keys:
+  * `format_version`: `"2"`
+  * `arch`: `"gpt2"`
+  * `config`: A JSON string representing the model architecture configuration (e.g., `n_embd`, `n_layer`, `n_head`).
+  * `encoder_config`: A JSON string representing the full encoder configuration (vocabulary domains, resolution, etc.).
 
-`load_checkpoint(path)` also accepts a legacy directory containing `config.json` + `model.pt`.
+`load_checkpoint(path)` is backwards-compatible and also accepts:
+* Legacy `.pt` packed-bundle files (`format_version: 1`) containing a pickled dict of weights, architecture, and encoder configuration.
+* A directory containing `config.json` + `model.pt` (legacy TorchScript representation).
