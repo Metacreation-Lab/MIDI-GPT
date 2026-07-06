@@ -11,6 +11,28 @@ section above `[Unreleased]` before tagging.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-06
+
+### Added
+- **Expressive Encoder & Controls:** Support for sub-grid microtiming (`Delta`) tokens, 128 velocity levels (vs 32), and piece-level switchable microtiming and velocity controls.
+- **NOMML Attribute:** Added `TrackLevelNomml` (median metric depth) attribute control end-to-end to steer rhythmic quantization.
+- **Genre Grouping:** Piece-level genre conditioning via `GenreGrouping` for model training and inference.
+- **HTTP Server Timeout:** New `--idle-timeout` flag to support automatic shutdown on inactivity.
+- **Developer Documentation:** Added comprehensive implementation and design guides for both [Attribute Controls](docs/attribute_controls_guide.md) and [Encoder Configs](docs/encoder_guide.md).
+- **Preprocessing Acceleration:** Added a `--workers` flag to parallelize preprocessing across multiple parquet shards.
+- **Training Tests:** Integrated training pipeline end-to-end tests using MIDI-fixture-based parquet data.
+
+### Changed
+- **Checkpoint Format:** Switched to `.safetensors` as the default serialization format (`format_version: 2`), embedding weights and configuration metadata in the SafeTensors header.
+- **Tension Attribute:** Refactored Tension extraction into a separate module structure, and updated tension quantization to decile bins.
+
+### Fixed
+- **Grammar Constraints:** Allowed `NoteOnset` immediately following `FillInStart` (at onset = 0).
+- **Quantization Agnosticism:** Refactored `NoteDurationQuantile` to be TPQ- and time-signature-agnostic.
+- **DDP & Lightning Training:** Corrected training configs (`num_epochs` -> `max_steps`), fixed DDP learning rate scaling, and removed unnecessary deepcopy operations.
+- **Worker Safety:** Made dataloader worker spawning fork-safe for C++ pybind11 tokenizer.
+- **Genre Validation:** Improved error validation to list canonical genres upon validation failures.
+
 ## [0.2.4] - 2026-06-03
 
 ### Added
