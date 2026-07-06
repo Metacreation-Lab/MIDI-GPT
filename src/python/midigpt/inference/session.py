@@ -1,7 +1,10 @@
 import copy
+import json
 import logging
+import math
 import time  # Moved from _sample_step
 from dataclasses import replace as replace_cfg
+from pathlib import Path
 
 from tqdm import tqdm
 
@@ -12,6 +15,211 @@ from midigpt._types import Score
 from midigpt.inference.config import GenerationRequest, InferenceConfig
 
 log = logging.getLogger(__name__)
+
+
+class TokenLogger:
+    """Collects per-token generation stats and bar summaries.
+
+    Attach to a SamplingSession before calling .run():
+        session = engine.session(score, request)
+        session.token_logger = TokenLogger("debug_tokens.jsonl")
+        result = session.run()
+
+    The JSONL file contains one JSON object per line:
+        {"rec": "token", "pos": int, "tt": str, "tv": int,
+         "H_bits": float, "n_legal": int, "n_legal_tt": int,
+         "legal_tt": [str,...], "top5": [{"tt":str,"tv":int,"p":float},...]}
+        {"rec": "bar", "track": int, "bar": int, "generated": bool,
+         "n_notes": int, "onset_spq": [int,...], "pitches": [int,...],
+         "unique_onsets": int, "pct_at_0": float}
+        {"rec": "step_summary", ...}
+    """
+
+    def __init__(self, path: str | Path):
+        self._path = Path(path)
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._f = self._path.open("w")
+        self._step = 0
+        self._token_types_seen: dict[str, int] = {}
+        self._collapse_count = 0
+
+    def log_token(self, pos: int, token_id: int, tname: str, tval: int,
+                  raw_probs_cpu, mask_cpu, vocab):
+        """Called once per generated token, before state.advance().
+
+        raw_probs_cpu: softmax(masked_logits, T=1) — model belief after grammar
+                       mask only, before temperature/top-k/p shaping.
+        mask_cpu:      boolean grammar mask (True = legal).
+        """
+        import torch
+        p = raw_probs_cpu
+
+        # Entropy (bits) of the model's legal distribution at T=1
+        nonzero = p[p > 0]
+        H = -float((nonzero * nonzero.log2()).sum().item()) if len(nonzero) else 0.0
+
+        # Legal token types from grammar mask
+        legal_tt: list[str] = []
+        seen_tt: set[str] = set()
+        for i, ok in enumerate(mask_cpu.tolist()):
+            if ok:
+                try:
+                    tt = vocab.get_type(i).name
+                    if tt not in seen_tt:
+                        legal_tt.append(tt)
+                        seen_tt.add(tt)
+                except Exception:
+                    pass
+
+        # Top-5 by raw (T=1) probability — what the model actually prefers
+        top_idx = torch.topk(p, min(5, int((p > 0).sum().item()))).indices.tolist()
+        top5 = []
+        for i in top_idx:
+            try:
+                tt2 = vocab.get_type(i).name
+                _, tv2 = vocab.decode(i)
+            except Exception:
+                tt2, tv2 = "?", -1
+            top5.append({"tt": tt2, "tv": tv2, "p": round(float(p[i].item()), 5)})
+
+        self._token_types_seen[tname] = self._token_types_seen.get(tname, 0) + 1
+
+        rec = {
+            "rec": "token",
+            "step": self._step,
+            "pos": pos,
+            "tid": token_id,            # raw vocab index — needed for cross-scoring replay
+            "tt": tname,
+            "tv": tval,
+            "H_bits": round(H, 4),      # model uncertainty after grammar, at T=1
+            "n_legal": int(mask_cpu.sum().item()),
+            "n_legal_tt": len(legal_tt),
+            "legal_tt": legal_tt,        # which token types grammar allows here
+            "top5": top5,               # model's top-5 choices (T=1, after mask)
+        }
+        self._f.write(json.dumps(rec) + "\n")
+
+    def log_grammar_collapse(self, pos: int, n_legal: int):
+        self._collapse_count += 1
+        self._f.write(json.dumps({
+            "rec": "grammar_collapse", "step": self._step,
+            "pos": pos, "n_legal": n_legal
+        }) + "\n")
+
+    def log_bar_summaries(self, result: Score, request, gap_bars: list[int], tpb_spq: int):
+        """Log per-(track,bar) note stats from a decoded result Score."""
+        gen_bars = set(gap_bars)
+        for ti, track in enumerate(result.tracks):
+            # Find what bars this track has
+            all_bars: dict[int, list] = {}
+            for note in track.bars:  # Score has .bars list of Bar objects
+                pass
+            # Use bar.notes directly
+            for bi, bar in enumerate(track.bars):
+                onsets = sorted(set(n.onset_ticks for n in bar.notes))
+                n = len(bar.notes)
+                n_at_0 = sum(1 for note in bar.notes if note.onset_ticks == 0)
+                pitches = sorted(set(note.pitch for note in bar.notes))
+                rec = {
+                    "rec": "bar",
+                    "step": self._step,
+                    "track": ti,
+                    "bar": bi,
+                    "generated": bi in gen_bars,
+                    "n_notes": n,
+                    "onset_spq": onsets[:16],
+                    "unique_onsets": len(onsets),
+                    "pct_at_0": round(100 * n_at_0 / n, 1) if n else 0.0,
+                    "pitches": pitches[:16],
+                }
+                self._f.write(json.dumps(rec) + "\n")
+
+    def log_context(self, context_tokens: list[int], vocab):
+        """Decode and log the full context token sequence as seen by the model.
+
+        Walks the token IDs and reconstructs which track/bar each belongs to,
+        emitting one JSON record per bar. This lets you compare the model's
+        view of the context against the source MIDI.
+        """
+        track_idx = -1
+        bar_idx = -1
+        bar_tokens: list[dict] = []
+
+        def flush_bar():
+            if bar_tokens:
+                self._f.write(json.dumps({
+                    "rec": "ctx_bar",
+                    "step": self._step,
+                    "track": track_idx,
+                    "bar": bar_idx,
+                    "tokens": bar_tokens,
+                }) + "\n")
+
+        for tid in context_tokens:
+            try:
+                tt = vocab.get_type(tid).name
+                _, tv = vocab.decode(tid)
+            except Exception:
+                tt, tv = "?", tid
+
+            if tt == "Track":
+                flush_bar()
+                bar_tokens = []
+                track_idx += 1
+                bar_idx = -1
+            elif tt == "Bar":
+                flush_bar()
+                bar_tokens = []
+                bar_idx += 1
+            else:
+                bar_tokens.append({"tt": tt, "tv": tv})
+
+        flush_bar()
+        self._f.flush()
+
+    def log_step_summary(self, context_len: int, max_gen_tokens: int, n_gen_tracks: int,
+                         request=None, use_velocity: int = -1):
+        total = sum(self._token_types_seen.values())
+        # Record exact track structure so cross-scoring can replay with matching grammar
+        gen_track_ids: list[int] = []
+        ctx_track_ids: list[int] = []
+        if request is not None:
+            for tp in request.tracks:
+                if getattr(tp, "ignore", False):
+                    continue
+                if tp.bars:
+                    gen_track_ids.append(tp.id)
+                else:
+                    ctx_track_ids.append(tp.id)
+        rec = {
+            "rec": "step_summary",
+            "step": self._step,
+            "context_len": context_len,
+            "max_gen_tokens": max_gen_tokens,
+            "n_gen_tracks": n_gen_tracks,
+            "gen_track_ids": gen_track_ids,   # which track IDs were generated
+            "ctx_track_ids": ctx_track_ids,   # which track IDs were context (bars=[])
+            "use_velocity": use_velocity,     # 0/1 from context encoding; -1=unknown
+            "tokens_generated": total,
+            "grammar_collapses": self._collapse_count,
+            "token_type_counts": dict(sorted(
+                self._token_types_seen.items(), key=lambda x: -x[1])),
+        }
+        self._f.write(json.dumps(rec) + "\n")
+        self._f.flush()
+        self._step += 1
+        self._token_types_seen = {}
+        self._collapse_count = 0
+
+    def close(self):
+        self._f.flush()
+        self._f.close()
+
+    def __del__(self):
+        try:
+            self._f.close()
+        except Exception:
+            pass
 
 
 class _ContextOverflow(Exception):
@@ -99,6 +307,9 @@ class SamplingSession:
         # (track, bar)). Used for client-side comparison/debug; pure read-only.
         self.prompt_state_sink = None
         self._snapshot_sent = False
+        # Optional TokenLogger — attach before calling run() to get full token
+        # and context diagnostics written to a JSONL file.
+        self.token_logger: "TokenLogger | None" = None
 
     def __enter__(self):
         return self
@@ -368,8 +579,27 @@ class SamplingSession:
             genre=_genre,
         )
 
-        context_len = len(state.context_tokens())
+        _ctx_toks = state.context_tokens()
+        context_len = len(_ctx_toks)
         spans = state.hidden_spans() if use_span_masks else []
+
+        # Log context token sequence so we can verify what the model sees
+        _tlogger = getattr(self, "token_logger", None)
+        if _tlogger is not None:
+            _tlogger.log_context(list(_ctx_toks), self._engine._tokenizer._vocab)
+
+        # Detect whether velocity was used in this context encoding by looking
+        # for any VelocityLevel token. (There is no UseVelocity gate token in
+        # the yellow.pt vocab — velocity is implicit from note encoding style.)
+        # Recorded in step_summary so cross-scoring can force the same mode.
+        _use_vel_actual = 0
+        for _vtid in _ctx_toks:
+            try:
+                if self._engine._tokenizer._vocab.get_type(_vtid).name == "VelocityLevel":
+                    _use_vel_actual = 1
+                    break
+            except Exception:
+                pass
 
         # ── attention: pre-allocate bool buffer on model device (no per-token cat) ──
         if spans and mask_mode == "attention":
@@ -414,6 +644,17 @@ class SamplingSession:
         if context_len >= model_max_ctx:
             raise _ContextOverflow(context_len, model_max_ctx)
         max_gen_tokens = model_max_ctx - context_len - 1
+        n_gen_tracks = sum(1 for tp in self._request.tracks
+                           if not getattr(tp, "ignore", False) and tp.bars)
+        if max_gen_tokens < n_gen_tracks * 20:
+            import warnings
+            warnings.warn(
+                f"Context nearly full: {context_len}/{model_max_ctx} tokens, "
+                f"only {max_gen_tokens} tokens left for {n_gen_tracks} generating tracks "
+                f"(~{max_gen_tokens // max(n_gen_tracks, 1)} per track). "
+                f"Late tracks may be silently truncated.",
+                stacklevel=3,
+            )
 
         # Pre-allocate mask buffer once for this step (reused every token).
         # Allocate on the model device so masked_fill stays device-consistent.
@@ -477,12 +718,18 @@ class SamplingSession:
                 mask_buf.copy_(torch.as_tensor(state.logit_mask(), dtype=torch.bool))
                 n_legal = int(mask_buf.sum().item())
                 if n_legal == 0:
+                    if _tlogger is not None:
+                        _tlogger.log_grammar_collapse(self.gen_count, 0)
                     raise RuntimeError(
                         "sampling crashed: constraint graph error "
                         "(zero legal tokens at this step — over-constrained "
                         "attribute values or incompatible grammar state)"
                     )
                 masked_logits = logits.masked_fill(~mask_buf, float("-inf"))
+                # T=1 distribution after grammar mask — the model's true belief.
+                # Log this before temperature/sampling-filter shaping.
+                _raw_probs = masked_logits.softmax(-1)
+
                 probs = (masked_logits / temperature).softmax(-1)
 
                 if torch.isnan(probs.sum()) or probs.sum() < 1e-6:
@@ -494,6 +741,8 @@ class SamplingSession:
                         f"mask (n_legal={n_legal}); sampling uniformly "
                         f"from legal tokens"
                     )
+                    if _tlogger is not None:
+                        _tlogger.log_grammar_collapse(self.gen_count, n_legal)
                     probs = mask_buf.to(torch.float32)
                     probs = probs / probs.sum()
 
@@ -505,8 +754,18 @@ class SamplingSession:
                 # (a real-grammar bug if so).
                 try:
                     tname = self._engine._tokenizer._vocab.get_type(token).name
+                    _, tval = self._engine._tokenizer._vocab.decode(token)
                 except Exception:
-                    tname = "?"
+                    tname, tval = "?", -1
+
+                # Log this token (T=1 raw probs, grammar mask, model top-5)
+                if _tlogger is not None:
+                    _tlogger.log_token(
+                        self.gen_count, token, tname, tval,
+                        _raw_probs.cpu(), mask_buf.cpu(),
+                        self._engine._tokenizer._vocab,
+                    )
+
                 if tname == "NoteOnset" and logging.getLogger().isEnabledFor(logging.DEBUG):
                     state.advance(token)
                     nxt_mask = list(state.logit_mask())
@@ -522,10 +781,8 @@ class SamplingSession:
                         f"legal_types={sorted(legal_types)}"
                     )
                     self.gen_count += 1
-                    # attention: extend buffer pointer for generated token
                     if mask_mode == "attention" and _kv_buf is not None:
                         _kv_len += 1
-                    # attention_skip: advance next position_id
                     elif mask_mode == "attention_skip" and _skip_ctx is not None:
                         _next_pos += 1
                     continue
@@ -538,10 +795,26 @@ class SamplingSession:
                 elif mask_mode == "attention_skip" and _skip_ctx is not None:
                     _next_pos += 1
 
+        # Step summary: token-type counts, context size, grammar collapses
+        if _tlogger is not None:
+            _tlogger.log_step_summary(context_len, max_gen_tokens, n_gen_tracks,
+                                      request=self._request,
+                                      use_velocity=_use_vel_actual)
+
         t_dec = time.perf_counter()
         result = self._engine._tokenizer.normalize_output(from_cpp(state.result()))
         if self.enable_profiling:
             self.decode_time += time.perf_counter() - t_dec
+
+        # Bar summaries from the decoded result (all tracks, all bars)
+        if _tlogger is not None:
+            gap_bar_set = set()
+            for tp in self._request.tracks:
+                if not getattr(tp, "ignore", False) and tp.bars:
+                    gap_bar_set.update(tp.bars)
+            _tlogger.log_bar_summaries(result, self._request, sorted(gap_bar_set),
+                                       tpb_spq=0)  # tpb_spq unused (bar index used directly)
+
         return result
 
     def _snapshot_prompt_state(self, step) -> dict:
