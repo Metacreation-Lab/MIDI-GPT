@@ -11,6 +11,12 @@ section above `[Unreleased]` before tagging.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-06
+
+### Added
+- **Token Diagnostics:** Opt-in `TokenLogger` for `SamplingSession` — per-token JSONL logs capturing token id/type/value, the grammar-masked T=1 distribution (log-prob, entropy, top-5 alternatives), grammar-collapse events, per-step summaries (context size, token budget, velocity mode) and per-bar summaries of the decoded result. No behavior change when no logger is attached. Also warns when the context window is nearly full and late tracks would be silently truncated.
+- **Replay Scoring:** `SamplingSession.score_from_tokens()` — teacher-forced log-probability of a previously generated token sequence under the session's context, applying the same grammar legality masks used at sampling time. Enables cross-conditional scoring (score a generation made under conditioning A against conditioning B) without re-sampling. Sequences longer than the model's positional window are scored with a sliding window; generation paths are untouched.
+
 ## [0.3.0] - 2026-07-06
 
 ### Added
