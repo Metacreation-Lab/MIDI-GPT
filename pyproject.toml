@@ -9,7 +9,7 @@ description     = "GPT-2 transformer for symbolic music generation"
 readme          = "README.md"
 license         = { text = "MIT" }
 requires-python = ">=3.10"
-dependencies    = []
+dependencies    = ["symusic>=0.4", "numpy>=1.24"]
 authors         = [{ name = "Metacreation Lab" }]
 classifiers     = [
     "License :: OSI Approved :: MIT License",
