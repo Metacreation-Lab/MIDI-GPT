@@ -31,6 +31,7 @@ nav:
   - Getting Started:
     - Installation & Usage: quickstart.md
     - Models: models.md
+  - Examples: examples.md
   - Concepts: concepts.md
   - API Reference: api.md
   - Training: training.md

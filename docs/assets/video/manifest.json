@@ -1,0 +1,134 @@
+[
+  {
+    "id": "track_sampling_drums_sparse",
+    "task": "Track Sampling",
+    "title": "Hotel California: sparse drums",
+    "midi": "sampling_drums_sparse.mid",
+    "prompt": "prompt_sampling.mid",
+    "controls": "note_density = 1",
+    "video": "docs/assets/video/track_sampling_drums_sparse.mp4",
+    "source_midi": "docs/assets/midi/sampling_drums_sparse.mid"
+  },
+  {
+    "id": "track_sampling_drums_dense",
+    "task": "Track Sampling",
+    "title": "Hotel California: dense drums",
+    "midi": "sampling_drums_dense.mid",
+    "prompt": "prompt_sampling.mid",
+    "controls": "note_density = 8",
+    "video": "docs/assets/video/track_sampling_drums_dense.mp4",
+    "source_midi": "docs/assets/midi/sampling_drums_dense.mid"
+  },
+  {
+    "id": "track_sampling_cello_staccato",
+    "task": "Track Sampling",
+    "title": "Bach BWV 1052: staccato cello",
+    "midi": "sampling_cello_staccato.mid",
+    "prompt": "prompt_bach.mid",
+    "controls": "max_polyphony = 0, max_note_duration = 1",
+    "video": "docs/assets/video/track_sampling_cello_staccato.mp4",
+    "source_midi": "docs/assets/midi/sampling_cello_staccato.mid"
+  },
+  {
+    "id": "track_sampling_cello_sustained",
+    "task": "Track Sampling",
+    "title": "Bach BWV 1052: sustained cello",
+    "midi": "sampling_cello_sustained.mid",
+    "prompt": "prompt_bach.mid",
+    "controls": "max_polyphony = 0, min_note_duration = 4",
+    "video": "docs/assets/video/track_sampling_cello_sustained.mp4",
+    "source_midi": "docs/assets/midi/sampling_cello_sustained.mid"
+  },
+  {
+    "id": "bar_infill_sparse",
+    "task": "Bar Infilling",
+    "title": "Everything In Its Right Place: sparse infill",
+    "midi": "infill_sparse.mid",
+    "prompt": "prompt_infill.mid",
+    "controls": "max_polyphony = 0, min_note_duration = 3",
+    "target_bars": [
+      3,
+      4
+    ],
+    "video": "docs/assets/video/bar_infill_sparse.mp4",
+    "source_midi": "docs/assets/midi/infill_sparse.mid"
+  },
+  {
+    "id": "bar_infill_chordal",
+    "task": "Bar Infilling",
+    "title": "Everything In Its Right Place: chordal infill",
+    "midi": "infill_chordal.mid",
+    "prompt": "prompt_infill.mid",
+    "controls": "min_polyphony = 2, max_polyphony = 6",
+    "target_bars": [
+      3,
+      4
+    ],
+    "video": "docs/assets/video/bar_infill_chordal.mp4",
+    "source_midi": "docs/assets/midi/infill_chordal.mid"
+  },
+  {
+    "id": "ar_monophonic",
+    "task": "Autoregressive Continuation",
+    "title": "Summer: monophonic continuation",
+    "midi": "ar_monophonic.mid",
+    "prompt": "prompt_ar.mid",
+    "controls": "max_polyphony = 0",
+    "target_bars": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "video": "docs/assets/video/ar_monophonic.mp4",
+    "source_midi": "docs/assets/midi/ar_monophonic.mid"
+  },
+  {
+    "id": "ar_chordal",
+    "task": "Autoregressive Continuation",
+    "title": "Summer: chordal continuation",
+    "midi": "ar_chordal.mid",
+    "prompt": "prompt_ar.mid",
+    "controls": "min_polyphony = 2, max_polyphony = 6",
+    "target_bars": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "video": "docs/assets/video/ar_chordal.mp4",
+    "source_midi": "docs/assets/midi/ar_chordal.mid"
+  },
+  {
+    "id": "harp_monophonic",
+    "task": "Autoregressive Continuation",
+    "title": "SSBM All Star: monophonic harp continuation",
+    "midi": "harp_monophonic.mid",
+    "prompt": "prompt_harp.mid",
+    "controls": "max_polyphony = 0",
+    "target_bars": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "video": "docs/assets/video/harp_monophonic.mp4",
+    "source_midi": "docs/assets/midi/harp_monophonic.mid"
+  },
+  {
+    "id": "harp_chordal",
+    "task": "Autoregressive Continuation",
+    "title": "SSBM All Star: chordal harp continuation",
+    "midi": "harp_chordal.mid",
+    "prompt": "prompt_harp.mid",
+    "controls": "min_polyphony = 2, max_polyphony = 6",
+    "target_bars": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "video": "docs/assets/video/harp_chordal.mp4",
+    "source_midi": "docs/assets/midi/harp_chordal.mid"
+  }
+]
