@@ -21,7 +21,7 @@ midigpt-http --ckpt checkpoints/run_001/model_final.safetensors --port 8000
 midigpt-http --pretrained yellow --port 8000
 
 # By repo ID + filename
-midigpt-http --pretrained Metacreation/MIDI-GPT --hf-filename yellow.pt --port 8000
+midigpt-http --pretrained Metacreation/MIDI-GPT --hf-filename yellow_medium-final.safetensors --port 8000
 ```
 
 ### Device selection

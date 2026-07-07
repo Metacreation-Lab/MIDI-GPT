@@ -6,11 +6,14 @@ midigpt ships three pretrained checkpoints, each trained on a different encoder 
 
 | Model | `num_bars_map` | MaskBar | Microtiming | Velocity bins | Download |
 |---|---|---|---|---|---|
-| `yellow` | 4, 8 | no | no | 32 | [yellow.pt](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow.pt) |
+| `yellow` (medium) | 4, 8 | no | no | 32 | [yellow_medium-final.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow_medium-final.safetensors) |
+| `yellow_small` | 4, 8 | no | no | 32 | [yellow_small-final.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow_small-final.safetensors) |
 | `ghost` | 4, 8, 12, 16 | yes | no | 32 | coming soon |
-| `expressive` | 4, 8 | no | yes | 128 | coming soon |
+| `expressive` (medium) | 4, 8 | no | yes | 128 | [expressive_medium-step56000.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/expressive_medium-step56000.safetensors) — training in progress, not a final checkpoint |
 
 The `yellow` and `ghost` models condition on: **note density**, **min/max polyphony**, and **min/max note duration**. The `expressive` model supports a wider set of attribute controls: **key signature**, **pitch range**, **silence proportion**, **note duration**, **note density (bar-level)**, **polyphony (bar-level)**, **pitch class set (bar-level)**, **NOMML** (median metric depth), and **genre** groups.
+
+`InferenceEngine.from_pretrained(name)` always resolves to the newest checkpoint for that name — a `-final` snapshot if training has completed, otherwise the highest-step in-progress snapshot — so the exact filenames in the table above may lag what `from_pretrained` fetches.
 
 ---
 
@@ -21,7 +24,7 @@ The baseline checkpoint. Clean encoder, broad context window support (4 or 8 bar
 ```python
 engine = InferenceEngine.from_pretrained("yellow")
 # or load locally:
-engine = InferenceEngine.from_checkpoint("yellow.pt")
+engine = InferenceEngine.from_checkpoint("yellow_medium-final.safetensors")
 ```
 
 **When to use:** General-purpose melody and accompaniment generation. If you are not sure which model to pick, start here.

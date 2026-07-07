@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from midigpt.attributes.base import AttributeAnalyzer
@@ -12,11 +13,46 @@ if TYPE_CHECKING:
 
 HF_REPO_ID = "Metacreation/MIDI-GPT"
 
-_KNOWN_MODELS: dict[str, str] = {
-    "yellow": "yellow.pt",
-    "ghost": "ghost.pt",
-    "expressive": "expressive.pt",
+# Short name -> checkpoint filename prefix on the HF repo. Checkpoints are
+# uploaded as "<prefix>-final.safetensors" (completed training) or
+# "<prefix>-step<N>.safetensors" (in-progress snapshot); the actual filename
+# is resolved at load time via _resolve_checkpoint_filename so this map never
+# needs updating when a new checkpoint is pushed. Bare "yellow"/"expressive"
+# alias to their medium variant for backward compatibility.
+_MODEL_PREFIXES: dict[str, str] = {
+    "yellow": "yellow_medium",
+    "yellow_small": "yellow_small",
+    "yellow_medium": "yellow_medium",
+    "expressive": "expressive_medium",
+    "expressive_medium": "expressive_medium",
+    "prism_medium": "prism_medium",
 }
+
+_STEP_RE = re.compile(r"-step(\d+)\.safetensors$")
+
+
+def _resolve_checkpoint_filename(repo_id: str, prefix: str) -> str:
+    """Pick the best checkpoint file in repo_id matching prefix.
+
+    Prefers "<prefix>-final.safetensors"; otherwise picks the
+    "<prefix>-step<N>.safetensors" file with the highest N.
+    """
+    from huggingface_hub import HfApi
+
+    files = HfApi().list_repo_files(repo_id)
+    candidates = [f for f in files if f.startswith(prefix + "-") and f.endswith(".safetensors")]
+    if not candidates:
+        raise ValueError(f"No checkpoint found in {repo_id!r} matching prefix {prefix!r}")
+
+    final = f"{prefix}-final.safetensors"
+    if final in candidates:
+        return final
+
+    def step(fname: str) -> int:
+        match = _STEP_RE.search(fname)
+        return int(match.group(1)) if match else -1
+
+    return max(candidates, key=step)
 
 
 class InferenceEngine:
@@ -39,12 +75,12 @@ class InferenceEngine:
         Short names resolve to files in the official repo::
 
             engine = InferenceEngine.from_pretrained("yellow")
-            engine = InferenceEngine.from_pretrained("ghost")
+            engine = InferenceEngine.from_pretrained("expressive")
 
         A full repo ID with an explicit filename also works::
 
             engine = InferenceEngine.from_pretrained(
-                "Metacreation-Lab/MIDI-GPT", filename="yellow.pt"
+                "Metacreation/MIDI-GPT", filename="yellow_medium-final.safetensors"
             )
 
         The file is downloaded once and cached by ``huggingface_hub`` in
@@ -55,14 +91,16 @@ class InferenceEngine:
         except ImportError:
             raise ImportError("pip install midigpt[inference] to enable HF Hub downloads") from None
 
-        if name_or_repo_id in _KNOWN_MODELS:
+        if name_or_repo_id in _MODEL_PREFIXES:
             repo_id = HF_REPO_ID
-            fname = filename or _KNOWN_MODELS[name_or_repo_id]
+            fname = filename or _resolve_checkpoint_filename(
+                repo_id, _MODEL_PREFIXES[name_or_repo_id]
+            )
         else:
             if filename is None:
                 raise ValueError(
                     f"Unknown model name {name_or_repo_id!r}. "
-                    f"Known names: {list(_KNOWN_MODELS)}. "
+                    f"Known names: {list(_MODEL_PREFIXES)}. "
                     f"For a custom repo pass filename= explicitly."
                 )
             repo_id = name_or_repo_id

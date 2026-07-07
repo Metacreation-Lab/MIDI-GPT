@@ -81,11 +81,11 @@ def from_pretrained(
 ) -> InferenceEngine
 ```
 
-Load by short name (`"yellow"`, `"ghost"`, `"expressive"`) or by HuggingFace repo ID + filename. Downloads and caches via `huggingface_hub`.
+Load by short name (`"yellow"`, `"yellow_small"`, `"expressive"`, `"prism_medium"`) or by HuggingFace repo ID + filename. Downloads and caches via `huggingface_hub`.
 
 ```python
 engine = InferenceEngine.from_pretrained("yellow")
-engine = InferenceEngine.from_pretrained("Metacreation/MIDI-GPT", filename="yellow.pt")
+engine = InferenceEngine.from_pretrained("Metacreation/MIDI-GPT", filename="yellow_medium-final.safetensors")
 ```
 
 ### `InferenceEngine.from_checkpoint`
