@@ -9,7 +9,7 @@ class SilenceProportion(BaseAttribute):
         self.level = level
         self.track_type = track_type
         self.name = "bar_silence_proportion" if level == "bar" else "silence_proportion"
-        self.token_type = "SilenceProportionBar" if level == "bar" else "SilenceProportion"
+        self.token_type = "SilenceProportionBar" if level == "bar" else "TrackLevelSilenceProportionMax"
 
     def _bar_silence(self, bar, bar_start_tick: int, bar_len: int) -> float:
         if bar_len == 0:

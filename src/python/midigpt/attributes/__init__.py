@@ -43,14 +43,20 @@ TOKEN_TYPE_TO_ATTRIBUTE = {
     "MinNoteDuration": ("note_duration_quantile", {"mode": "min"}),
     "MaxNoteDuration": ("note_duration_quantile", {"mode": "max"}),
     "NoteDensity": ("note_density_quantile", {}),
-    "SilenceProportion": ("silence_proportion", {}),
+    # TrackLevelSilenceProportionMax/TrackLevelPitchRangeMax are the names
+    # TokenType::name() actually returns at runtime -- SilenceProportion/
+    # PitchRange are numeric aliases (types.h) of the same enum values but
+    # are never what a switch-based name() resolves to, so keying on the
+    # unprefixed names here silently never matched (both auto-inference in
+    # base.py and BPE classification in tokenizer/bpe.py depend on this map).
+    "TrackLevelSilenceProportionMax": ("silence_proportion", {}),
     "PitchClassSetTrack": ("pitch_class_set", {"level": "track"}),
-    "PitchRange": ("pitch_range", {}),
+    "TrackLevelPitchRangeMax": ("pitch_range", {}),
     "KeySignature": ("key_signature", {}),
     "NoteDurationDist": ("note_duration_dist", {}),
     "OnsetPolyphony": ("onset_polyphony", {}),
     # bar-level (C++ TokenType names)
-    "PitchClassSet": ("pitch_class_set", {}),  # = BarLevelPitchClassSet = 51
+    "BarLevelPitchClassSet": ("pitch_class_set", {}),
     "BarLevelOnsetDensity": ("note_density_quantile", {"level": "bar"}),
     "BarLevelOnsetPolyphonyMin": ("polyphony_quantile", {"mode": "min", "level": "bar"}),
     "BarLevelOnsetPolyphonyMax": ("polyphony_quantile", {"mode": "max", "level": "bar"}),

@@ -4,7 +4,7 @@ from midigpt.attributes.base import BaseAttribute
 
 class PitchRange(BaseAttribute):
     name = "pitch_range"
-    token_type = "PitchRange"
+    token_type = "TrackLevelPitchRangeMax"
     level = "track"
     track_type = "melodic"
     size = 128

@@ -9,7 +9,7 @@ class PitchClassSet(BaseAttribute):
         self.level = level
         self.track_type = track_type
         self.name = "pitch_class_set" if level == "bar" else "pitch_class_set_track"
-        self.token_type = "PitchClassSet" if level == "bar" else "PitchClassSetTrack"
+        self.token_type = "BarLevelPitchClassSet" if level == "bar" else "PitchClassSetTrack"
 
     def compute(self, score: Score, track_idx: int, bar_idx: int | None = None) -> float | int:
         track = score.tracks[track_idx]
