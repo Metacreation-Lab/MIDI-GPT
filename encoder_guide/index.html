@@ -1,0 +1,1823 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="GPT-2 transformer for controllable multitrack music generation">
+      
+      
+      
+        <link rel="canonical" href="https://metacreation-lab.github.io/MIDI-GPT/encoder_guide/">
+      
+      
+        <link rel="prev" href="../attribute_controls_guide/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/logo.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Encoder Config Design Guide - MIDI-GPT</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Space+Grotesk:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Space Grotesk";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#encoder-config-design-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="MIDI-GPT" class="md-header__button md-logo" aria-label="MIDI-GPT" data-md-component="logo">
+      
+  <img src="../assets/logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MIDI-GPT
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Encoder Config Design Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Metacreation-Lab/MIDI-GPT" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Metacreation-Lab/MIDI-GPT
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../quickstart/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../examples/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../concepts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Concepts
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../training/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Training
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../osc/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  OSC Server
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../http/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  HTTP Server
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../contributing/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="MIDI-GPT" class="md-nav__button md-logo" aria-label="MIDI-GPT" data-md-component="logo">
+      
+  <img src="../assets/logo.svg" alt="logo">
+
+    </a>
+    MIDI-GPT
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Metacreation-Lab/MIDI-GPT" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Metacreation-Lab/MIDI-GPT
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation & Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../osc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OSC Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../attribute_controls_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attribute Controls implementation Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encoder Config Design Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encoder Config Design Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-an-encoder-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is an encoder config?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-location-and-naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File location and naming
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-field-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full field reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Full field reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token_domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        token_domains
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attribute_controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        attribute_controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genre_groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        genre_groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decode_resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        decode_resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#note_duration_max_beats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        note_duration_max_beats
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#num_bars_map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        num_bars_map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time_signatures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        time_signatures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pitch_range" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pitch_range
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#velocity_levels-and-velocity_sticky" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        velocity_levels and velocity_sticky
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instrument_merge_groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        instrument_merge_groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supports_infill-and-supports_mask_bar_token" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        supports_infill and supports_mask_bar_token
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#emit_delta_tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        emit_delta_tokens
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#designing-a-new-encoder-decisions-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Designing a new encoder: decisions checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validating-a-new-encoder-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validating a new encoder config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common pitfalls
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-an-encoder-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is an encoder config?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-location-and-naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File location and naming
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-field-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full field reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Full field reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token_domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        token_domains
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attribute_controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        attribute_controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genre_groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        genre_groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decode_resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        decode_resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#note_duration_max_beats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        note_duration_max_beats
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#num_bars_map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        num_bars_map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time_signatures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        time_signatures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pitch_range" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pitch_range
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#velocity_levels-and-velocity_sticky" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        velocity_levels and velocity_sticky
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instrument_merge_groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        instrument_merge_groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supports_infill-and-supports_mask_bar_token" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        supports_infill and supports_mask_bar_token
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#emit_delta_tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        emit_delta_tokens
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#designing-a-new-encoder-decisions-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Designing a new encoder: decisions checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validating-a-new-encoder-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validating a new encoder config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common pitfalls
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="encoder-config-design-guide">Encoder Config — Design Guide<a class="headerlink" href="#encoder-config-design-guide" title="Permanent link">&para;</a></h1>
+<p>This document explains every field in an encoder config JSON, how to design a new encoder from scratch, and the relationships between the JSON, the C++ tokenizer, and the Python attribute pipeline.</p>
+<hr />
+<h2 id="what-is-an-encoder-config">What is an encoder config?<a class="headerlink" href="#what-is-an-encoder-config" title="Permanent link">&para;</a></h2>
+<p>An encoder config defines a MIDI-GPT model's <strong>vocabulary and conditioning signals</strong>. It controls:</p>
+<ul>
+<li>Which token types exist and how many discrete values each can take</li>
+<li>Which musical attributes the Python side computes (density, polyphony, pitch class, etc.) and at what granularity (bar vs. track)</li>
+<li>Genre conditioning (canonical genre labels and their aliases)</li>
+<li>Structural tokenization parameters (resolution, time signatures, bar lengths)</li>
+</ul>
+<p>A trained model is permanently bound to the encoder it was trained with. Changing any field that affects vocabulary size or token ID assignment invalidates a checkpoint.</p>
+<hr />
+<h2 id="file-location-and-naming">File location and naming<a class="headerlink" href="#file-location-and-naming" title="Permanent link">&para;</a></h2>
+<p>Encoder configs live in <code>models/</code>. Name them <code>&lt;name&gt;_encoder.json</code>. The <code>&lt;name&gt;</code> is used as a handle everywhere (training configs, CLI flags, checkpoint metadata).</p>
+<p>Existing encoders:
+- <code>models/yellow_encoder.json</code> — 5 track-level attributes, no genre
+- <code>models/prism_encoder.json</code> — 9 attributes (bar + track level), 18-genre control</p>
+<hr />
+<h2 id="full-field-reference">Full field reference<a class="headerlink" href="#full-field-reference" title="Permanent link">&para;</a></h2>
+<h3 id="token_domains"><code>token_domains</code><a class="headerlink" href="#token_domains" title="Permanent link">&para;</a></h3>
+<p><strong>Required. Not inferred.</strong> Defines the vocabulary — every token type the encoder emits, and the number of distinct values it can take. Order matters: token IDs are assigned sequentially across domains.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">&quot;token_domains&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PieceStart&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="w">   </span><span class="p">},</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Genre&quot;</span><span class="p">,</span><span class="w">         </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">18</span><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Track&quot;</span><span class="p">,</span><span class="w">         </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="w">   </span><span class="p">},</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TrackEnd&quot;</span><span class="p">,</span><span class="w">      </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w">   </span><span class="p">},</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Bar&quot;</span><span class="p">,</span><span class="w">           </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w">   </span><span class="p">},</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;BarEnd&quot;</span><span class="p">,</span><span class="w">        </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w">   </span><span class="p">},</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TimeSig&quot;</span><span class="p">,</span><span class="w">       </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">36</span><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Instrument&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">109</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NumBars&quot;</span><span class="p">,</span><span class="w">       </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="w">   </span><span class="p">},</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NoteOnset&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">128</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NoteDuration&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">96</span><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TimeAbsolutePos&quot;</span><span class="p">,</span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">192</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;VelocityLevel&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">32</span><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FillInPlaceholder&quot;</span><span class="p">,</span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FillInStart&quot;</span><span class="p">,</span><span class="w">   </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w">   </span><span class="p">},</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FillInEnd&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;domain_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w">   </span><span class="p">}</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="p">]</span>
+</code></pre></div>
+<p>The first 16 entries above are required for all encoders. Attribute tokens are appended after them.</p>
+<p><strong>Critical rules:</strong>
+- <code>domain_size</code> for an attribute token must exactly match the Python attribute class's <code>size</code> field — there is no automatic check.
+- <code>Genre</code> must appear before <code>Track</code> (it is a piece-level token). If <code>genre_groups</code> is omitted, omit <code>Genre</code> from <code>token_domains</code> too.
+- Adding or reordering entries changes all subsequent token IDs. Only add to the end, or accept that the checkpoint is incompatible.
+- <code>"type"</code> strings must match the C++ <code>TokenType</code> enum exactly (see <code>attribute_controls_guide.md</code> for the full list of registered names).</p>
+<p><strong>Attribute token domain sizes</strong> (from Python <code>BaseAttribute.size</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Token type</th>
+<th>Domain size</th>
+<th>Level</th>
+<th>Python class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NoteDensity</code></td>
+<td>10</td>
+<td>track</td>
+<td><code>NoteDensityQuantile</code></td>
+</tr>
+<tr>
+<td><code>MinPolyphony</code></td>
+<td>10</td>
+<td>track</td>
+<td><code>PolyphonyQuantile(mode="min")</code></td>
+</tr>
+<tr>
+<td><code>MaxPolyphony</code></td>
+<td>10</td>
+<td>track</td>
+<td><code>PolyphonyQuantile(mode="max")</code></td>
+</tr>
+<tr>
+<td><code>MinNoteDuration</code></td>
+<td>6</td>
+<td>track</td>
+<td><code>NoteDurationQuantile(mode="min")</code></td>
+</tr>
+<tr>
+<td><code>MaxNoteDuration</code></td>
+<td>6</td>
+<td>track</td>
+<td><code>NoteDurationQuantile(mode="max")</code></td>
+</tr>
+<tr>
+<td><code>SilenceProportion</code></td>
+<td>10</td>
+<td>track</td>
+<td><code>SilenceProportion</code></td>
+</tr>
+<tr>
+<td><code>PitchRange</code></td>
+<td>128</td>
+<td>track</td>
+<td><code>PitchRange</code></td>
+</tr>
+<tr>
+<td><code>KeySignature</code></td>
+<td>25</td>
+<td>track</td>
+<td><code>KeySignature</code></td>
+</tr>
+<tr>
+<td><code>OnsetPolyphony</code></td>
+<td>10</td>
+<td>track</td>
+<td><code>OnsetPolyphony</code></td>
+</tr>
+<tr>
+<td><code>PitchClassSetTrack</code></td>
+<td>13</td>
+<td>track</td>
+<td><code>PitchClassSet(level="track")</code></td>
+</tr>
+<tr>
+<td><code>TrackLevelNomml</code></td>
+<td>13</td>
+<td>track</td>
+<td><code>Nomml</code></td>
+</tr>
+<tr>
+<td><code>BarLevelOnsetDensity</code></td>
+<td>10</td>
+<td>bar</td>
+<td><code>NoteDensityQuantile(level="bar")</code></td>
+</tr>
+<tr>
+<td><code>BarLevelOnsetPolyphonyMin</code></td>
+<td>10</td>
+<td>bar</td>
+<td><code>PolyphonyQuantile(mode="min", level="bar")</code></td>
+</tr>
+<tr>
+<td><code>BarLevelOnsetPolyphonyMax</code></td>
+<td>10</td>
+<td>bar</td>
+<td><code>PolyphonyQuantile(mode="max", level="bar")</code></td>
+</tr>
+<tr>
+<td><code>PitchClassSet</code></td>
+<td>13</td>
+<td>bar</td>
+<td><code>PitchClassSet</code></td>
+</tr>
+<tr>
+<td><code>Tension</code></td>
+<td>10</td>
+<td>bar</td>
+<td><code>Tension</code></td>
+</tr>
+<tr>
+<td><code>TensionDrum</code></td>
+<td>10</td>
+<td>bar</td>
+<td><code>TensionDrum</code></td>
+</tr>
+<tr>
+<td><code>Genre</code></td>
+<td>N</td>
+<td>piece</td>
+<td><code>genre_grouping.num_genres()</code></td>
+</tr>
+<tr>
+<td><code>UseVelocity</code></td>
+<td>2</td>
+<td>piece</td>
+<td><em>(structural switch: 0=no, 1=yes)</em></td>
+</tr>
+<tr>
+<td><code>UseMicrotiming</code></td>
+<td>2</td>
+<td>piece</td>
+<td><em>(structural switch: 0=no, 1=yes)</em></td>
+</tr>
+</tbody>
+</table>
+<p>Note: <code>PitchClassSetTrack</code> has no C++ entry yet — it cannot be used in <code>token_domains</code> until one is added. See <code>attribute_controls_guide.md</code> § "Token types with no C++ entry yet".</p>
+<hr />
+<h3 id="attribute_controls"><code>attribute_controls</code><a class="headerlink" href="#attribute_controls" title="Permanent link">&para;</a></h3>
+<p>Tells the Python <code>AttributeAnalyzer</code> which attributes to compute during training and encoding. Each entry must have a corresponding <code>token_domains</code> entry with the correct domain size.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">&quot;attribute_controls&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;key_signature&quot;</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;silence_proportion&quot;</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pitch_range&quot;</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;note_duration_quantile&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;params&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;min&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;note_duration_quantile&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;params&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;max&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;note_density_quantile&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;params&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bar&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;polyphony_quantile&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;params&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;min&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bar&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;polyphony_quantile&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;params&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;max&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bar&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pitch_class_set&quot;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="p">]</span>
+</code></pre></div>
+<p><code>name</code> is a key in <code>ATTRIBUTE_REGISTRY</code> (<code>src/python/midigpt/attributes/__init__.py</code>). <code>params</code> are passed as constructor kwargs to the Python attribute class.</p>
+<p><strong>Bar vs. track level:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Specify</th>
+<th>Token type used</th>
+<th>Token position in sequence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>track (default)</td>
+<td>no <code>level</code> param</td>
+<td>e.g. <code>NoteDensity</code></td>
+<td>Once, before first bar of each track</td>
+</tr>
+<tr>
+<td>bar</td>
+<td><code>"level": "bar"</code></td>
+<td>e.g. <code>BarLevelOnsetDensity</code></td>
+<td>Once per bar, after <code>Bar</code> token</td>
+</tr>
+</tbody>
+</table>
+<p>Bar-level attributes increase sequence length by <code>num_bars × num_tracks</code> tokens. They give the model fine-grained per-bar control at the cost of longer contexts. Prefer bar-level for attributes that vary meaningfully within a piece (density, polyphony, harmony); prefer track-level for global characteristics (key, range, silence).</p>
+<p><strong>The token_domains entry must match the level.</strong> A <code>note_density_quantile</code> without <code>level</code> param expects <code>NoteDensity</code> in <code>token_domains</code>; with <code>"level": "bar"</code> it expects <code>BarLevelOnsetDensity</code>. There is no runtime error if they mismatch — the C++ will silently emit nothing.</p>
+<hr />
+<h3 id="genre_groups"><code>genre_groups</code><a class="headerlink" href="#genre_groups" title="Permanent link">&para;</a></h3>
+<p>Optional. Enables piece-level genre conditioning. If present, add <code>Genre</code> to <code>token_domains</code> with <code>domain_size</code> equal to the number of canonical genre keys.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">&quot;genre_groups&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">&quot;rock&quot;</span><span class="p">:</span><span class="w">  </span><span class="p">[</span><span class="s2">&quot;rock&quot;</span><span class="p">],</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">&quot;metal&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;metal&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;heavy metal&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;grunge&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;hardcore&quot;</span><span class="p">],</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">&quot;pop&quot;</span><span class="p">:</span><span class="w">   </span><span class="p">[</span><span class="s2">&quot;pop&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;k pop&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;dance&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;disco&quot;</span><span class="p">]</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong>Format rules:</strong>
+- Keys are <strong>canonical genre names</strong> — these are what the model learns and what inference accepts.
+- Values are <strong>alias lists</strong> — raw strings (from the dataset) that map to that canonical name. Lookup is <strong>case-insensitive</strong>. An alias may appear in only one group.
+- <strong>Canonical names self-register automatically.</strong> The C++ <code>GenreGrouping</code> always adds the canonical key to its lookup table regardless of whether it appears in the alias list. So <code>encode("rock")</code> works even if <code>"rock"</code> is not listed under <code>"rock"</code>. You do not need to repeat the key in its own alias list.
+- <strong>Unknown genres are silently skipped during training.</strong> <code>_genre_token()</code> calls <code>contains()</code> before <code>encode()</code> — dataset rows with genres not in any alias list simply emit no genre token (genre = -1). The C++ <code>encode()</code> would throw for unknown genres, but training never reaches it.
+- Dense IDs are assigned in <strong>alphabetical key order</strong> — <code>metal</code> = 0, <code>pop</code> = 1, <code>rock</code> = 2 in the example above. Token ID assignment is fixed once training begins.
+- <code>domain_size</code> in <code>token_domains</code> must equal the number of keys.</p>
+<p><strong>GigaMIDI specifics:</strong></p>
+<p>The genre field in GigaMIDI v2.0.0 is <code>music_style_scraped</code>. It is a <strong>URL-encoded, comma-separated</strong> string:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>&quot;alternative-indie%2cpop%2crock&quot;  →  [&quot;alternative-indie&quot;, &quot;pop&quot;, &quot;rock&quot;]
+</code></pre></div>
+<p>The Python dataset reads it as:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">urllib.parse</span><span class="w"> </span><span class="kn">import</span> <span class="n">unquote</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">genres</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">unquote</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">g</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">known</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">genres</span> <span class="k">if</span> <span class="n">genre_grouping</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">g</span><span class="p">)]</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># randomly sample one known genre per training example</span>
+</code></pre></div></p>
+<p>Coverage for the <code>prism_encoder.json</code> mapping (18 canonical genres, 18M genre-labeled rows in GigaMIDI v2.0.0 train): <strong>99.9%</strong> of labeled rows map to a known canonical genre. Only ~6% of all rows have any genre label.</p>
+<hr />
+<h3 id="resolution"><code>resolution</code><a class="headerlink" href="#resolution" title="Permanent link">&para;</a></h3>
+<p>Ticks per quarter note for the <strong>tokenization grid</strong>. Controls the finest time granularity the model can represent.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">&quot;resolution&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span>
+</code></pre></div>
+<p>Common values: 12 (default), 24 (finer grid, larger vocabulary). Higher resolution increases <code>TimeAbsolutePos</code> domain size and sequence length.</p>
+<hr />
+<h3 id="decode_resolution"><code>decode_resolution</code><a class="headerlink" href="#decode_resolution" title="Permanent link">&para;</a></h3>
+<p>Ticks per quarter note for the <strong>output MIDI</strong>. Usually much higher than <code>resolution</code> (e.g. 1920) to produce standard-compliant MIDI files. The decoder up-scales token positions by <code>decode_resolution / resolution</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">&quot;decode_resolution&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1920</span>
+</code></pre></div>
+<hr />
+<h3 id="note_duration_max_beats"><code>note_duration_max_beats</code><a class="headerlink" href="#note_duration_max_beats" title="Permanent link">&para;</a></h3>
+<p>Maximum note duration in beats. Notes longer than this are clamped. Determines <code>NoteDuration</code> domain size indirectly.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">&quot;note_duration_max_beats&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span>
+</code></pre></div>
+<hr />
+<h3 id="num_bars_map"><code>num_bars_map</code><a class="headerlink" href="#num_bars_map" title="Permanent link">&para;</a></h3>
+<p>List of valid bar-count window sizes the model is trained on. Used to set the <code>NumBars</code> token domain size and to configure the training sampler.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">&quot;num_bars_map&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">]</span>
+</code></pre></div>
+<p>This means the model sees 4-bar and 8-bar windows; <code>domain_size</code> for <code>NumBars</code> should equal the length of this list.</p>
+<hr />
+<h3 id="time_signatures"><code>time_signatures</code><a class="headerlink" href="#time_signatures" title="Permanent link">&para;</a></h3>
+<p>Allowable time signatures as <code>"numerator/denominator"</code> strings. Filters out rows during preprocessing (Phase 2). Must match <code>domain_size</code> for <code>TimeSig</code> in <code>token_domains</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">&quot;time_signatures&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;4/4&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;3/4&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;6/8&quot;</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="p">]</span>
+</code></pre></div>
+<p><code>TimeSig</code> domain size = <code>len(time_signatures)</code>.</p>
+<hr />
+<h3 id="pitch_range"><code>pitch_range</code><a class="headerlink" href="#pitch_range" title="Permanent link">&para;</a></h3>
+<p>MIDI pitch range <code>[min, max]</code> (inclusive). Notes outside this range are filtered during encoding.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nt">&quot;pitch_range&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">127</span><span class="p">]</span>
+</code></pre></div>
+<hr />
+<h3 id="velocity_levels-and-velocity_sticky"><code>velocity_levels</code> and <code>velocity_sticky</code><a class="headerlink" href="#velocity_levels-and-velocity_sticky" title="Permanent link">&para;</a></h3>
+<p>Number of discrete velocity bins. <code>velocity_sticky</code> means the velocity token is only emitted when it changes (reduces sequence length).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nt">&quot;velocity_levels&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">32</span><span class="p">,</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nt">&quot;velocity_sticky&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+</code></pre></div>
+<hr />
+<h3 id="instrument_merge_groups"><code>instrument_merge_groups</code><a class="headerlink" href="#instrument_merge_groups" title="Permanent link">&para;</a></h3>
+<p>Groups of MIDI program numbers (0-indexed) that are treated as the same instrument for tokenization. Reduces instrument vocabulary fragmentation.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nt">&quot;instrument_merge_groups&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">],</span><span class="w"> </span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">],</span><span class="w"> </span><span class="err">...</span><span class="p">]</span>
+</code></pre></div>
+<hr />
+<h3 id="supports_infill-and-supports_mask_bar_token"><code>supports_infill</code> and <code>supports_mask_bar_token</code><a class="headerlink" href="#supports_infill-and-supports_mask_bar_token" title="Permanent link">&para;</a></h3>
+<p>Feature flags. <code>supports_infill: true</code> enables fill-in-the-blank generation (requires <code>FillInPlaceholder</code>, <code>FillInStart</code>, <code>FillInEnd</code> in <code>token_domains</code>). <code>supports_mask_bar_token</code> enables the <code>MaskBar</code> token for bar-level masking.</p>
+<hr />
+<h3 id="emit_delta_tokens"><code>emit_delta_tokens</code><a class="headerlink" href="#emit_delta_tokens" title="Permanent link">&para;</a></h3>
+<p>If <code>true</code>, emit time-delta tokens instead of absolute position tokens. Not used in current production encoders.</p>
+<hr />
+<h2 id="designing-a-new-encoder-decisions-checklist">Designing a new encoder: decisions checklist<a class="headerlink" href="#designing-a-new-encoder-decisions-checklist" title="Permanent link">&para;</a></h2>
+<p><strong>1. What attributes to include?</strong></p>
+<p>Start from the available attribute types (table above). Ask:
+- Is the attribute musically meaningful at bar level or only globally? → bar vs. track
+- How many bins does it need? More bins = finer control but larger vocab and slower convergence.
+- Will the training data have good coverage? (e.g. genre is sparse in GigaMIDI — only 6% of rows are labeled)</p>
+<p><strong>2. Bar-level or track-level for density/polyphony?</strong></p>
+<p>Bar-level is recommended if you want the model to follow per-bar musical shape. Track-level is cheaper and sufficient for style-level control. Do not include both versions of the same attribute — pick one.</p>
+<p><strong>3. Genre groups?</strong></p>
+<p>Only add genre if your training data has meaningful genre coverage and you want inference-time genre control. Build the alias list from an audit of the actual dataset values (see the analysis that produced <code>prism_encoder.json</code>).</p>
+<p><strong>4. Vocabulary size budget</strong></p>
+<p>A rough guide:
+- Base tokens (structural, no attributes, no genre): ~650 tokens
+- Each track-level attribute: +domain_size tokens
+- Each bar-level attribute: +domain_size tokens (but adds tokens per bar in sequence)
+- Genre: +num_genres tokens</p>
+<p>Larger vocabularies increase model size (embedding table) and may slow convergence for rare tokens.</p>
+<hr />
+<h2 id="validating-a-new-encoder-config">Validating a new encoder config<a class="headerlink" href="#validating-a-new-encoder-config" title="Permanent link">&para;</a></h2>
+<p>After writing the JSON, always validate before starting training:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">midigpt._core</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_core</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;models/my_encoder.json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="n">cfg</span> <span class="o">=</span> <span class="n">_core</span><span class="o">.</span><span class="n">EncoderConfig</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">vocab</span> <span class="o">=</span> <span class="n">_core</span><span class="o">.</span><span class="n">Vocabulary</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;vocab_size: </span><span class="si">{</span><span class="n">vocab</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="c1"># If genre_groups is present:</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="n">g</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">genre_grouping</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;num_genres: </span><span class="si">{</span><span class="n">g</span><span class="o">.</span><span class="n">num_genres</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="nb">print</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;rock&quot;</span><span class="p">),</span> <span class="n">g</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+</code></pre></div>
+<p>Errors at this stage:
+- <code>std::runtime_error: Unknown token type 'Foo'</code> → <code>Foo</code> is not a registered C++ TokenType name
+- <code>AttributeError: 'NoneType' ...</code> on <code>cfg.genre_grouping</code> → <code>genre_groups</code> is missing from JSON but <code>Genre</code> is in <code>token_domains</code>, or vice versa</p>
+<p>Also verify that <code>domain_size</code> in <code>token_domains</code> matches Python attribute <code>size</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">midigpt.attributes</span><span class="w"> </span><span class="kn">import</span> <span class="n">ATTRIBUTE_REGISTRY</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="k">for</span> <span class="n">ctrl</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;attribute_controls&quot;</span><span class="p">]:</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="bp">cls</span> <span class="o">=</span> <span class="n">ATTRIBUTE_REGISTRY</span><span class="p">[</span><span class="n">ctrl</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]]</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="n">inst</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="o">**</span><span class="n">ctrl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="p">{}))</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">inst</span><span class="o">.</span><span class="n">token_type</span><span class="p">,</span> <span class="n">inst</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="c1"># Cross-check these sizes against token_domains entries</span>
+</code></pre></div>
+<hr />
+<h2 id="common-pitfalls">Common pitfalls<a class="headerlink" href="#common-pitfalls" title="Permanent link">&para;</a></h2>
+<p><strong><code>attribute_controls</code> and <code>token_domains</code> must both be updated.</strong> Adding an attribute to <code>attribute_controls</code> without a matching <code>token_domains</code> entry means Python computes the value but the C++ tokenizer emits nothing — silent data loss, no error.</p>
+<p><strong>Genre domain_size must equal the number of keys</strong> in <code>genre_groups</code>. The C++ reads this as a fixed-size domain at vocab-build time; a mismatch causes an out-of-range panic during encoding.</p>
+<p><strong>Aliases must be unique across groups.</strong> <code>"swing"</code> appearing in both <code>"jazz"</code> and <code>"folk"</code> causes the first-seen mapping to win silently. Audit with a deduplication check before finalizing.</p>
+<p><strong><code>PitchClassSetTrack</code> has no C++ entry.</strong> Do not add it to <code>token_domains</code> — it will fail. See <code>attribute_controls_guide.md</code> § "Token types with no C++ entry yet".</p>
+<p><strong>Alphabetical key order determines genre IDs.</strong> If you rename or reorder keys after training begins, all genre tokens in the dataset's cached indices become wrong. Freeze the genre key set before running <code>preprocess.sh</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Metacreation Lab for Creative AI
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.instant", "content.code.copy", "content.code.annotate", "search.highlight", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11/dist/mermaid.esm.min.mjs" type="module"></script>
+      
+    
+  </body>
+</html>

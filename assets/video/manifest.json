@@ -1,0 +1,50 @@
+[
+  {
+    "id": "infill_allstar_dur_16th",
+    "task": "Bar Infilling",
+    "title": "SSBM All Star: harp 16th notes",
+    "midi": "infill_allstar_dur_16th.mid",
+    "prompt": "prompt_harp.mid",
+    "controls": "max_note_duration = 1",
+    "target_bars": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "track_names": [
+      "tubular_bells",
+      "string_ensemble_1",
+      "orchestral_harp"
+    ],
+    "generated_tracks": [
+      2
+    ],
+    "video": "docs/assets/video/infill_allstar_dur_16th.mp4",
+    "source_midi": "docs/assets/midi/infill_allstar_dur_16th.mid"
+  },
+  {
+    "id": "infill_allstar_dur_8th",
+    "task": "Bar Infilling",
+    "title": "SSBM All Star: harp 8th notes",
+    "midi": "infill_allstar_dur_8th.mid",
+    "prompt": "prompt_harp.mid",
+    "controls": "max_note_duration = 2",
+    "target_bars": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "track_names": [
+      "tubular_bells",
+      "string_ensemble_1",
+      "orchestral_harp"
+    ],
+    "generated_tracks": [
+      2
+    ],
+    "video": "docs/assets/video/infill_allstar_dur_8th.mp4",
+    "source_midi": "docs/assets/midi/infill_allstar_dur_8th.mid"
+  }
+]

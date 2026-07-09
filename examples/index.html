@@ -1,0 +1,1817 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="GPT-2 transformer for controllable multitrack music generation">
+      
+      
+      
+        <link rel="canonical" href="https://metacreation-lab.github.io/MIDI-GPT/examples/">
+      
+      
+        <link rel="prev" href="../models/">
+      
+      
+        <link rel="next" href="../concepts/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/logo.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Examples - MIDI-GPT</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Space+Grotesk:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Space Grotesk";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#examples-controllable-generation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="MIDI-GPT" class="md-header__button md-logo" aria-label="MIDI-GPT" data-md-component="logo">
+      
+  <img src="../assets/logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MIDI-GPT
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Examples
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Metacreation-Lab/MIDI-GPT" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Metacreation-Lab/MIDI-GPT
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../quickstart/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../concepts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Concepts
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../training/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Training
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../osc/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  OSC Server
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../http/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  HTTP Server
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../contributing/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="MIDI-GPT" class="md-nav__button md-logo" aria-label="MIDI-GPT" data-md-component="logo">
+      
+  <img src="../assets/logo.svg" alt="logo">
+
+    </a>
+    MIDI-GPT
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Metacreation-Lab/MIDI-GPT" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Metacreation-Lab/MIDI-GPT
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation & Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#video-renders-midi-downloads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video Renders &amp; MIDI Downloads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-controllable-track-sampling-arrangement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Controllable Track Sampling (Arrangement)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Controllable Track Sampling (Arrangement)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-rockpop-drums-californication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 1: Rock/Pop Drums — Californication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-classical-cello-bachs-harpsichord-concerto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 2: Classical Cello — Bach's Harpsichord Concerto
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-guitar-solo-black-magic-woman-model-sampled-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 3: Guitar Solo — Black Magic Woman (model-sampled controls)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-controllable-bar-infilling-inpainting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Controllable Bar Infilling (Inpainting)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Controllable Bar Infilling (Inpainting)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-4-orchestral-harp-ssbm-all-star-intro" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 4: Orchestral Harp — SSBM All Star Intro
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-multi-step-composition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Multi-Step Composition
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Multi-Step Composition">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-5-multi-step-joe-hisaishis-summer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 5: Multi-Step — Joe Hisaishi's Summer
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../osc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OSC Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../attribute_controls_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attribute Controls implementation Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../encoder_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encoder Config Design Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#video-renders-midi-downloads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video Renders &amp; MIDI Downloads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-controllable-track-sampling-arrangement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Controllable Track Sampling (Arrangement)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Controllable Track Sampling (Arrangement)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-rockpop-drums-californication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 1: Rock/Pop Drums — Californication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-classical-cello-bachs-harpsichord-concerto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 2: Classical Cello — Bach's Harpsichord Concerto
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-guitar-solo-black-magic-woman-model-sampled-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 3: Guitar Solo — Black Magic Woman (model-sampled controls)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-controllable-bar-infilling-inpainting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Controllable Bar Infilling (Inpainting)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Controllable Bar Infilling (Inpainting)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-4-orchestral-harp-ssbm-all-star-intro" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 4: Orchestral Harp — SSBM All Star Intro
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-multi-step-composition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Multi-Step Composition
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Multi-Step Composition">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-5-multi-step-joe-hisaishis-summer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 5: Multi-Step — Joe Hisaishi's Summer
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="examples-controllable-generation">Examples &amp; Controllable Generation<a class="headerlink" href="#examples-controllable-generation" title="Permanent link">&para;</a></h1>
+<p>This page showcases <strong>MIDI-GPT</strong>'s core capabilities using recognizable, real-world musical examples: <strong>Track Sampling</strong>, <strong>Bar Infilling (Inpainting)</strong>, and <strong>Autoregressive Continuation</strong>. All examples below are generated using the public <code>yellow</code> model checkpoint.</p>
+<p>By setting <strong>Attribute Controls</strong> (such as polyphony, note density, and note duration), you can guide the model to generate musical parts that perfectly fit your composition.</p>
+<hr />
+<h2 id="video-renders-midi-downloads">Video Renders &amp; MIDI Downloads<a class="headerlink" href="#video-renders-midi-downloads" title="Permanent link">&para;</a></h2>
+<p>Generated examples below are rendered as MP4 videos with synthesized audio and a per-track piano-roll view. Context tracks are shown in <strong>blue/green</strong>, generated tracks in <strong>gold</strong>. Download links are provided for importing the <code>.mid</code> files into a DAW.</p>
+<hr />
+<h2 id="1-controllable-track-sampling-arrangement">1. Controllable Track Sampling (Arrangement)<a class="headerlink" href="#1-controllable-track-sampling-arrangement" title="Permanent link">&para;</a></h2>
+<p>Track sampling generates a completely new track conditioned on one or more existing tracks. The model can also <strong>sample its own attribute controls</strong> from the prior — letting it choose style freely — or you can pin specific values to steer the output.</p>
+<h3 id="example-1-rockpop-drums-californication">Example 1: Rock/Pop Drums — <em>Californication</em><a class="headerlink" href="#example-1-rockpop-drums-californication" title="Permanent link">&para;</a></h3>
+<p>We take the guitar (<code>acoustic_guitar_steel</code>) and bass (<code>electric_bass_finger</code>) from RHCP's <strong><em>Californication</em></strong> as context and generate a drum track. By adjusting <code>note_density</code> (scale <code>0–9</code>), we steer the drums from a near-silent beat to a dense, active pattern.</p>
+<div class="midi-example-card">
+  <strong>RHCP — Californication Guitar &amp; Bass Prompt (Context)</strong>
+  <a href="/MIDI-GPT/assets/midi/prompt_californication.mid" class="midi-download-btn" download>
+    Download Prompt MIDI
+  </a>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Track</th>
+<th>Instrument</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><code>acoustic_guitar_steel</code></td>
+<td>Context</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>electric_bass_finger</code></td>
+<td>Context</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>drums</code></td>
+<td><strong>Generated</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Sparse (<code>note_density = 1</code>)</label><label for="__tabbed_1_2">Medium (<code>note_density = 3</code>)</label><label for="__tabbed_1_3">Dense (<code>note_density = 8</code>)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/track_sampling_drums_calif_density1.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/sampling_drums_calif_density1.mid" class="midi-download-btn" download>
+    Download Sparse Drums MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># acoustic_guitar_steel (context)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># electric_bass_finger (context)</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>            <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;note_density&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="p">)</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="p">],</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/track_sampling_drums_calif_density3.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/sampling_drums_calif_density3.mid" class="midi-download-btn" download>
+    Download Medium Drums MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>            <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;note_density&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>        <span class="p">)</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="p">],</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/track_sampling_drums_calif_density8.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/sampling_drums_calif_density8.mid" class="midi-download-btn" download>
+    Download Dense Drums MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>            <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;note_density&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">}</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        <span class="p">)</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="p">],</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h3 id="example-2-classical-cello-bachs-harpsichord-concerto">Example 2: Classical Cello — Bach's <em>Harpsichord Concerto</em><a class="headerlink" href="#example-2-classical-cello-bachs-harpsichord-concerto" title="Permanent link">&para;</a></h3>
+<p>We take the <code>violin</code>, <code>violin</code>, and <code>viola</code> tracks from J.S. Bach's <strong><em>Harpsichord Concerto in D Minor (BWV 1052)</em></strong> (solo section, bars 12–20) as context and generate a <code>cello</code> bassline restricted to monophonic (<code>max_polyphony = 0</code>). By sweeping <code>max_note_duration</code> from index <code>1</code> (16th notes) through index <code>4</code> (half notes) and adding a <code>min_note_duration = 4</code> (sustained legato) variant, we get 5 generations spanning the full duration spectrum.</p>
+<div class="midi-example-card">
+  <strong>J.S. Bach — BWV 1052 Strings Ensemble Prompt (Context)</strong>
+  <a href="/MIDI-GPT/assets/midi/prompt_bach.mid" class="midi-download-btn" download>
+    Download Prompt MIDI
+  </a>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Track</th>
+<th>Instrument</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><code>violin</code></td>
+<td>Context</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>viola</code></td>
+<td>Context</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>cello</code></td>
+<td>Context</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>cello</code></td>
+<td><strong>Generated</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:5"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><input id="__tabbed_2_4" name="__tabbed_2" type="radio" /><input id="__tabbed_2_5" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">16th notes (<code>max_note_duration = 1</code>)</label><label for="__tabbed_2_2">8th notes (<code>max_note_duration = 2</code>)</label><label for="__tabbed_2_3">Quarter notes (<code>max_note_duration = 3</code>)</label><label for="__tabbed_2_4">Half notes (<code>max_note_duration = 4</code>)</label><label for="__tabbed_2_5">Sustained legato (<code>min_note_duration = 4</code>)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Rapid, bouncy staccato lines.</p>
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/track_sampling_cello_dur_16th.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/sampling_cello_dur_16th.mid" class="midi-download-btn" download>
+    Download 16th Notes Cello MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># violin (context)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># viola (context)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># cello (context)</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>            <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_polyphony&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;max_note_duration&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        <span class="p">)</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="p">],</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Moderate 8th-note runs.</p>
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/track_sampling_cello_dur_8th.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/sampling_cello_dur_8th.mid" class="midi-download-btn" download>
+    Download 8th Notes Cello MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>            <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_polyphony&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;max_note_duration&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="p">)</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="p">],</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Quarter-note walking-bass feel.</p>
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/track_sampling_cello_dur_4th.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/sampling_cello_dur_4th.mid" class="midi-download-btn" download>
+    Download Quarter Notes Cello MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>            <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_polyphony&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;max_note_duration&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        <span class="p">)</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    <span class="p">],</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Slow half-note pedal points.</p>
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/track_sampling_cello_dur_half.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/sampling_cello_dur_half.mid" class="midi-download-btn" download>
+    Download Half Notes Cello MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>            <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_polyphony&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;max_note_duration&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>        <span class="p">)</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    <span class="p">],</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Long held bass notes — pure legato phrasing.</p>
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/track_sampling_cello_sustained.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/sampling_cello_sustained.mid" class="midi-download-btn" download>
+    Download Sustained Cello MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>            <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_polyphony&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;min_note_duration&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>        <span class="p">)</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    <span class="p">],</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h3 id="example-3-guitar-solo-black-magic-woman-model-sampled-controls">Example 3: Guitar Solo — <em>Black Magic Woman</em> (model-sampled controls)<a class="headerlink" href="#example-3-guitar-solo-black-magic-woman-model-sampled-controls" title="Permanent link">&para;</a></h3>
+<p>We take the <code>electric_bass_finger</code> and <code>drums</code> tracks from Santana's <strong><em>Black Magic Woman</em></strong> as context and resample the <code>overdriven_guitar</code> solo. No explicit attribute controls are set — the model samples its own controls from the prior, producing two stylistically distinct solos in the same harmonic context.</p>
+<blockquote>
+<p><strong>Tip:</strong> When you omit attribute controls, the model draws from its learned style distribution. This is useful for exploring diverse outputs without manually specifying constraints.</p>
+</blockquote>
+<div class="midi-example-card">
+  <strong>Black Magic Woman — Original (Context)</strong>
+  <a href="/MIDI-GPT/assets/midi/prompt_bmw.mid" class="midi-download-btn" download>
+    Download Original MIDI
+  </a>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Track</th>
+<th>Instrument</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><code>electric_bass_finger</code></td>
+<td>Context</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>overdriven_guitar</code></td>
+<td><strong>Generated</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>drums</code></td>
+<td>Context</td>
+</tr>
+</tbody>
+</table>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Resample 1</label><label for="__tabbed_3_2">Resample 2</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/bmw_solo_resample1.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/bmw_solo_resample1.mid" class="midi-download-btn" download>
+    Download Resample 1 MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># electric_bass_finger (context)</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>            <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>            <span class="c1"># no attributes — model samples its own controls</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        <span class="p">),</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># drums (context)</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="p">],</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/bmw_solo_resample2.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/bmw_solo_resample2.mid" class="midi-download-btn" download>
+    Download Resample 2 MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="p">],</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="2-controllable-bar-infilling-inpainting">2. Controllable Bar Infilling (Inpainting)<a class="headerlink" href="#2-controllable-bar-infilling-inpainting" title="Permanent link">&para;</a></h2>
+<p>Bar infilling lets you select specific bars in any track and regenerate them while the model blends with the surrounding context.</p>
+<h3 id="example-4-orchestral-harp-ssbm-all-star-intro">Example 4: Orchestral Harp — <em>SSBM All Star Intro</em><a class="headerlink" href="#example-4-orchestral-harp-ssbm-all-star-intro" title="Permanent link">&para;</a></h3>
+<p>We take the full harp, bells, and strings tracks from the <strong><em>Super Smash Bros. Melee All Star Intro</em></strong> and <strong>delete bars 4–7 of the harp</strong>, asking the model to infill them with a note-duration constraint. The <code>tubular_bells</code> and <code>string_ensemble_1</code> tracks play through all 8 bars as fixed context; the original harp bars 0–3 anchor the generation. The shaded region in the video marks the infilled bars.</p>
+<div class="midi-example-card">
+  <strong>SSBM — Harp Infill Prompt (Bars 4–7 empty)</strong>
+  <a href="/MIDI-GPT/assets/midi/prompt_harp.mid" class="midi-download-btn" download>
+    Download Seed MIDI
+  </a>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Track</th>
+<th>Instrument</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><code>tubular_bells</code></td>
+<td>Context</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>string_ensemble_1</code></td>
+<td>Context</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>orchestral_harp</code></td>
+<td>Context (bars 0–3) + <strong>Generated</strong> (bars 4–7)</td>
+</tr>
+</tbody>
+</table>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">16th notes (<code>max_note_duration = 1</code>)</label><label for="__tabbed_4_2">8th notes (<code>max_note_duration = 2</code>)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Rapid 16th-note arpeggiated runs.</p>
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/infill_allstar_dur_16th.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/infill_allstar_dur_16th.mid" class="midi-download-btn" download>
+    Download 16th Notes Harp MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># tubular_bells (context)</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># string_ensemble_1 (context)</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>            <span class="n">autoregressive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># infill mode</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_note_duration&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>        <span class="p">),</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    <span class="p">],</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">)</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Slower 8th-note arpeggios — more lyrical.</p>
+<p><div class="midi-example-card">
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/infill_allstar_dur_8th.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/infill_allstar_dur_8th.mid" class="midi-download-btn" download>
+    Download 8th Notes Harp MIDI
+  </a>
+</div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">req</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>            <span class="n">autoregressive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_note_duration&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>        <span class="p">),</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    <span class="p">],</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">)</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="3-multi-step-composition">3. Multi-Step Composition<a class="headerlink" href="#3-multi-step-composition" title="Permanent link">&para;</a></h2>
+<p>By chaining multiple generation tasks you can build up a full arrangement incrementally.</p>
+<h3 id="example-5-multi-step-joe-hisaishis-summer">Example 5: Multi-Step — Joe Hisaishi's <em>Summer</em><a class="headerlink" href="#example-5-multi-step-joe-hisaishis-summer" title="Permanent link">&para;</a></h3>
+<p>Starting from a 3-track <code>acoustic_grand_piano</code> + <code>electric_bass_finger</code> + <code>synth_strings_1</code> context, we perform three successive generations to build a 5-track arrangement:</p>
+<ol>
+<li><strong>Continuation</strong> — extend all three tracks from bar 4 to bar 7 autoregressively</li>
+<li><strong>Track sampling</strong> — add <code>acoustic_guitar_nylon</code> (monophonic 16th notes)</li>
+<li><strong>Track sampling</strong> — add <code>drums</code> at high density</li>
+</ol>
+<p>The final video shows all five tracks simultaneously. Gold tracks (<code>acoustic_guitar_nylon</code>, <code>drums</code>) are the last two generation steps; the shaded region (bars 4–7) marks the continuation portion of the first three tracks.</p>
+<div class="midi-example-card">
+  <strong>Joe Hisaishi — Summer (all 5 tracks, final state)</strong>
+  <video class="midi-example-video" controls preload="metadata" src="/MIDI-GPT/assets/video/summer_final.mp4"></video>
+  <a href="/MIDI-GPT/assets/midi/summer_final.mid" class="midi-download-btn" download>
+    Download Final MIDI
+  </a>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Track</th>
+<th>Instrument</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><code>acoustic_grand_piano</code></td>
+<td>Context (bars 0–3) + Continued (bars 4–7)</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>electric_bass_finger</code></td>
+<td>Context (bars 0–3) + Continued (bars 4–7)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>synth_strings_1</code></td>
+<td>Context (bars 0–3) + Continued (bars 4–7)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>acoustic_guitar_nylon</code></td>
+<td><strong>Generated</strong> — <code>max_polyphony=0, max_note_duration=1</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>drums</code></td>
+<td><strong>Generated</strong> — <code>note_density=9</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Step 1: Continue all three tracks for bars 4-7</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">step1</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span> <span class="n">autoregressive</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>  <span class="c1"># piano</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span> <span class="n">autoregressive</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>  <span class="c1"># bass</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span> <span class="n">autoregressive</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>  <span class="c1"># strings</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    <span class="p">],</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">)</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="p">)</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="c1"># Step 2: Add guitar (monophonic 16th notes)</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="n">step2</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># piano (context)</span>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># bass (context)</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># strings (context)</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>            <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_polyphony&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;max_note_duration&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>        <span class="p">),</span>
+<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a>    <span class="p">],</span>
+<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a><span class="p">)</span>
+<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>
+<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a><span class="c1"># Step 3: Add drums</span>
+<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a><span class="n">step3</span> <span class="o">=</span> <span class="n">GenerationRequest</span><span class="p">(</span>
+<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a>    <span class="n">tracks</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-12-30" name="__codelineno-12-30" href="#__codelineno-12-30"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-12-31" name="__codelineno-12-31" href="#__codelineno-12-31"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-12-32" name="__codelineno-12-32" href="#__codelineno-12-32"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+<a id="__codelineno-12-33" name="__codelineno-12-33" href="#__codelineno-12-33"></a>        <span class="n">TrackPrompt</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">bars</span><span class="o">=</span><span class="p">[],</span> <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="c1"># guitar (context)</span>
+<a id="__codelineno-12-34" name="__codelineno-12-34" href="#__codelineno-12-34"></a>        <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-12-35" name="__codelineno-12-35" href="#__codelineno-12-35"></a>            <span class="nb">id</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+<a id="__codelineno-12-36" name="__codelineno-12-36" href="#__codelineno-12-36"></a>            <span class="n">bars</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+<a id="__codelineno-12-37" name="__codelineno-12-37" href="#__codelineno-12-37"></a>            <span class="n">ignore</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-12-38" name="__codelineno-12-38" href="#__codelineno-12-38"></a>            <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;note_density&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">}</span>
+<a id="__codelineno-12-39" name="__codelineno-12-39" href="#__codelineno-12-39"></a>        <span class="p">),</span>
+<a id="__codelineno-12-40" name="__codelineno-12-40" href="#__codelineno-12-40"></a>    <span class="p">],</span>
+<a id="__codelineno-12-41" name="__codelineno-12-41" href="#__codelineno-12-41"></a>    <span class="n">config</span><span class="o">=</span><span class="n">InferenceConfig</span><span class="p">(</span><span class="n">model_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mask_mode</span><span class="o">=</span><span class="s2">&quot;attention&quot;</span><span class="p">,</span> <span class="n">tracks_per_step</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-12-42" name="__codelineno-12-42" href="#__codelineno-12-42"></a><span class="p">)</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Metacreation Lab for Creative AI
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.instant", "content.code.copy", "content.code.annotate", "search.highlight", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11/dist/mermaid.esm.min.mjs" type="module"></script>
+      
+    
+  </body>
+</html>

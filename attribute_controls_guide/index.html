@@ -1,0 +1,1639 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="GPT-2 transformer for controllable multitrack music generation">
+      
+      
+      
+        <link rel="canonical" href="https://metacreation-lab.github.io/MIDI-GPT/attribute_controls_guide/">
+      
+      
+        <link rel="prev" href="../contributing/">
+      
+      
+        <link rel="next" href="../encoder_guide/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/logo.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Attribute Controls implementation Guide - MIDI-GPT</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Space+Grotesk:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Space Grotesk";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#attribute-controls-implementation-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="MIDI-GPT" class="md-header__button md-logo" aria-label="MIDI-GPT" data-md-component="logo">
+      
+  <img src="../assets/logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MIDI-GPT
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Attribute Controls implementation Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Metacreation-Lab/MIDI-GPT" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Metacreation-Lab/MIDI-GPT
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../quickstart/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../examples/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../concepts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Concepts
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../training/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Training
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../osc/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  OSC Server
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../http/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  HTTP Server
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../contributing/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="MIDI-GPT" class="md-nav__button md-logo" aria-label="MIDI-GPT" data-md-component="logo">
+      
+  <img src="../assets/logo.svg" alt="logo">
+
+    </a>
+    MIDI-GPT
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Metacreation-Lab/MIDI-GPT" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Metacreation-Lab/MIDI-GPT
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation & Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../osc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OSC Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attribute Controls implementation Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attribute Controls implementation Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-an-attribute-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is an attribute control?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#overview-of-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview of the pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step-by-step
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step-by-step">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-add-to-the-c-tokentype-enum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Add to the C++ TokenType enum
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-register-the-name-in-from_string-to_string" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Register the name in from_string() / to_string()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-wire-the-token-into-encodercpp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Wire the token into encoder.cpp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-handle-the-token-in-decodercpp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Handle the token in decoder.cpp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-write-the-python-attribute-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Write the Python attribute class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-register-in-__init__py" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Register in __init__.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-configure-a-model-to-use-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Configure a model to use it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-use-it-at-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Use it at inference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-inspect-results-with-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Inspect results with report()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes-on-aliases-and-disambiguation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes on aliases and disambiguation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#token-types-with-no-c-entry-yet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token types with no C++ entry yet
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../encoder_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encoder Config Design Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-an-attribute-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is an attribute control?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#overview-of-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview of the pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step-by-step
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step-by-step">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-add-to-the-c-tokentype-enum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Add to the C++ TokenType enum
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-register-the-name-in-from_string-to_string" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Register the name in from_string() / to_string()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-wire-the-token-into-encodercpp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Wire the token into encoder.cpp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-handle-the-token-in-decodercpp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Handle the token in decoder.cpp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-write-the-python-attribute-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Write the Python attribute class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-register-in-__init__py" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Register in __init__.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-configure-a-model-to-use-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Configure a model to use it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-use-it-at-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Use it at inference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-inspect-results-with-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Inspect results with report()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes-on-aliases-and-disambiguation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes on aliases and disambiguation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#token-types-with-no-c-entry-yet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token types with no C++ entry yet
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="attribute-controls-implementation-guide">Attribute Controls — Implementation Guide<a class="headerlink" href="#attribute-controls-implementation-guide" title="Permanent link">&para;</a></h1>
+<p>This document explains every step required to add a new attribute control to MIDI-GPT, from the C++ token type through the Python class to model configuration and inference.</p>
+<hr />
+<h2 id="what-is-an-attribute-control">What is an attribute control?<a class="headerlink" href="#what-is-an-attribute-control" title="Permanent link">&para;</a></h2>
+<p>An attribute control is a single token prepended to a track or bar in the token stream that steers the model toward a target musical property (density, polyphony, key, etc.). The model learns to condition on these tokens during training; at inference time you can set them to any value in their domain to guide generation.</p>
+<p>There are two levels:</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Token position</th>
+<th>One value per</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"track"</code></td>
+<td>Before the first <code>Bar</code> token of a track</td>
+<td>Entire track (generation window)</td>
+</tr>
+<tr>
+<td><code>"bar"</code></td>
+<td>After each <code>Bar</code> token</td>
+<td>Individual bar</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="overview-of-the-pipeline">Overview of the pipeline<a class="headerlink" href="#overview-of-the-pipeline" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>types.h enum           → integer ID for this token type
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>encoder_config.cpp     → from_string() resolves &quot;Name&quot; → enum value
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>add_attribute_token_domains() → extends vocab with (name, size) pairs
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Python BaseAttribute   → compute() + quantize() + metadata
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>ATTRIBUTE_REGISTRY     → maps &quot;registry_key&quot; → class
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>TOKEN_TYPE_TO_ATTRIBUTE→ maps C++ name → (registry_key, params)
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>AttributeAnalyzer      → orchestrates compute/quantize, builds constraints
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>BarAttributeValueConstraint / AttributeValueConstraint → enforce at inference
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>decoder.cpp            → reads emitted tokens back into track.attributes
+</code></pre></div>
+<hr />
+<h2 id="step-by-step">Step-by-step<a class="headerlink" href="#step-by-step" title="Permanent link">&para;</a></h2>
+<h3 id="1-add-to-the-c-tokentype-enum">1. Add to the C++ <code>TokenType</code> enum<a class="headerlink" href="#1-add-to-the-c-tokentype-enum" title="Permanent link">&para;</a></h3>
+<p>File: <code>src/cpp/core/types.h</code></p>
+<p>Pick the next available integer and add an enumerator:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">MyNewAttribute</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">85</span><span class="p">,</span>
+</code></pre></div>
+<p>Rules:
+- The integer is permanent once a model is trained on it — do not reuse or reorder.
+- Check <code>from_string()</code> in <code>encoder_config.cpp</code> to see which names are already registered; add the new name there if it is missing (see step 2).
+- Avoid creating aliases to existing integers unless you intend to reuse the same vocabulary slot.</p>
+<h3 id="2-register-the-name-in-from_string-to_string">2. Register the name in <code>from_string()</code> / <code>to_string()</code><a class="headerlink" href="#2-register-the-name-in-from_string-to_string" title="Permanent link">&para;</a></h3>
+<p>File: <code>src/cpp/tokenizer/encoder_config.cpp</code></p>
+<p>Find the <code>from_string</code> switch and add:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;MyNewAttribute&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">TokenType</span><span class="o">::</span><span class="n">MyNewAttribute</span><span class="p">;</span>
+</code></pre></div>
+<p>And the reverse in <code>to_string</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">case</span><span class="w"> </span><span class="no">TokenType</span><span class="o">::</span><span class="no">MyNewAttribute</span><span class="p">:</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;MyNewAttribute&quot;</span><span class="p">;</span>
+</code></pre></div>
+<p>This is the exact string Python must use as <code>token_type</code>. A mismatch causes a <code>std::runtime_error</code> at vocab-build time.</p>
+<h3 id="3-wire-the-token-into-encodercpp">3. Wire the token into <code>encoder.cpp</code><a class="headerlink" href="#3-wire-the-token-into-encodercpp" title="Permanent link">&para;</a></h3>
+<p>File: <code>src/cpp/tokenizer/encoder.cpp</code></p>
+<p>The encoder pulls quantized values out of <code>track.attributes</code> and emits them as tokens. You must register your attribute in one of two places depending on its level. <strong>Skipping this step is silent</strong>: Python will compute the value, the decoder will know how to read it back, but no token will ever reach the model.</p>
+<p><strong>Track-level</strong>: extend the <code>post_inst_attrs</code> table (in the per-track loop, after the <code>Instrument</code> token):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="n">TokenType</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">post_inst_attrs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="p">{</span><span class="s">&quot;min_polyphony&quot;</span><span class="p">,</span><span class="w">     </span><span class="n">TokenType</span><span class="o">::</span><span class="n">MinPolyphony</span><span class="p">},</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="p">...</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="p">{</span><span class="s">&quot;my_new_attribute&quot;</span><span class="p">,</span><span class="w">  </span><span class="n">TokenType</span><span class="o">::</span><span class="n">MyNewAttribute</span><span class="p">},</span><span class="w">  </span><span class="c1">// ← add here</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="p">};</span>
+</code></pre></div>
+<p>The string key MUST equal the Python class's <code>name</code> field. The <code>vocab_.has(type)</code> and <code>track.attributes.count(key)</code> guards mean: nothing is emitted when the model's vocab doesn't include the type, or when Python didn't compute a value for this track.</p>
+<p><strong>Bar-level</strong>: extend the <code>bar_attrs</code> table inside the per-bar loop:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="n">TokenType</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">bar_attrs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="p">{</span><span class="s">&quot;bar_Tension_&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">idx_str</span><span class="p">,</span><span class="w">       </span><span class="n">TokenType</span><span class="o">::</span><span class="n">Tension</span><span class="p">},</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="p">...</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="p">{</span><span class="s">&quot;bar_MyNewAttribute_&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">idx_str</span><span class="p">,</span><span class="w"> </span><span class="n">TokenType</span><span class="o">::</span><span class="n">MyNewAttribute</span><span class="p">},</span><span class="w">  </span><span class="c1">// ← add here</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="p">};</span>
+</code></pre></div>
+<p>The bar-level key convention is <code>"bar_&lt;TokenType_string&gt;_&lt;bar_idx&gt;"</code> — using the exact string from <code>to_string(TokenType)</code>, NOT the Python <code>name</code>. This must match what the decoder writes (step 4) so that encode → decode → encode is a fixed point.</p>
+<p>If your attribute differentiates per track type (e.g. <code>Tension</code> for melodic, <code>TensionDrum</code> for drums), add BOTH bar-key/TokenType pairs — the encoder simply emits whichever key the Python side populated, and Python's track-type filter ensures only one is populated per track.</p>
+<h3 id="4-handle-the-token-in-decodercpp">4. Handle the token in <code>decoder.cpp</code><a class="headerlink" href="#4-handle-the-token-in-decodercpp" title="Permanent link">&para;</a></h3>
+<p>File: <code>src/cpp/tokenizer/decoder.cpp</code></p>
+<p>Add a <code>case</code> in the main switch. For track-level attributes:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">case</span><span class="w"> </span><span class="no">TokenType</span><span class="o">::</span><span class="no">MyNewAttribute</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">current_track</span><span class="p">)</span><span class="w"> </span><span class="n">current_track</span><span class="o">-&gt;</span><span class="n">attributes</span><span class="p">[</span><span class="s">&quot;my_new_attribute&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">value</span><span class="p">;</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="k">break</span><span class="p">;</span>
+</code></pre></div>
+<p>For bar-level attributes:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">case</span><span class="w"> </span><span class="no">TokenType</span><span class="o">::</span><span class="no">MyNewAttribute</span><span class="p">:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">current_track</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">current_bar_idx</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">        </span><span class="n">current_track</span><span class="o">-&gt;</span><span class="n">attributes</span><span class="p">[</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">            </span><span class="s">&quot;bar_MyNewAttribute_&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">current_bar_idx</span><span class="p">)</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">        </span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">value</span><span class="p">;</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span><span class="k">break</span><span class="p">;</span>
+</code></pre></div>
+<p>The string key must match the Python attribute's <code>name</code> field (track-level) or follow the <code>"bar_{token_type}_{bar_idx}"</code> convention (bar-level). This is what enables the encode → decode → encode fixed-point and powers <code>AttributeAnalyzer.report()</code>.</p>
+<h3 id="5-write-the-python-attribute-class">5. Write the Python attribute class<a class="headerlink" href="#5-write-the-python-attribute-class" title="Permanent link">&para;</a></h3>
+<p>File: create or extend a file in <code>src/python/midigpt/attributes/</code></p>
+<p>Inherit from <code>BaseAttribute</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">midigpt._types</span><span class="w"> </span><span class="kn">import</span> <span class="n">Score</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">midigpt.attributes.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseAttribute</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyNewAttribute</span><span class="p">(</span><span class="n">BaseAttribute</span><span class="p">):</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">size</span> <span class="o">=</span> <span class="mi">8</span>  <span class="c1"># number of discrete bins (vocab domain size)</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;track&quot;</span><span class="p">,</span> <span class="n">track_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;melodic&quot;</span><span class="p">):</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">level</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">track_type</span> <span class="o">=</span> <span class="n">track_type</span>  <span class="c1"># &quot;melodic&quot; | &quot;drum&quot; | &quot;both&quot;</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;bar_&quot;</span> <span class="k">if</span> <span class="n">level</span> <span class="o">==</span> <span class="s2">&quot;bar&quot;</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;my_new_attribute&quot;</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">token_type</span> <span class="o">=</span> <span class="s2">&quot;MyNewAttribute&quot;</span>  <span class="c1"># must match C++ from_string() exactly</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">score</span><span class="p">:</span> <span class="n">Score</span><span class="p">,</span> <span class="n">track_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">bar_idx</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>        <span class="c1"># Return a raw (un-quantized) value.</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>        <span class="c1"># When level == &quot;bar&quot; and bar_idx is not None, scope to that bar only.</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        <span class="n">track</span> <span class="o">=</span> <span class="n">score</span><span class="o">.</span><span class="n">tracks</span><span class="p">[</span><span class="n">track_idx</span><span class="p">]</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>        <span class="o">...</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        <span class="k">return</span> <span class="n">raw_value</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">quantize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>        <span class="c1"># Map raw value into [0, size-1].</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">value_labels</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>        <span class="c1"># Optional: human-readable label for each bin — used by UIs.</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>        <span class="k">return</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;level </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)]</span>
+</code></pre></div>
+<p>Key contracts:
+- <code>compute()</code> must work for both track-level (no <code>bar_idx</code>) and bar-level (with <code>bar_idx</code>) if your class supports both levels.
+- <code>quantize()</code> must return a valid index in <code>[0, size - 1]</code>.
+- <code>token_type</code> must be the exact string returned by C++ <code>to_string()</code>.
+- <code>name</code> is the dict key used in <code>track.attributes</code> (decoder → Python).</p>
+<h3 id="6-register-in-__init__py">6. Register in <code>__init__.py</code><a class="headerlink" href="#6-register-in-__init__py" title="Permanent link">&para;</a></h3>
+<p>File: <code>src/python/midigpt/attributes/__init__.py</code></p>
+<p><strong><code>ATTRIBUTE_REGISTRY</code></strong> — maps a short key (used in <code>attribute_controls_json</code> configs) to the class:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">midigpt.attributes.my_new_attribute</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyNewAttribute</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">ATTRIBUTE_REGISTRY</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="o">...</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="s2">&quot;my_new_attribute&quot;</span><span class="p">:</span> <span class="n">MyNewAttribute</span><span class="p">,</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong><code>TOKEN_TYPE_TO_ATTRIBUTE</code></strong> — maps the C++ token type name to <code>(registry_key, constructor_params)</code>. This is used by <code>AttributeAnalyzer.from_config()</code> to auto-wire attributes when loading a checkpoint whose <code>token_domains</code> contains this token type:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">TOKEN_TYPE_TO_ATTRIBUTE</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="o">...</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="s2">&quot;MyNewAttribute&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;my_new_attribute&quot;</span><span class="p">,</span> <span class="p">{}),</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="c1"># Or with params:  (&quot;my_new_attribute&quot;, {&quot;level&quot;: &quot;bar&quot;}),</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="p">}</span>
+</code></pre></div>
+<p>Add the class to <code>__all__</code> as well.</p>
+<h3 id="7-configure-a-model-to-use-it">7. Configure a model to use it<a class="headerlink" href="#7-configure-a-model-to-use-it" title="Permanent link">&para;</a></h3>
+<p>In an encoder config JSON, add the attribute to <code>attribute_controls_json</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="p">{</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nt">&quot;attribute_controls_json&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my_new_attribute&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;params&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;track&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;track_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;melodic&quot;</span><span class="p">}}</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span><span class="p">]</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="p">}</span>
+</code></pre></div>
+<p>Or, if the model's <code>token_domains</code> already includes <code>"MyNewAttribute"</code>, <code>from_config()</code> auto-instantiates it with default params via <code>TOKEN_TYPE_TO_ATTRIBUTE</code> — no explicit <code>attribute_controls_json</code> needed.</p>
+<h3 id="8-use-it-at-inference">8. Use it at inference<a class="headerlink" href="#8-use-it-at-inference" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">midigpt</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate</span><span class="p">,</span> <span class="n">TrackPrompt</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">tp</span> <span class="o">=</span> <span class="n">TrackPrompt</span><span class="p">(</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">instrument</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">attributes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;my_new_attribute&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>  <span class="c1"># track-level: bin index 0..size-1</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="c1"># bar_attributes={0: {&quot;my_new_attribute&quot;: 3}},  # bar-level</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="p">)</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="n">result</span> <span class="o">=</span> <span class="n">generate</span><span class="p">(</span><span class="n">score</span><span class="p">,</span> <span class="n">track_prompts</span><span class="o">=</span><span class="p">[</span><span class="n">tp</span><span class="p">],</span> <span class="o">...</span><span class="p">)</span>
+</code></pre></div>
+<p>The validation layer checks:
+- Value is in range <code>[0, size-1]</code>
+- Track-level attributes go in <code>tp.attributes</code>, bar-level in <code>tp.bar_attributes</code> (wrong placement raises <code>ValueError</code>)
+- <code>achievable_range()</code> is called to warn (not reject) when a target is physically infeasible given the fixed bars</p>
+<h3 id="9-inspect-results-with-report">9. Inspect results with <code>report()</code><a class="headerlink" href="#9-inspect-results-with-report" title="Permanent link">&para;</a></h3>
+<p>After generation, compare what the model sampled against what the notes actually encode:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">analyzer</span> <span class="o">=</span> <span class="n">AttributeAnalyzer</span><span class="o">.</span><span class="n">from_config</span><span class="p">(</span><span class="n">encoder_config</span><span class="p">)</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="n">report</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">report</span><span class="p">(</span><span class="n">result_score</span><span class="p">,</span> <span class="n">track_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">requested</span><span class="o">=</span><span class="n">tp</span><span class="o">.</span><span class="n">attributes</span><span class="p">)</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="k">for</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">report</span><span class="p">[</span><span class="s2">&quot;track&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">entry</span><span class="p">)</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="c1"># {&quot;sampled&quot;: 5, &quot;realized&quot;: 4, &quot;requested&quot;: 5, &quot;consistent&quot;: False, &quot;achieved&quot;: False}</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="k">for</span> <span class="n">bar_idx</span><span class="p">,</span> <span class="n">bar_entry</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">report</span><span class="p">[</span><span class="s2">&quot;bars&quot;</span><span class="p">]):</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">bar_idx</span><span class="p">,</span> <span class="n">bar_entry</span><span class="p">)</span>
+</code></pre></div>
+<ul>
+<li><code>sampled</code>: token value the model emitted (written by decoder into <code>track.attributes</code>)</li>
+<li><code>realized</code>: value computed from the actual generated notes</li>
+<li><code>requested</code>: the value you asked for (if you passed <code>requested=</code>)</li>
+<li><code>consistent</code>: <code>sampled == realized</code> — True means the model's token accurately describes its own output</li>
+<li><code>achieved</code>: <code>realized == requested</code> — True means generation hit the target</li>
+</ul>
+<hr />
+<h2 id="checklist">Checklist<a class="headerlink" href="#checklist" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] Add <code>MyNewAttribute = N</code> to <code>TokenType</code> enum in <code>types.h</code></li>
+<li>[ ] Add to <code>from_string()</code> and <code>to_string()</code> in <code>encoder_config.cpp</code></li>
+<li>[ ] <strong>Add the encoder lookup in <code>encoder.cpp</code></strong> (track-level → <code>post_inst_attrs</code>; bar-level → <code>bar_attrs</code>). Skipping this is silent: Python computes, decoder reads, but the model never sees a token.</li>
+<li>[ ] Add <code>case TokenType::MyNewAttribute:</code> in <code>decoder.cpp</code></li>
+<li>[ ] Write <code>MyNewAttribute(BaseAttribute)</code> class with <code>compute()</code>, <code>quantize()</code>, <code>size</code>, <code>name</code>, <code>token_type</code></li>
+<li>[ ] Add to <code>ATTRIBUTE_REGISTRY</code> and <code>TOKEN_TYPE_TO_ATTRIBUTE</code> in <code>__init__.py</code></li>
+<li>[ ] Add to <code>__all__</code> in <code>__init__.py</code></li>
+<li>[ ] Test: <code>pytest tests/python/test_attributes.py</code></li>
+<li>[ ] Add a config entry and verify <code>from_config()</code> instantiates the attribute correctly</li>
+<li>[ ] Run <code>report()</code> on a generated sample and inspect <code>consistent</code> / <code>achieved</code></li>
+<li>[ ] <strong>Round-trip test</strong>: encode a score with your attribute populated, decode, confirm <code>decoded.tracks[t].attributes[&lt;key&gt;]</code> matches the input quantized value</li>
+</ul>
+<hr />
+<h2 id="notes-on-aliases-and-disambiguation">Notes on aliases and disambiguation<a class="headerlink" href="#notes-on-aliases-and-disambiguation" title="Permanent link">&para;</a></h2>
+<p>Several token types share an integer with a shorter alias defined in <code>types.h</code>. These are intentional — the alias is the canonical Python-facing name, and the longer name describes the architectural role:</p>
+<table>
+<thead>
+<tr>
+<th>Canonical alias</th>
+<th>Full name</th>
+<th>Integer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OnsetPolyphony</code></td>
+<td><code>BarLevelOnsetPolyphonyMax</code></td>
+<td>42</td>
+</tr>
+<tr>
+<td><code>PitchClassSet</code></td>
+<td><code>BarLevelPitchClassSet</code></td>
+<td>51</td>
+</tr>
+<tr>
+<td><code>SilenceProportion</code></td>
+<td><code>TrackLevelSilenceProportionMax</code></td>
+<td>53</td>
+</tr>
+<tr>
+<td><code>PitchRange</code></td>
+<td><code>TrackLevelPitchRangeMax</code></td>
+<td>49</td>
+</tr>
+<tr>
+<td><code>NoteDurationDist</code></td>
+<td><code>NoteDuration</code></td>
+<td>26</td>
+</tr>
+</tbody>
+</table>
+<p>Because <code>OnsetPolyphony = 42</code> is the same integer as <code>BarLevelOnsetPolyphonyMax</code>, the decoder uses token position to disambiguate: a token 42 before the first <code>Bar</code> in a track writes <code>"onset_polyphony"</code> (track-level); after a <code>Bar</code> token it writes <code>"bar_BarLevelOnsetPolyphonyMax_N"</code> (bar-level).</p>
+<p>Do not introduce new aliases. Bar-level and track-level variants of the same concept need distinct integers (e.g. <code>BarLevelOnsetDensity = 40</code> vs <code>TrackLevelOnsetDensity = 43</code>).</p>
+<hr />
+<h2 id="token-types-with-no-c-entry-yet">Token types with no C++ entry yet<a class="headerlink" href="#token-types-with-no-c-entry-yet" title="Permanent link">&para;</a></h2>
+<p>These Python classes exist and work for compute/quantize but cannot be injected into the model vocab until a C++ token type is assigned:</p>
+<ul>
+<li><code>SilenceProportion(level="bar")</code> — token_type <code>"SilenceProportionBar"</code> (no C++ enum entry)</li>
+<li><code>NoteDurationQuantile(level="bar")</code> — token_type <code>"MinNoteDurationBar"</code> / <code>"MaxNoteDurationBar"</code> (no C++ enum entry)</li>
+<li><code>PitchClassSet(level="track")</code> — token_type <code>"PitchClassSetTrack"</code> (no C++ enum entry)</li>
+</ul>
+<p>They are excluded from <code>TOKEN_TYPE_TO_ATTRIBUTE</code> and will not be auto-inferred from checkpoints until corresponding C++ types are added.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Metacreation Lab for Creative AI
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.instant", "content.code.copy", "content.code.annotate", "search.highlight", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11/dist/mermaid.esm.min.mjs" type="module"></script>
+      
+    
+  </body>
+</html>
