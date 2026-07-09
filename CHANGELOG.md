@@ -11,6 +11,21 @@ section above `[Unreleased]` before tagging.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-07-09
+
+### Added
+- **Prism Documentation:** Full `docs/models.md` section for the `prism_medium` checkpoint — same wide attribute/genre set as `expressive`, standard 32-level velocity, `num_bars_map` up to 16 bars.
+- **Real-Checkpoint Smoke Tests:** New `test_pretrained_checkpoints.py` downloads and exercises `prism_medium`/`expressive_medium` end-to-end (AR + infill generation, attribute/genre conditioning, `MaskBar`-mode rejection).
+
+### Changed
+- **Dynamic Checkpoint Resolution:** `InferenceEngine.from_pretrained` now resolves checkpoint filenames dynamically against the HuggingFace repo's file listing (preferring `-final`, falling back to the highest `-step<N>`) instead of a hardcoded filename map — re-uploading a checkpoint no longer requires a code change.
+
+### Fixed
+- **Attribute Token Names:** Corrected `TOKEN_TYPE_TO_ATTRIBUTE` and individual attribute classes' `token_type` strings to match the C++ `TokenType::name()` runtime values (`TrackLevelPitchRangeMax`, `TrackLevelSilenceProportionMax`, `BarLevelPitchClassSet`), fixing silent attribute auto-inference and BPE classification failures.
+
+### Removed
+- **Ghost Model References:** `"ghost"` removed from `InferenceEngine.from_pretrained`'s known model names (no checkpoint has ever been trained for it); docs now explicitly mark it as an unreleased, planned architecture instead of implying it's usable today.
+
 ## [0.3.1] - 2026-07-06
 
 ### Added
