@@ -25,7 +25,7 @@ The preprocessing step builds a valid-index cache so dataset initialization is i
 ```bash
 python -m midigpt.training.preprocess \
     --parquet /data/train/*.parquet \
-    --checkpoint models/yellow.pt
+    --checkpoint models/yellow_medium-final.safetensors
 ```
 
 Or supply a raw encoder config JSON instead of a checkpoint:

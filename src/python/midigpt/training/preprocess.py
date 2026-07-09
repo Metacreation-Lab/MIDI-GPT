@@ -7,7 +7,7 @@ at training startup.
 Usage:
     python -m midigpt.training.preprocess \\
         --parquet /data/v2.0.0/train/00000.parquet \\
-        --checkpoint models/yellow.pt \\
+        --checkpoint models/yellow_medium-final.safetensors \\
         [--min-bars 4] [--min-tracks 1]
 
     # Or with a raw encoder-config JSON instead of a checkpoint bundle:
@@ -18,7 +18,7 @@ Usage:
 Multiple parquet shards can be given at once:
     python -m midigpt.training.preprocess \\
         --parquet /data/v2.0.0/train/*.parquet \\
-        --checkpoint models/yellow.pt
+        --checkpoint models/yellow_medium-final.safetensors
 """
 
 from __future__ import annotations

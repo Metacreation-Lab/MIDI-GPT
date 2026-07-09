@@ -7,13 +7,13 @@ holds no per-session state. The only shared state is the loaded model
 Usage::
 
     # Local checkpoint
-    midigpt-http --ckpt models/yellow.pt --port 8000
+    midigpt-http --ckpt models/yellow_medium-final.safetensors --port 8000
 
     # HuggingFace pretrained name
     midigpt-http --pretrained yellow --port 8000
 
     # HuggingFace repo + filename
-    midigpt-http --pretrained Metacreation/MIDI-GPT --hf-filename yellow.pt
+    midigpt-http --pretrained Metacreation/MIDI-GPT --hf-filename yellow_medium-final.safetensors
 
     # Auto-shutdown after 10 minutes of inactivity
     midigpt-http --pretrained yellow --idle-timeout 600
@@ -210,7 +210,7 @@ def _parse_args() -> argparse.Namespace:
     model_grp.add_argument(
         "--pretrained",
         metavar="NAME_OR_REPO",
-        help='Pretrained model name ("yellow", "ghost", "expressive") or HuggingFace repo ID',
+        help='Pretrained model name ("yellow", "yellow_small", "prism_medium", "expressive") or HuggingFace repo ID',
     )
     p.add_argument(
         "--hf-filename",

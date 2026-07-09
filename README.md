@@ -73,11 +73,12 @@ The model is downloaded once and cached by `huggingface_hub` in `~/.cache/huggin
 
 | Name | `num_bars_map` | Infill | Attributes | Download |
 |---|---|---|---|---|
-| `yellow` | 4, 8 | yes | note density, polyphony (min/max), note duration (min/max) | [yellow.pt](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow.pt) |
-| `ghost` | 4, 8, 12, 16 | yes | note density, polyphony (min/max), note duration (min/max) | coming soon |
-| `expressive` | 4, 8 | yes | key signature, pitch range, silence, note duration, note density (bar), polyphony (bar), pitch class set, nomml, genre | coming soon |
+| `yellow` | 4, 8 | yes | note density, polyphony (min/max), note duration (min/max) | [yellow_medium-final.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow_medium-final.safetensors) |
+| `prism_medium` | 4, 8, 12, 16 | yes | key signature, pitch range, silence, note duration, note density (bar), polyphony (bar), pitch class set, genre | [prism_medium-step58000.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/prism_medium-step58000.safetensors) — training in progress |
+| `expressive` | 4, 8, 12, 16 | yes | key signature, pitch range, silence, note duration, note density (bar), polyphony (bar), pitch class set, nomml, genre | [expressive_medium-step56000.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/expressive_medium-step56000.safetensors) — training in progress |
+| `ghost` | 4, 8, 12, 16 | yes | note density, polyphony (min/max), note duration (min/max) | not released — planned architecture, see [docs/models.md#ghost](docs/models.md#ghost) |
 
-`model_dim` in `InferenceConfig` is the context window in bars, not a vocabulary dimension — pass a value from the model's `num_bars_map`. `expressive` additionally encodes sub-grid timing via delta tokens and supports switchable velocity/microtiming controls.
+`model_dim` in `InferenceConfig` is the context window in bars, not a vocabulary dimension — pass a value from the model's `num_bars_map`. `expressive` additionally encodes sub-grid timing via delta tokens and supports switchable velocity/microtiming controls. See [docs/models.md](docs/models.md) for the full breakdown.
 
 ---
 
@@ -87,7 +88,7 @@ The model is downloaded once and cached by `huggingface_hub` in `~/.cache/huggin
 
 ```python
 # By name (downloads from Metacreation/MIDI-GPT on HuggingFace Hub)
-engine = InferenceEngine.from_pretrained("yellow")   # or "ghost", "expressive"
+engine = InferenceEngine.from_pretrained("yellow")   # or "prism_medium", "expressive"
 
 # From a local checkpoint (.safetensors or .pt bundle)
 engine = InferenceEngine.from_checkpoint("path/to/model.safetensors")
@@ -200,7 +201,7 @@ Pass quantized levels (integers in `[0, size)`) in `TrackPrompt.attributes`.
 ```bash
 python -m midigpt.training.preprocess \
     --parquet /data/train/*.parquet \
-    --checkpoint models/yellow.pt
+    --checkpoint models/yellow_medium-final.safetensors
 ```
 
 Builds a valid-index cache so dataset initialization is instant on subsequent runs. Cached in `~/.midigpt/` (override with `MIDIGPT_CACHE`).
@@ -250,7 +251,7 @@ midigpt-http --ckpt checkpoints/run_001/model_final.safetensors --port 8000
 
 # From HuggingFace Hub (by name or repo ID)
 midigpt-http --pretrained yellow --port 8000
-midigpt-http --pretrained Metacreation/MIDI-GPT --hf-filename yellow.pt --port 8000
+midigpt-http --pretrained Metacreation/MIDI-GPT --hf-filename yellow_medium-final.safetensors --port 8000
 ```
 
 A stateless REST API — every request carries the full score and generation parameters. The interactive API docs are available at `http://localhost:8000/docs`.
@@ -293,7 +294,7 @@ Use `--device cuda`, `--device mps`, or `--device auto` (default) to select the 
 
 ```bash
 pip install "midigpt[realtime]"
-midigpt-server --ckpt models/yellow.pt --port 7400
+midigpt-server --ckpt models/yellow_medium-final.safetensors --port 7400
 ```
 
 Listens for OSC messages on a UDP port and streams generated notes back in real time. Generation is triggered bar-by-bar via `/midigpt/bar/end` on a background thread.

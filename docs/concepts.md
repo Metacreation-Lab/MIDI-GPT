@@ -93,7 +93,7 @@ The encoder emits a special `MaskBar` token for each masked bar. The model is tr
 [ CONTEXT ] [ CONTEXT ] [ TARGET ] [ MaskBar ] [ MaskBar ]
 ```
 
-> Only available on models trained with `MaskBar` support (currently `ghost`).
+> Only available on models trained with `MaskBar` support. No released checkpoint currently has this — it's part of the planned `ghost` architecture (see [docs/models.md#ghost](models.md#ghost)).
 
 ### `"attention"` — exact span masking
 

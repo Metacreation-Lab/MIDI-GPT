@@ -6,7 +6,7 @@ The `midigpt[realtime]` extra adds a UDP OSC server for DAW and live-performance
 
 ```bash
 pip install "midigpt[realtime]"
-midigpt-server --ckpt models/yellow.pt --port 7400
+midigpt-server --ckpt models/yellow_medium-final.safetensors --port 7400
 ```
 
 Generation is triggered bar-by-bar via `/midigpt/bar/end` and runs on a dedicated background thread — the OSC listener never blocks.

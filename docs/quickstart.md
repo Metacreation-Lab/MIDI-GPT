@@ -39,7 +39,7 @@ Load a pretrained model by name — downloaded from HuggingFace Hub and cached l
 ```python
 from midigpt.inference import InferenceEngine
 
-engine = InferenceEngine.from_pretrained("yellow")   # or "ghost", "expressive"
+engine = InferenceEngine.from_pretrained("yellow")   # or "prism_medium", "expressive"
 ```
 
 Load from a local checkpoint file:
@@ -201,4 +201,4 @@ Control how bars-to-be-generated appear in the context window:
 | `"remove"` | Future bars omitted entirely from the token stream |
 | `"token"` | Encoder emits a `MaskBar` token (requires vocab support) |
 
-Set via `InferenceConfig(mask_mode="attention")`. The `"attention"` family works on all models; `"token"` requires the encoder vocab to include a `MaskBar` domain (only `ghost`).
+Set via `InferenceConfig(mask_mode="attention")`. The `"attention"` family works on all currently-released models; `"token"` requires the encoder vocab to include a `MaskBar` domain — no released checkpoint has this yet (it's part of the planned `ghost` architecture; see [docs/models.md#ghost](models.md#ghost)).
