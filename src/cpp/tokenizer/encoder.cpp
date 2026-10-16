@@ -28,6 +28,10 @@ static void encode_bar_notes(
         }
         notes_by_onset[onset].push_back(note_idx);
     }
+    // Emit onsets in time order, not in the order the notes are listed: onset 0 gets no
+    // TimeAbsolutePos (every bar opens at tick 0), so a downbeat note listed after others would
+    // otherwise decode at the previous position.
+    std::sort(onset_order.begin(), onset_order.end());
     // Match orig encoder: emit chord notes in ascending pitch order.
     for (auto& [_, bucket] : notes_by_onset) {
         std::sort(bucket.begin(), bucket.end(),
