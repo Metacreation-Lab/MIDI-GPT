@@ -246,6 +246,10 @@ class _BatchNotEligible(Exception):
     per-attempt path."""
 
 
+# Tokens between progress_sink calls.
+PROGRESS_EVERY = 32
+
+
 class GenerationCancelled(Exception):
     """Raised when SamplingSession.cancel_event is observed set mid-decode.
 
@@ -582,6 +586,9 @@ class SamplingSession:
         # see how close a request came to the model's context window.
         self.context_len: int = 0
         self.max_context_len: int = 0
+        # 1-based retry attempt in progress (sequential path); reported in
+        # streamed progress and in the response so clients can show retries.
+        self.attempt: int = 1
         # True if generation stopped because gen_count hit max_gen_tokens
         # (context budget exhausted) rather than the grammar/model reaching
         # a natural stopping point (state.complete()) — e.g. all requested
@@ -618,6 +625,10 @@ class SamplingSession:
         # tagged by candidate index, which is a bigger design question than
         # this first pass covers.
         self.note_sink: "Callable[[list[dict]], None] | None" = None
+        # Optional callback, called with no arguments every PROGRESS_EVERY
+        # generated tokens in _sample_step (the streamed path), so a client
+        # can show throughput and context use even between notes.
+        self.progress_sink: "Callable[[], None] | None" = None
 
     def __enter__(self):
         return self
@@ -627,6 +638,7 @@ class SamplingSession:
 
     def run(self) -> Score:
         self.gen_count = 0
+        self.attempt = 1
         self.model_forward_time = 0.0
         self.encode_time = 0.0
         self.decode_time = 0.0
@@ -923,6 +935,7 @@ class SamplingSession:
                 )
 
         for i in range(cfg.max_attempts):
+            self.attempt = i + 1
             temperature = cfg.temperature * (cfg.temperature_escalation**i)
             # Bump the seed per retry when the user pinned one — otherwise all
             # attempts would resample the same tokens deterministically and
@@ -1669,6 +1682,8 @@ class SamplingSession:
                 self.gen_count += 1
                 if _device_is_mps and self.gen_count % 200 == 0:
                     torch.mps.empty_cache()
+                if self.progress_sink is not None and self.gen_count % PROGRESS_EVERY == 0:
+                    self.progress_sink()
                 # attention: extend buffer pointer for generated token
                 if mask_mode == "attention" and _kv_buf is not None:
                     _kv_len += 1
