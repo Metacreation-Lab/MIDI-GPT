@@ -1406,6 +1406,9 @@ class SamplingSession:
         if context_len >= model_max_ctx:
             raise _ContextOverflow(context_len, model_max_ctx)
         max_gen_tokens = model_max_ctx - context_len - 1
+        # gen_count runs across every step and attempt of the session; the
+        # budget is this attempt's own tokens.
+        gen_start = self.gen_count
         n_gen_tracks = sum(1 for tp in self._request.tracks
                            if not getattr(tp, "ignore", False) and tp.bars)
         if max_gen_tokens < n_gen_tracks * 20:
@@ -1499,7 +1502,7 @@ class SamplingSession:
         with torch.no_grad():
             while (
                 not state.complete()
-                and self.gen_count < max_gen_tokens
+                and self.gen_count - gen_start < max_gen_tokens
                 and not (self.cancel_event is not None and self.cancel_event.is_set())
             ):
                 is_prefill = kv.is_prefill
