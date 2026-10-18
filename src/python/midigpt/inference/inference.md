@@ -69,7 +69,7 @@ nothing exotic is on by default.
 | `model_dim` | int | `4` | Context window length **in bars**. Must be one of the values in `encoder_config.num_bars_map`. |
 | `bars_per_step` | int | `1` | Bars generated per step. Must be `≤ model_dim`. |
 | `tracks_per_step` | int | `1` | Tracks generated per step. `> 1` enables interleaved multi-track AR within a single window. |
-| `shuffle` | bool | `False` | Randomize step order. |
+| `shuffle` | bool | `False` | Randomize the order of the infill steps (AR steps keep theirs); seeded by `seed` when set. |
 
 ### Span-masking (lookahead)
 

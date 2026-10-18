@@ -233,7 +233,7 @@ class InferenceConfig:
     bars_per_step: int = 1  # bars generated per step (≤ model_dim)
     tracks_per_step: int = 1  # tracks processed per step
     model_dim: int = 4  # context window size in bars (NOT vocab size)
-    shuffle: bool = False  # shuffle steps
+    shuffle: bool = False  # random order for the infill steps
     # Mask mode selector: one of "token", "attention", "attention_approx",
     # "attention_skip", or "remove". Controls how future bars are represented
     # in the context and how the model attends to them.

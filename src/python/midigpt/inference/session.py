@@ -648,45 +648,42 @@ class SamplingSession:
         # value. If num_bars_map is unavailable, just try the requested dim.
         candidates = [d for d in dims if d <= cfg.model_dim] or [cfg.model_dim]
 
+        # On a step-down the steps already done are kept: the next smaller
+        # model_dim plans only the bars still to generate, with the generated
+        # ones as context.
+        py_score = self._score if isinstance(self._score, Score) else from_cpp(self._score)
+        score = to_cpp(copy.deepcopy(py_score))
+        selected = [list(row) for row in mask.selected]
+        any_truncated = False
+        n_steps = 0
         last_exc = None
         for d in candidates:
             cfg_try = replace_cfg(cfg, model_dim=d) if d != cfg.model_dim else cfg
             enc_cfg.model_dim = d
-            planner = _core.StepPlanner(
-                mask, enc_cfg, cfg_try.bars_per_step, cfg_try.tracks_per_step
-            )
-            py_score = self._score if isinstance(self._score, Score) else from_cpp(self._score)
-            score = to_cpp(copy.deepcopy(py_score))
+            mask.selected = selected
+            steps = self._order_steps(list(
+                _core.StepPlanner(mask, enc_cfg, cfg_try.bars_per_step, cfg_try.tracks_per_step).plan()
+            ), cfg_try)
+            # A step that ran out of tokens is missing its last bars (or every
+            # attempt came back empty): redo it, and the rest, at the next
+            # smaller window, which leaves more of the context for generating.
+            # The smallest one keeps the cut-off result (reported as truncated).
+            step_down = d != candidates[-1]
             try:
-                self._snapshot_sent = False
-                n_steps = 0
-                for step in tqdm(planner.plan()):
-                    # An AR window that ran out of tokens is missing its last
-                    # bars (or every attempt came back empty): try the next
-                    # smaller window, which leaves more of the context for
-                    # generating. The smallest one keeps the cut-off result
-                    # (reported as truncated).
-                    step_down = step.is_autoregressive and d != candidates[-1]
+                for step in tqdm(steps):
                     try:
-                        score = self._run_step(score, step, cfg_try)
+                        result = self._run_step(score, step, cfg_try)
                     except RuntimeError:
                         if step_down and self.truncated:
                             raise _ContextOverflow(self.context_len, self.max_context_len) from None
                         raise
-                    n_steps += 1
                     if step_down and self.truncated:
                         raise _ContextOverflow(self.context_len, self.max_context_len)
-                if n_steps == 0:
-                    log.warning(
-                        "planner produced zero steps at model_dim=%d — nothing was "
-                        "generated; returning the input score unchanged",
-                        d,
-                    )
-                # _run_step always hands back a wrapped Score; if no step ran,
-                # `score` is still the raw _core.Score from to_cpp() above —
-                # normalize either way so callers always get a real Score
-                # (with .to_dict()) instead of the native pybind object.
-                return score if isinstance(score, Score) else from_cpp(score)
+                    score = result
+                    any_truncated = any_truncated or self.truncated
+                    n_steps += 1
+                    for t, b in step.bars_to_generate:
+                        selected[t][b] = False
             except _ContextOverflow as exc:
                 last_exc = exc
                 log.warning(
@@ -696,7 +693,31 @@ class SamplingSession:
                     exc.model_max,
                 )
                 continue
+            if n_steps == 0:
+                log.warning(
+                    "planner produced zero steps at model_dim=%d — nothing was "
+                    "generated; returning the input score unchanged",
+                    d,
+                )
+            self.truncated = any_truncated
+            # _run_step always hands back a wrapped Score; if no step ran,
+            # `score` is still the raw _core.Score from to_cpp() above —
+            # normalize either way so callers always get a real Score
+            # (with .to_dict()) instead of the native pybind object.
+            return score if isinstance(score, Score) else from_cpp(score)
         raise RuntimeError(f"no model_dim in {candidates} fits the model (last: {last_exc})")
+
+    def _order_steps(self, steps: list, cfg) -> list:
+        """AR steps in planner order (each continues the last), then the infill
+        steps, in random order when cfg.shuffle is set (seeded by the request
+        seed when there is one)."""
+        if not getattr(cfg, "shuffle", False):
+            return steps
+        ar = [s for s in steps if s.is_autoregressive]
+        infill = [s for s in steps if not s.is_autoregressive]
+        seed = self.resolved_seed if self.resolved_seed is not None and self.resolved_seed >= 0 else None
+        random.Random(seed).shuffle(infill)
+        return ar + infill
 
     def run_variations(self) -> list:
         """cfg.num_candidates independent full generations from the SAME

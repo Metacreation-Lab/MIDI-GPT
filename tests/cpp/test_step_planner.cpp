@@ -132,6 +132,20 @@ TEST_CASE("StepPlanner: tracks_per_step=2 covers both tracks in a single step") 
     CHECK(max_tracks_in_step >= 2);
 }
 
+TEST_CASE("StepPlanner: tracks_per_step groups the selected tracks") {
+    // Tracks 1 and 2 selected: one step for both, although raw index groups
+    // of two would be {0, 1} and {2, 3}.
+    SelectionMask m;
+    m.selected = {{false, false}, {true, true}, {true, true}, {false, false}};
+    m.autoregressive = {false, false, false, false};
+    m.ignore = {false, false, false, false};
+    EncoderConfig cfg; cfg.model_dim = 2;
+    StepPlanner p(m, cfg, /*bps=*/2, /*tps=*/2);
+    auto steps = p.plan();
+    REQUIRE(steps.size() == 1);
+    CHECK(steps[0].bars_to_generate.size() == 4);
+}
+
 // ---------------------------------------------------------------------------
 // Sparse infill: only one bar marked
 // ---------------------------------------------------------------------------
