@@ -159,6 +159,12 @@ def validate_request(
         raise RequestValidationError(
             f"top_p must be in (0, 1] (got {cfg.top_p}); use 1.0 to disable"
         )
+    # novelty_threshold ∈ (0, 1] : 1.0 = reject only an unchanged result.
+    if not (0.0 < cfg.novelty_threshold <= 1.0):
+        raise RequestValidationError(
+            f"novelty_threshold must be in (0, 1] (got {cfg.novelty_threshold}); "
+            f"use 1.0 to reject only unchanged results"
+        )
     # mask_p ∈ [0, 1) : 0.0 = off. 1.0 would mask the entire distribution.
     if not (0.0 <= cfg.mask_p < 1.0):
         raise RequestValidationError(

@@ -882,14 +882,14 @@ class SamplingSession:
                         continue
                     last_candidate = candidate
                     silence_failed = self._note_count(candidate, step) <= 0
-                    novelty_failed = self._is_identical(original_score, candidate)
+                    novelty_failed = self._too_similar(original_score, candidate, step, cfg)
                     attempt_errors = []
                     attempt_warnings = []
                     if silence_failed:
                         msg = "silence_check (no notes generated in target bars)"
                         (attempt_errors if cfg.silence_check else attempt_warnings).append(msg)
                     if novelty_failed:
-                        msg = "novelty_check (candidate identical to original)"
+                        msg = self._novelty_message(cfg)
                         (attempt_errors if cfg.novelty_check else attempt_warnings).append(msg)
                     for w in attempt_warnings:
                         log.warning(
@@ -957,14 +957,14 @@ class SamplingSession:
             # Always evaluate BOTH checks. Whether a failure is an error or just
             # a warning depends on whether the corresponding check is enabled.
             silence_failed = self._note_count(candidate, step) <= 0
-            novelty_failed = self._is_identical(original_score, candidate)
+            novelty_failed = self._too_similar(original_score, candidate, step, cfg)
             attempt_errors = []
             attempt_warnings = []
             if silence_failed:
                 msg = "silence_check (no notes generated in target bars)"
                 (attempt_errors if cfg.silence_check else attempt_warnings).append(msg)
             if novelty_failed:
-                msg = "novelty_check (candidate identical to original)"
+                msg = self._novelty_message(cfg)
                 (attempt_errors if cfg.novelty_check else attempt_warnings).append(msg)
 
             for w in attempt_warnings:
@@ -2453,8 +2453,8 @@ class SamplingSession:
                 )
                 return False
         if cfg.novelty_check:
-            if self._is_identical(original, candidate):
-                logging.debug("  Rejected by novelty_check: Candidate is identical to original.")
+            if self._too_similar(original, candidate, step, cfg):
+                logging.debug("  Rejected by novelty_check: Candidate is too similar to original.")
                 return False
 
         logging.debug("  Accepted: Candidate is acceptable.")
@@ -2476,6 +2476,45 @@ class SamplingSession:
                         if note.pitch >= 0:  # Just count notes with a valid pitch
                             count += 1
         return count
+
+    def _too_similar(self, original: Score, candidate: Score, step, cfg) -> bool:
+        """novelty_check: is the candidate too close to the original?
+
+        novelty_threshold 1.0 rejects only an unchanged result (same pitch and
+        onset for every note). Below 1.0 the step's generated bars are compared
+        as sets of (bar, pitch, onset) notes, so velocity, duration and
+        microtiming don't count, and the candidate is rejected when the notes
+        they share make up at least that fraction of all their notes.
+        """
+        threshold = getattr(cfg, "novelty_threshold", 1.0)
+        if threshold >= 1.0:
+            return self._is_identical(original, candidate)
+        return self._similarity(original, candidate, step) >= threshold
+
+    @staticmethod
+    def _novelty_message(cfg) -> str:
+        threshold = getattr(cfg, "novelty_threshold", 1.0)
+        if threshold >= 1.0:
+            return "novelty_check (candidate identical to original)"
+        return f"novelty_check (candidate at least {threshold:.0%} like the original)"
+
+    @staticmethod
+    def _similarity(a: Score, b: Score, step) -> float:
+        """Shared (pitch, onset) notes over all notes in the step's generated
+        bars (Jaccard, counting repeated notes); 1.0 when both are empty."""
+        from collections import Counter
+
+        def notes(score: Score) -> Counter:
+            out: Counter = Counter()
+            for t, bar in step.bars_to_generate:
+                if t < len(score.tracks) and bar < len(score.tracks[t].bars):
+                    out.update((bar, n.pitch, n.onset_ticks)
+                               for n in score.tracks[t].bars[bar].notes)
+            return out
+
+        na, nb = notes(a), notes(b)
+        union = sum((na | nb).values())
+        return 1.0 if union == 0 else sum((na & nb).values()) / union
 
     def _is_identical(self, a: Score, b: Score) -> bool:
         for tp in self._request.tracks:
