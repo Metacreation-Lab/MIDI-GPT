@@ -110,21 +110,28 @@ def validate_request(
     nb_values = _num_bars_values(cfg_dict)
     if nb_values:
         if cfg.model_dim is None or cfg.model_dim <= 0:
-            cfg = replace(cfg, model_dim=min(nb_values))
+            # auto: the largest window the piece fills (the session steps down if it doesn't fit the model)
+            n_bars = min((len(t.bars) for t in getattr(score, "tracks", [])), default=0)
+            fits = [d for d in nb_values if d <= n_bars]
+            cfg = replace(cfg, model_dim=max(fits) if fits else min(nb_values))
         elif cfg.model_dim not in nb_values:
             raise RequestValidationError(
                 f"model_dim={cfg.model_dim} not in vocab domain {nb_values}"
             )
 
     # ---------------- sampling sanity ----------------
-    if cfg.bars_per_step <= 0:
-        raise RequestValidationError(f"bars_per_step must be > 0 (got {cfg.bars_per_step})")
+    if cfg.bars_per_step < 0:
+        raise RequestValidationError(f"bars_per_step must be > 0, or \"auto\" (got {cfg.bars_per_step})")
     if cfg.bars_per_step > cfg.model_dim:
         raise RequestValidationError(
             f"bars_per_step={cfg.bars_per_step} cannot exceed model_dim={cfg.model_dim}"
         )
-    if cfg.tracks_per_step <= 0:
-        raise RequestValidationError(f"tracks_per_step must be > 0 (got {cfg.tracks_per_step})")
+    if cfg.tracks_per_step < 0:
+        raise RequestValidationError(f"tracks_per_step must be > 0, or \"auto\" (got {cfg.tracks_per_step})")
+    if not (0.0 <= cfg.ar_overlap < 1.0):
+        raise RequestValidationError(f"ar_overlap must be in [0, 1) (got {cfg.ar_overlap})")
+    if cfg.min_overlap_bars < 0:
+        raise RequestValidationError(f"min_overlap_bars must be >= 0 (got {cfg.min_overlap_bars})")
     if cfg.max_attempts < 1:
         raise RequestValidationError(f"max_attempts must be >= 1 (got {cfg.max_attempts})")
     if cfg.num_candidates < 1:
@@ -740,6 +747,8 @@ def validate_request(
                             f"track_id={tp.id}: rhythm_mask.positions {oor} out of range "
                             f"[0, {_pos_domain_size}) for this checkpoint"
                         )
+                    if cfg.tracks_per_step == 0:   # auto: one track per step is what this needs
+                        cfg = replace(cfg, tracks_per_step=1)
                     if cfg.tracks_per_step != 1:
                         raise RequestValidationError(
                             f"track_id={tp.id}: rhythm_mask.positions (hard exact rhythm) "
@@ -772,6 +781,8 @@ def validate_request(
                         f"track_id={tp.id}: controls['remix'] requires the encoder vocab to "
                         f"include a TimeAbsolutePos token domain"
                     )
+                if cfg.tracks_per_step == 0:   # auto: one track per step is what this needs
+                    cfg = replace(cfg, tracks_per_step=1)
                 if cfg.tracks_per_step != 1:
                     raise RequestValidationError(
                         f"track_id={tp.id}: controls['remix'] requires config.tracks_per_step=1 "

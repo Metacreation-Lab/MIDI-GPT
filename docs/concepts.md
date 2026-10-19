@@ -31,8 +31,8 @@ flowchart TD
 
 The planner decides:
 
-- **How many steps** — one per target bar per track, in an order that lets each step use the output of previous ones as context.
-- **Which bars are in the context window** — a sliding window of `model_dim` bars centred around the target bars.
+- **How many steps** — in an order that lets each step use the output of previous ones as context: AR tracks first, one at a time, then infill.
+- **Which bars are in the context window** — a window of `model_dim` bars placed on the targets, not on a grid from bar 0. An AR step keeps `model_dim − bars_per_step` bars of the track's own history before the bars it writes and writes up to the window's right edge (so the first window from bar 0 is written whole), then the window slides by `bars_per_step`. An infill step's window is centred on its chunk of target bars.
 - **How many tracks to encode at once** — controlled by `tracks_per_step`.
 
 ---

@@ -545,6 +545,10 @@ class HttpServer:
                 except RequestValidationError as exc:
                     raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+                if getattr(sess._request.config, "plan_only", False):   # a dry run: the steps, nothing generated
+                    return {"request_id": body.request_id, "model": entry.id, "status": "planned",
+                            "model_dim": sess._request.config.model_dim, "plan": sess.plan_summary()}
+
                 sess.enable_profiling = True
                 num_candidates = getattr(req.config, "num_candidates", 1)
 

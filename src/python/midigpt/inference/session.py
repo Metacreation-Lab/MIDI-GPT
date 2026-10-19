@@ -11,6 +11,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 import midigpt._core as _core
+from midigpt.inference import planner
 from midigpt._converters import from_cpp, to_cpp
 from midigpt._core import GenerationStep  # Import GenerationStep directly from _core
 from midigpt._types import Bar, Score
@@ -790,9 +791,7 @@ class SamplingSession:
             cfg_try = replace_cfg(cfg, model_dim=d) if d != cfg.model_dim else cfg
             enc_cfg.model_dim = d
             mask.selected = selected
-            steps = self._order_steps(list(
-                _core.StepPlanner(mask, enc_cfg, cfg_try.bars_per_step, cfg_try.tracks_per_step).plan()
-            ), cfg_try)
+            steps = self._order_steps(self._plan(mask, cfg_try), cfg_try)
             # A step that ran out of tokens is missing its last bars (or every
             # attempt came back empty): redo it, and the rest, at the next
             # smaller window, which leaves more of the context for generating.
@@ -808,7 +807,7 @@ class SamplingSession:
                         raise
                     if step_down and self.truncated:
                         raise _ContextOverflow(self.context_len, self.max_context_len)
-                    score = result
+                    score = self._keep_non_targets(score, result, step)
                     any_truncated = any_truncated or self.truncated
                     n_steps += 1
                     for t, b in step.bars_to_generate:
@@ -835,6 +834,47 @@ class SamplingSession:
             # (with .to_dict()) instead of the native pybind object.
             return score if isinstance(score, Score) else from_cpp(score)
         raise RuntimeError(f"no model_dim in {candidates} fits the model (last: {last_exc})")
+
+    def _plan(self, mask, cfg) -> list:
+        """The steps for the bars still selected in `mask`, at cfg.model_dim (midigpt.inference.planner)."""
+        n_tracks, n_bars = len(mask.selected), len(mask.selected[0]) if mask.selected else 0
+        planned = planner.plan(
+            mask.selected, mask.autoregressive, mask.ignore, cfg.model_dim,
+            cfg.bars_per_step, cfg.tracks_per_step, cfg.ar_overlap, cfg.min_overlap_bars,
+        )
+        ignored = {t for t in range(n_tracks) if mask.ignore[t]}
+        return [s.to_core(n_tracks, n_bars, ignored) for s in planned]
+
+    def plan_summary(self) -> list[dict]:
+        """The plan run() would follow, without generating: one entry per step (window, AR or not, the bars it
+        writes per track), at the requested model_dim. Track ids are the request's."""
+        mask = self._build_selection_mask()
+        steps = self._order_steps(self._plan(mask, self._request.config), self._request.config)
+        kept = getattr(self, "_kept", None)
+        out = []
+        for st in steps:
+            gen: dict[str, list[int]] = {}
+            for t, b in sorted(st.bars_to_generate):
+                gen.setdefault(str(kept[t] if kept else t), []).append(b)
+            out.append({"window": [st.start_bar, st.end_bar], "autoregressive": st.is_autoregressive, "generate": gen})
+        return out
+
+    def _keep_non_targets(self, before, after, step):
+        """An AR step writes its track to the window's end. Bars of that track in the window it was not asked for
+        (its history, and bars after a run that ends before the window does) keep what they had."""
+        if not step.is_autoregressive:
+            return after
+        gen = set(step.bars_to_generate)
+        ref = before if isinstance(before, Score) else from_cpp(before)
+        tok = self._engine._tokenizer
+        for t in {t for t, _ in gen}:
+            for b in range(step.start_bar, step.end_bar):
+                if (t, b) in gen or b >= len(after.tracks[t].bars):
+                    continue
+                if ref.resolution != after.resolution:   # the first step's input is at the client's resolution
+                    ref = tok.normalize_output(tok.normalize_input(copy.deepcopy(ref)))
+                after.tracks[t].bars[b] = copy.deepcopy(ref.tracks[t].bars[b])
+        return after
 
     def _order_steps(self, steps: list, cfg) -> list:
         """AR steps in planner order (each continues the last), then the infill
@@ -888,9 +928,8 @@ class SamplingSession:
         d = candidates_dims[0]
         cfg_try = replace_cfg(cfg, model_dim=d) if d != cfg.model_dim else cfg
         enc_cfg.model_dim = d
-        planner = _core.StepPlanner(mask, enc_cfg, cfg_try.bars_per_step, cfg_try.tracks_per_step)
         py_score = self._score if isinstance(self._score, Score) else from_cpp(self._score)
-        steps = list(planner.plan())
+        steps = self._plan(mask, cfg_try)
 
         if len(steps) == 1:
             self.gen_count = 0
@@ -2386,10 +2425,7 @@ class SamplingSession:
         candidates = [d for d in dims if d <= cfg.model_dim] or [cfg.model_dim]
         enc_cfg.model_dim = candidates[0]
 
-        planner = _core.StepPlanner(
-            mask, enc_cfg, cfg.bars_per_step, cfg.tracks_per_step
-        )
-        steps = list(planner.plan())
+        steps = self._plan(mask, replace_cfg(cfg, model_dim=candidates[0]))
         if step_idx >= len(steps) or not token_ids:
             return {"log_probs": [], "total_logp": 0.0, "n_tokens": 0, "per_type": {}}
         step = steps[step_idx]

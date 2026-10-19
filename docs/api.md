@@ -181,7 +181,12 @@ Controls the step planner and sampling pipeline.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `model_dim` | int | 8 | Context window size in bars — must be in the checkpoint's `num_bars_map` |
+| `model_dim` | int or `"auto"` | 8 | Context window size in bars — must be in the checkpoint's `num_bars_map`. `"auto"`: the largest one the piece fills |
+| `bars_per_step` | int or `"auto"` | 1 | AR: new bars per step (the rest of the window is the track's own history). Infill: the span of target bars one step covers. `"auto"`: AR keeps `max(min_overlap_bars, ar_overlap × model_dim)` bars of history; infill takes a whole window |
+| `tracks_per_step` | int or `"auto"` | 1 | Infill tracks generated together (AR is always one track per step). `"auto"`: all of them |
+| `ar_overlap` | float | 0.5 | `"auto"` `bars_per_step`, AR: the share of the window kept as history |
+| `min_overlap_bars` | int | 2 | `"auto"` `bars_per_step`, AR: at least this many bars of history |
+| `plan_only` | bool | false | Return the plan (windows and the bars each step writes) without generating; `/generate` answers `{"status": "planned", "model_dim", "plan": [...]}` |
 | `mask_mode` | str | `"token"` | How to represent future bars: `"token"`, `"attention"`, `"attention_approx"`, `"attention_skip"`, `"remove"` |
 
 ### Sampling

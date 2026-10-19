@@ -222,6 +222,10 @@ def validate_remix(remix: dict[str, Any]) -> None:
         raise ValueError(f"remix.mode must be 'pitch' or 'full' (got {mode!r})")
 
 
+# Planning fields that take "auto" (stored as 0).
+AUTO_FIELDS = ("model_dim", "bars_per_step", "tracks_per_step")
+
+
 @dataclass
 class InferenceConfig:
     temperature: float = 1.0
@@ -234,9 +238,16 @@ class InferenceConfig:
     novelty_threshold: float = 1.0
     silence_check: bool = True
     temperature_escalation: float = 1.0  # multiply temp per failed attempt (1.0 = off)
+    # Step planning (midigpt.inference.planner). Each of these three also takes "auto" (stored as 0): model_dim the
+    # largest window the piece allows; bars_per_step for AR keeps max(min_overlap_bars, ar_overlap * model_dim)
+    # bars of the track's own history per step, for infill a whole window at once; tracks_per_step every infill
+    # track at once.
     bars_per_step: int = 1  # bars generated per step (≤ model_dim)
     tracks_per_step: int = 1  # tracks processed per step
     model_dim: int = 4  # context window size in bars (NOT vocab size)
+    ar_overlap: float = 0.5  # auto bars_per_step, AR: share of the window kept as history
+    min_overlap_bars: int = 2  # auto bars_per_step, AR: at least this many bars of history
+    plan_only: bool = False  # return the plan (steps, windows, bars) without generating
     shuffle: bool = False  # random order for the infill steps
     # Mask mode selector: one of "token", "attention", "attention_approx",
     # "attention_skip", or "remove". Controls how future bars are represented
@@ -306,7 +317,11 @@ class InferenceConfig:
     @classmethod
     def from_dict(cls, d: dict) -> "InferenceConfig":
         known = {f.name for f in dataclasses.fields(cls)}
-        return cls(**{k: v for k, v in d.items() if k in known})
+        kw = {k: v for k, v in d.items() if k in known}
+        for k in AUTO_FIELDS:
+            if kw.get(k) == "auto":
+                kw[k] = 0
+        return cls(**kw)
 
 
 @dataclass
