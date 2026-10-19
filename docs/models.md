@@ -9,7 +9,7 @@ midigpt ships pretrained checkpoints for three encoder families — `yellow_medi
 | `yellow_medium` | 4, 8 | 2048 | no | no | 32 | [yellow_medium-final.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow_medium-final.safetensors) |
 | `yellow_small` | 4, 8 | 2048 | no | no | 32 | [yellow_small-final.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow_small-final.safetensors) |
 | `prism_medium` | 4, 8, 12, 16 | 4096 | no | no | 32 | [prism_medium-final.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/prism_medium-final.safetensors) |
-| `expressive_medium` | 4, 8, 12, 16 | 4096 | no | yes | 128 | [expressive_medium-step90000.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/expressive_medium-step90000.safetensors) |
+| `expressive_medium` | 4, 8, 12, 16 | 4096 | no | yes | 128 | [expressive_medium-final.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/expressive_medium-final.safetensors) |
 
 The `yellow` model conditions on: **note density**, **min/max polyphony**, and **min/max note duration**. `prism` and `expressive` support a wider set of attribute controls: **key signature**, **pitch range**, **silence proportion**, **min/max note duration**, **note density (bar-level)**, **min/max polyphony (bar-level)**, **pitch class set (bar-level)**, and 18 **genre** groups. `expressive` additionally has **NOMML** (median metric depth) and piece-level switchable microtiming/velocity controls; `prism` does not.
 
