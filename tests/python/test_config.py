@@ -138,3 +138,10 @@ def test_inference_config_all_fields_settable():
     assert cfg.silence_check is False
     assert cfg.max_attempts == 5
     assert cfg.temperature_escalation == 1.2
+
+
+def test_auto_fields_accept_auto_in_the_constructor_and_from_dict():
+    from midigpt.inference.config import AUTO_FIELDS
+    auto = {k: "auto" for k in AUTO_FIELDS}
+    for cfg in (InferenceConfig(**auto), InferenceConfig.from_dict(auto)):
+        assert all(getattr(cfg, k) == 0 for k in AUTO_FIELDS)

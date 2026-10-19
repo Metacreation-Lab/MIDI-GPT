@@ -322,14 +322,15 @@ class InferenceConfig:
     # bars were picked.
     infill_probability: float = 1.0
 
+    def __post_init__(self):
+        for k in AUTO_FIELDS:  # "auto" is stored as 0
+            if getattr(self, k) == "auto":
+                setattr(self, k, 0)
+
     @classmethod
     def from_dict(cls, d: dict) -> "InferenceConfig":
         known = {f.name for f in dataclasses.fields(cls)}
-        kw = {k: v for k, v in d.items() if k in known}
-        for k in AUTO_FIELDS:
-            if kw.get(k) == "auto":
-                kw[k] = 0
-        return cls(**kw)
+        return cls(**{k: v for k, v in d.items() if k in known})
 
 
 @dataclass
