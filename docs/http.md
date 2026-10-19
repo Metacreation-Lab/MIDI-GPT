@@ -205,6 +205,7 @@ Generate or infill music. Pass the full score and generation parameters; receive
   "tokens": {
     "context_tokens": 512,
     "generated_tokens": 128,
+    "peak_context_tokens": 640,
     "max_context_tokens": 1024,
     "context_utilization": 0.5,
     "tokens_per_second": 304.76,
@@ -213,7 +214,7 @@ Generate or infill music. Pass the full score and generation parameters; receive
 }
 ```
 
-`status` is `"completed"` or `"cancelled"` (see [`POST /generate/{request_id}/cancel`](#post-generaterequest_idcancel) below) — a cancelled response still carries whatever partial `score` was generated before the cancel was observed. `truncated: true` means generation stopped because it hit the context budget, not because it reached a natural end — it may be cut off mid-bar/mid-track.
+`status` is `"completed"` or `"cancelled"` (see [`POST /generate/{request_id}/cancel`](#post-generaterequest_idcancel) below) — a cancelled response still carries whatever partial `score` was generated before the cancel was observed. `context_tokens` is the last step's prompt and `generated_tokens` the whole request's output; `peak_context_tokens` is the fullest the model's window got in any step (prompt plus that step's tokens). `truncated: true` means generation stopped because it hit the context budget, not because it reached a natural end — it may be cut off mid-bar/mid-track.
 
 **Response** (`config.num_candidates > 1`)
 
@@ -271,6 +272,19 @@ data: {"type": "done", "response": { ...same shape as the non-streaming response
 ```
 
 `type` is one of `"notes"` (a batch of newly-generated notes), `"done"` (completed normally), `"cancelled"` (stopped via the cancel endpoint or a dropped connection), or `"error"` (`{"type": "error", "request_id": ..., "error": "..."}`). Scoped to the single-candidate path — `stream: true` with `config.num_candidates > 1` returns `400`.
+
+`"notes"` frames, and `"progress"` frames sent every 32 generated tokens between them, carry a `progress` object:
+
+| Field | Meaning |
+|---|---|
+| `generated_tokens` | tokens generated so far in the whole request (every step and attempt) |
+| `step_generated_tokens` | tokens generated in the current step |
+| `context_tokens` | the current step's prompt |
+| `max_context_tokens` | the model's context length |
+| `model_forward_s` | time in the model so far |
+| `attempt` | 1-based retry attempt of the current step |
+
+`context_tokens + step_generated_tokens` is the model's window in use; it never exceeds `max_context_tokens`. A request longer than the window runs in several steps, each with a new prompt, so `generated_tokens` keeps growing past it.
 
 ---
 

@@ -108,6 +108,7 @@ def _single_response(
             "gen_count": sess.gen_count,
         },
         "tokens": _tokens_block(sess),
+        "attempts": sess.attempt,
     }
 
 
@@ -171,6 +172,8 @@ def _tokens_block(sess) -> dict:
     return {
         "context_tokens": ctx,
         "generated_tokens": sess.gen_count,
+        # the fullest the model's window got in any step (prompt + that step's tokens)
+        "peak_context_tokens": sess.peak_window_tokens(),
         "max_context_tokens": max_ctx,
         "context_utilization": round(ctx / max_ctx, 4) if max_ctx else None,
         "tokens_per_second": round(sess.gen_count / fwd_s, 2) if fwd_s > 0 else None,
@@ -390,7 +393,21 @@ class HttpServer:
             )
 
         q: queue_mod.Queue = queue_mod.Queue()
-        sess.note_sink = lambda notes: q.put({"type": "notes", "notes": notes})
+        # Every frame carries progress, so a client can show throughput and
+        # context use while the generation runs; "progress" frames come every
+        # few tokens, between notes.
+        def _progress() -> dict:
+            return {
+                "generated_tokens": sess.gen_count,
+                "model_forward_s": sess.model_forward_time,
+                "context_tokens": sess.context_len,
+                # tokens generated in the current step: context_tokens + this is the window in use
+                "step_generated_tokens": sess.gen_count - sess.step_gen_start,
+                "max_context_tokens": sess.max_context_len,
+                "attempt": sess.attempt,
+            }
+        sess.note_sink = lambda notes: q.put({"type": "notes", "notes": notes, "progress": _progress()})
+        sess.progress_sink = lambda: q.put({"type": "progress", "progress": _progress()})
         loop = asyncio.get_running_loop()
 
         def _run() -> None:
