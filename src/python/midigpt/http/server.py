@@ -171,6 +171,8 @@ def _tokens_block(sess) -> dict:
     return {
         "context_tokens": ctx,
         "generated_tokens": sess.gen_count,
+        # the fullest the model's window got in any step (prompt + that step's tokens)
+        "peak_context_tokens": sess.peak_window_tokens(),
         "max_context_tokens": max_ctx,
         "context_utilization": round(ctx / max_ctx, 4) if max_ctx else None,
         "tokens_per_second": round(sess.gen_count / fwd_s, 2) if fwd_s > 0 else None,
@@ -389,6 +391,8 @@ class HttpServer:
                 "generated_tokens": sess.gen_count,
                 "model_forward_s": sess.model_forward_time,
                 "context_tokens": sess.context_len,
+                # tokens generated in the current step: context_tokens + this is the window in use
+                "step_generated_tokens": sess.gen_count - sess.step_gen_start,
                 "max_context_tokens": sess.max_context_len,
                 "attempt": sess.attempt,
             }

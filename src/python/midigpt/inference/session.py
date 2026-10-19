@@ -586,6 +586,10 @@ class SamplingSession:
         # see how close a request came to the model's context window.
         self.context_len: int = 0
         self.max_context_len: int = 0
+        # gen_count when the current step's decode began, and the largest
+        # prompt + generated window of any earlier step (see window_tokens)
+        self.step_gen_start: int = 0
+        self.peak_window: int = 0
         # 1-based retry attempt in progress (sequential path); reported in
         # streamed progress and in the response so clients can show retries.
         self.attempt: int = 1
@@ -636,8 +640,19 @@ class SamplingSession:
     def __exit__(self, *_):
         pass
 
+    def window_tokens(self) -> int:
+        """Tokens in the model's window for the current step: its prompt plus
+        what this step generated. gen_count runs over the whole session, so
+        context_len + gen_count overstates it from the second step on. The
+        batched path counts every row."""
+        return self.context_len + self.gen_count - self.step_gen_start
+
+    def peak_window_tokens(self) -> int:
+        return max(self.peak_window, self.window_tokens())
+
     def run(self) -> Score:
         self.gen_count = 0
+        self.step_gen_start = self.peak_window = 0
         self.attempt = 1
         self.model_forward_time = 0.0
         self.encode_time = 0.0
@@ -743,6 +758,7 @@ class SamplingSession:
 
         if len(steps) == 1:
             self.gen_count = 0
+            self.step_gen_start = self.peak_window = 0
             self.model_forward_time = 0.0
             self.encode_time = 0.0
             self.decode_time = 0.0
@@ -1354,7 +1370,9 @@ class SamplingSession:
 
         _ctx_toks = state.context_tokens()
         context_len = len(_ctx_toks)
+        self.peak_window = self.peak_window_tokens()   # the step before this one
         self.context_len = context_len
+        self.step_gen_start = self.gen_count
         spans = state.hidden_spans() if use_span_masks else []
 
         # Log context token sequence so we can verify what the model sees
@@ -1900,7 +1918,9 @@ class SamplingSession:
 
         _ctx_toks = states[0].context_tokens()  # identical across rows: same prompt
         context_len = len(_ctx_toks)
+        self.peak_window = self.peak_window_tokens()   # the step before this one
         self.context_len = context_len
+        self.step_gen_start = self.gen_count
 
         _tlogger = getattr(self, "token_logger", None)
         if _tlogger is not None:
