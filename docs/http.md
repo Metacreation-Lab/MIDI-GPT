@@ -45,6 +45,7 @@ host: 0.0.0.0
 port: 8000
 idle_timeout: 0
 max_queue: 64            # server-wide across every model
+max_generation_seconds: 0
 hf_repo: Metacreation/MIDI-GPT   # default for pretrained entries
 device: cpu               # default device for every entry
 max_parallel: 1           # default per-model concurrency
@@ -66,7 +67,7 @@ models:
 midigpt-http --config models.yaml
 ```
 
-`host`/`port`/`idle_timeout`/`log_level`/`max_queue` in the file override the equivalent CLI flags if both are given.
+`host`/`port`/`idle_timeout`/`log_level`/`max_queue`/`max_generation_seconds` in the file override the equivalent CLI flags if both are given.
 
 ---
 
@@ -84,6 +85,7 @@ midigpt-http --config models.yaml
 | `--idle-timeout SECONDS` | `0` (off) | Shut down automatically after this many seconds of inactivity |
 | `--max-parallel N` | `1` | Max concurrent `/generate` calls against this model (single-model mode only — use per-entry `max_parallel` in `--config` for multi-model). Each is still a full sequential decode sharing CPU/GPU with the others, not a throughput multiplier — benchmark before raising above 1 |
 | `--max-queue N` | `64` | Total requests admitted (queued + running), across all models, before returning `503` |
+| `--max-generation-seconds SECONDS` | `0` (off) | Cancel any generation that has run longer than this (time spent queued doesn't count); the response comes back `"cancelled"` with the partial score |
 | `--log-level` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 
 One of `--config`, `--ckpt`, or `--pretrained` is required.
@@ -345,3 +347,5 @@ The response `score` field contains the filled-in notes in the same JSON shape.
 Each model gets its own semaphore, sized by that model's `max_parallel` (default 1 — fully serialized). Two requests against **different** models never wait on each other at all; within one model, calls overlap up to `max_parallel` — each overlapping call is still a full sequential decode sharing the box's CPU/GPU via the OS scheduler and torch's own intra-op thread pool, not a throughput multiplier, so raise it only after benchmarking on the target machine.
 
 On top of per-model concurrency, `max_queue` bounds how many requests may be admitted (queued + running) across **all** models at once — once that many are admitted, further `POST /generate` calls get an immediate `503` (with `Retry-After`) instead of hanging on an unbounded wait, mirroring Ollama's `OLLAMA_MAX_QUEUE` backpressure. `GET /health` and `GET /info` remain responsive throughout regardless of queue depth.
+
+A request whose client goes away (closes the connection, crashes, loses the network) is cancelled, streamed or not, so it doesn't hold its model and queue slots until it finishes. `--max-generation-seconds` cancels a generation that runs too long whatever the client does.

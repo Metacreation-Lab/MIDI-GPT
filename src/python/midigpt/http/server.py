@@ -54,7 +54,7 @@ from pathlib import Path
 try:
     import anyio
     import uvicorn
-    from fastapi import FastAPI, HTTPException, Response
+    from fastapi import FastAPI, HTTPException, Request, Response
     from fastapi.responses import StreamingResponse
     from pydantic import BaseModel
 except ImportError:
@@ -250,9 +250,15 @@ class HttpServer:
         Ollama's ``OLLAMA_MAX_QUEUE`` backpressure. Default 64 is generous
         for a small deployment; it exists to fail fast under a burst rather
         than to be a normal operating limit.
+    max_generation_seconds:
+        Cancel any generation (streaming or not) that has run longer than
+        this, the same way ``POST /generate/{id}/cancel`` would, so a stuck
+        generation can't hold its model slot forever. Time spent queued
+        doesn't count. 0 or None disables it (default).
     """
 
     _WATCHDOG_INTERVAL = 10  # seconds between idle checks
+    _DISCONNECT_POLL_INTERVAL = 1.0  # seconds between client-disconnect checks
 
     def __init__(
         self,
@@ -260,6 +266,7 @@ class HttpServer:
         default_model: str,
         idle_timeout: float = 0,
         max_queue: int = 64,
+        max_generation_seconds: float = 0,
     ) -> None:
         if not models:
             raise ValueError("HttpServer needs at least one model")
@@ -284,6 +291,7 @@ class HttpServer:
         # check and the increment in _admit().
         self._inflight = 0
         self._idle_timeout = float(idle_timeout) if idle_timeout else 0.0
+        self._max_generation_seconds = float(max_generation_seconds) if max_generation_seconds else 0.0
         self._last_activity = time.monotonic()
         # request_id -> threading.Event, set by POST /generate/{id}/cancel and
         # polled from inside the (background-thread) decode loop. Entries are
@@ -338,6 +346,30 @@ class HttpServer:
                     self._idle_timeout,
                 )
                 os._exit(0)
+
+    def _start_time_limit(self, cancel_event: threading.Event, request_id: str) -> "asyncio.Task | None":
+        """Sets cancel_event after max_generation_seconds; the caller cancels the
+        task when the generation ends first. None when there is no limit."""
+        if not self._max_generation_seconds:
+            return None
+
+        async def limit():
+            await asyncio.sleep(self._max_generation_seconds)
+            log.warning("request %s: over max_generation_seconds=%.0fs, cancelling",
+                        request_id, self._max_generation_seconds)
+            cancel_event.set()
+        return asyncio.create_task(limit())
+
+    async def _watch_disconnect(self, request: Request, cancel_event: threading.Event,
+                                request_id: str) -> None:
+        """Non-streaming requests: sets cancel_event once the client has gone, so a
+        crashed or force-quit client doesn't keep its generation running (and its
+        model and queue slots held) to the end. A streamed request gets this from
+        Starlette closing the response generator (see _stream_generate)."""
+        while not await request.is_disconnected():
+            await asyncio.sleep(self._DISCONNECT_POLL_INTERVAL)
+        log.info("request %s: client disconnected, cancelling", request_id)
+        cancel_event.set()
 
     @property
     def app(self) -> FastAPI:
@@ -438,6 +470,7 @@ class HttpServer:
 
         async def event_source():
             async with self._model_semaphores[model_id]:
+                time_limit = self._start_time_limit(cancel_event, request_id)
                 gen_future = loop.run_in_executor(None, _run)
                 try:
                     while True:
@@ -460,6 +493,8 @@ class HttpServer:
                     # or it raises at once, the decode thread keeps running
                     # and on_finish() never runs (the queue slot leaks).
                     cancel_event.set()
+                    if time_limit is not None:
+                        time_limit.cancel()
                     try:
                         with anyio.CancelScope(shield=True):
                             await gen_future
@@ -526,7 +561,7 @@ class HttpServer:
             }
 
         @app.post("/generate", tags=["generation"])
-        async def generate(body: _GenerateBody, response: Response):
+        async def generate(body: _GenerateBody, request: Request, response: Response):
             self._touch()
             entry = self._resolve_model(body.model)
             self._admit()
@@ -536,6 +571,7 @@ class HttpServer:
             # until this function returns the StreamingResponse object) —
             # `handoff` tells the finally below to skip releasing in that case.
             handoff = False
+            watchers: list = []  # non-streaming: disconnect watch and time limit
             try:
                 engine = entry.engine
                 try:
@@ -573,7 +609,12 @@ class HttpServer:
                         body, sess, req, request_id, cancel_event, entry.id, self._release
                     )
 
+                # watched while queued too: a client that leaves before its
+                # turn is cancelled as soon as its generation starts
+                watchers.append(asyncio.create_task(
+                    self._watch_disconnect(request, cancel_event, request_id)))
                 async with self._model_semaphores[entry.id]:
+                    watchers.append(self._start_time_limit(cancel_event, request_id))
                     loop = asyncio.get_running_loop()
                     try:
                         if num_candidates > 1:
@@ -611,6 +652,9 @@ class HttpServer:
                     return _candidates_response(sess, variations, num_candidates, request_id, model_id=entry.id)
                 return _single_response(sess, result, request_id, model_id=entry.id)
             finally:
+                for task in watchers:
+                    if task is not None:
+                        task.cancel()
                 if not handoff:
                     self._release()
 
@@ -705,6 +749,13 @@ def _parse_args() -> argparse.Namespace:
         help="Total requests admitted (queued+running) before returning 503",
     )
     p.add_argument(
+        "--max-generation-seconds",
+        type=float,
+        default=0,
+        metavar="SECONDS",
+        help="Cancel any generation running longer than this (0 = no limit)",
+    )
+    p.add_argument(
         "--log-level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
@@ -737,6 +788,7 @@ def _build_models_from_config(cfg: dict) -> tuple[dict[str, ModelEntry], str]:
         idle_timeout: 0           # optional, overrides --idle-timeout
         log_level: INFO           # optional, overrides --log-level
         max_queue: 64             # optional, overrides --max-queue (server-wide, all models)
+        max_generation_seconds: 0 # optional, overrides --max-generation-seconds
         hf_repo: Metacreation/MIDI-GPT   # optional default for pretrained entries
         device: cpu               # optional default device for every entry
         max_parallel: 1           # optional default concurrency for every entry
@@ -845,9 +897,11 @@ def main() -> None:
         port = cfg.get("port", args.port)
         idle_timeout = cfg.get("idle_timeout", args.idle_timeout)
         max_queue = cfg.get("max_queue", args.max_queue)
+        max_generation_seconds = cfg.get("max_generation_seconds", args.max_generation_seconds)
         models, default_model = _build_models_from_config(cfg)
     else:
         host, port, idle_timeout, max_queue = args.host, args.port, args.idle_timeout, args.max_queue
+        max_generation_seconds = args.max_generation_seconds
         entry = _load_single_model(args)
         models = {entry.id: entry}
         default_model = entry.id
@@ -856,10 +910,13 @@ def main() -> None:
         "Serving %d model(s): %s (default=%s, max_queue=%d)",
         len(models), sorted(models), default_model, max_queue,
     )
-    server = HttpServer(models, default_model=default_model, idle_timeout=idle_timeout, max_queue=max_queue)
+    server = HttpServer(models, default_model=default_model, idle_timeout=idle_timeout,
+                        max_queue=max_queue, max_generation_seconds=max_generation_seconds)
     log.info("Starting HTTP server on %s:%d", host, port)
     if idle_timeout:
         log.info("Auto-shutdown after %.0fs of inactivity.", idle_timeout)
+    if max_generation_seconds:
+        log.info("Cancelling any generation over %.0fs.", max_generation_seconds)
     server.serve(host=host, port=port)
 
 
