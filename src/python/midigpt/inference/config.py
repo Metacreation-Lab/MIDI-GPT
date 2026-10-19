@@ -228,6 +228,10 @@ class InferenceConfig:
     seed: int = -1
     max_attempts: int = 3
     novelty_check: bool = True
+    # novelty_check rejects a step whose generated bars share at least this
+    # fraction of their (pitch, onset) notes with the original (1.0 = only an
+    # unchanged result)
+    novelty_threshold: float = 1.0
     silence_check: bool = True
     temperature_escalation: float = 1.0  # multiply temp per failed attempt (1.0 = off)
     bars_per_step: int = 1  # bars generated per step (≤ model_dim)

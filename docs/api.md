@@ -201,7 +201,8 @@ Controls the step planner and sampling pipeline.
 | `max_attempts` | int | 3 | Maximum sampling retries per step |
 | `temperature_escalation` | float | 1.0 | Multiply temperature by this factor on each retry |
 | `silence_check` | bool | `True` | Reject steps that produce zero notes |
-| `novelty_check` | bool | `False` | Reject steps that reproduce the original bars unchanged |
+| `novelty_check` | bool | `True` | Reject steps that reproduce the original bars (see `novelty_threshold`) |
+| `novelty_threshold` | float | 1.0 | With `novelty_check`, reject a step whose generated bars share at least this fraction of their (pitch, onset) notes with the original; velocity, duration and microtiming don't count. 1.0 rejects only an unchanged result |
 | `seed` | int | -1 | Fix the RNG for reproducibility (-1 = free-running) |
 
 ### Hard limits
