@@ -8,7 +8,9 @@
 pip install "midigpt[inference]"
 ```
 
-Pre-built wheels for CPython 3.10–3.12 on Linux (x86_64), macOS (x86_64 + arm64), and Windows (AMD64). No compiler needed.
+Pre-built wheels for CPython 3.10–3.14 on Linux (x86_64), macOS (x86_64 + arm64), and Windows (AMD64). No compiler needed.
+
+On Intel Macs, `midigpt[inference]` needs Python 3.12 or older: PyTorch stopped publishing macOS x86_64 wheels after 2.2, so it installs with `torch<2.3` and `numpy<2`.
 
 ### All extras
 
