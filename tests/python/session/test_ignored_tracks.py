@@ -27,7 +27,8 @@ class _Prompts:
 
 
 def _request(tracks, **cfg):
-    base = dict(model_dim=4, seed=0, max_attempts=1, novelty_check=False, silence_check=False)
+    # density_hard_limit keeps the random model's bars short, so a later step's prompt cannot outgrow 512 positions
+    base = dict(model_dim=4, seed=0, max_attempts=1, novelty_check=False, silence_check=False, density_hard_limit=4)
     base.update(cfg)
     return GenerationRequest(tracks=tracks, config=InferenceConfig(**base))
 
