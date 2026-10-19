@@ -422,7 +422,12 @@ class _RhythmForcer:
         # this loop at all.
         if tname == "BarEnd":
             self.reset()
-        elif tname == "NoteDuration":
+        elif tname == "NoteOnset":
+            # Count on NoteOnset, not NoteDuration: drum tracks emit no
+            # NoteDuration, so a drum note would never be counted and the
+            # forcer would keep demanding notes at the same onset. Nothing
+            # here forces durations, so counting at the onset is exact for
+            # melodic tracks too.
             self.notes_in_group += 1
         elif tname == "TimeAbsolutePos":
             self.group_idx += 1
@@ -452,7 +457,12 @@ class _VariationForcer:
     def __init__(self, mode: str, amount: float, bars_schedule: list,
                  pos_range: tuple[int, int], onset_range: tuple[int, int],
                  dur_range: tuple[int, int] | None, vel_range: tuple[int, int] | None,
-                 barend_id: int):
+                 barend_id: int, count_on_onset: bool = False):
+        # Notes are counted on NoteDuration (a note's duration is forced
+        # from the same reference note as its pitch), except on drum
+        # tracks, which emit no NoteDuration: there each note is counted
+        # on its NoteOnset.
+        self.count_on = "NoteOnset" if count_on_onset else "NoteDuration"
         self.mode = mode
         self.amount = amount
         # bars_schedule: one entry per generated bar (generation order), each
@@ -551,7 +561,7 @@ class _VariationForcer:
         # the bug; per-bar reference values expose it immediately).
         if tname == "BarEnd":
             self.reset_bar()
-        elif tname == "NoteDuration":
+        elif tname == self.count_on:
             self.note_idx += 1
             self._roll_note()
         elif tname == "TimeAbsolutePos":
@@ -1001,6 +1011,14 @@ class SamplingSession:
             f"max_attempts, disable the failing check, or relax top_p/mask_p "
             f"for broader sampling.)"
         )
+
+    @staticmethod
+    def _step_is_drums(score, step) -> bool:
+        """True when every track generated in this step is a drum track
+        (drum tracks emit no NoteDuration tokens)."""
+        step_tracks = {t for (t, _b) in step.bars_to_generate}
+        types = {getattr(score.tracks[t], "track_type", "melodic") for t in step_tracks if t < len(score.tracks)}
+        return types == {"drum"}
 
     def _resolve_step_control(self, step, key: str):
         """Resolve a per-track `controls[key]` dict for whichever track(s)
@@ -1483,6 +1501,7 @@ class SamplingSession:
             _variation_forcer = _VariationForcer(
                 _remix_mode, _remix_amount, _remix_bars,
                 _pos_range_r, _onset_range_r, _dur_range_r, _vel_range_r, _barend_range_r[0],
+                count_on_onset=self._step_is_drums(score, step),
             )
 
         # Baseline for the note_sink diff: decode BEFORE any tokens are
@@ -1969,6 +1988,7 @@ class SamplingSession:
                 _VariationForcer(
                     _remix_mode, _remix_amount, _remix_bars,
                     _pos_range_r, _onset_range_r, _dur_range_r, _vel_range_r, _barend_range_r[0],
+                    count_on_onset=self._step_is_drums(score, step),
                 )
                 for _ in range(B)
             ]
