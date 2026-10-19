@@ -153,6 +153,40 @@ TEST_CASE("Encoder/Decoder: 3-bar single track roundtrip") {
 }
 
 // ---------------------------------------------------------------------------
+// Notes not in onset order (as clients may send them)
+// ---------------------------------------------------------------------------
+
+TEST_CASE("Encoder/Decoder: notes listed out of onset order keep their onsets") {
+    auto cfg = std_config();
+    Vocabulary vocab(cfg);
+    Encoder enc(vocab);
+    Decoder dec(vocab);
+
+    // One bar whose notes are listed out of time order, with the downbeat note not first.
+    // The encoder emits no TimeAbsolutePos for onset 0 (every bar opens at tick 0), so it
+    // must emit onsets in time order, not in the order the notes are listed.
+    Score s; s.resolution = 480;
+    const int onsets[] = {24, 72, 0, 48};   // within std_config's TimeAbsolutePos domain (192)
+    const int pitches[] = {64, 66, 68, 65};
+    Bar b; b.ts_numerator = 4; b.ts_denominator = 4;
+    for (int i = 0; i < 4; ++i) {
+        s.notes.push_back(Note{pitches[i], 64, onsets[i], 120, 0});
+        b.note_indices.push_back(i);
+    }
+    Track t; t.instrument = 0; t.type = TrackType::Melodic;
+    t.bars.push_back(b);
+    s.tracks.push_back(t);
+
+    Score back = dec.decode(enc.encode(s));
+    REQUIRE(back.notes.size() == 4);
+    std::vector<std::pair<int, int>> got;
+    for (const auto& n : back.notes) got.push_back({n.onset_ticks, n.pitch});
+    std::sort(got.begin(), got.end());
+    std::vector<std::pair<int, int>> want = {{0, 68}, {24, 64}, {48, 65}, {72, 66}};
+    CHECK(got == want);
+}
+
+// ---------------------------------------------------------------------------
 // Multi-track
 // ---------------------------------------------------------------------------
 
