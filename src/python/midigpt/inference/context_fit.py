@@ -134,16 +134,19 @@ def bar_tokens(tokens, vocab, owners) -> dict:
     import midigpt._core as _core
 
     out: dict = {}
-    bar, prev = -1, None
+    bar, prev, inside = -1, None, False
     for x, t in zip(tokens, owners):
         if t != prev:
-            bar, prev = -1, t
+            bar, prev, inside = -1, t, False
         if t < 0:
             continue
-        if vocab.get_type(x) == _core.TokenType.Bar:
-            bar += 1
-        if bar >= 0:
+        ty = vocab.get_type(x)
+        if ty == _core.TokenType.Bar:
+            bar, inside = bar + 1, True
+        if inside:                                   # Bar ... BarEnd only
             out[(t, bar)] = out.get((t, bar), 0) + 1
+        if ty == _core.TokenType.BarEnd:
+            inside = False
     return out
 
 
@@ -151,12 +154,15 @@ def estimate_generated(score, step, per_bar: dict) -> int:
     """Tokens the step will generate: per target bar, its current notes at the track's tokens per note, or the
     median of the track's context bars in the window, or a prior; plus the bar's structure."""
     est = 0
-    for t, b in step.bars_to_generate:
+    gen = set(step.bars_to_generate)
+    for t, b in gen:
         track = score.tracks[t]
         drum = track.track_type == "drum"
-        ctx = [n for (tt, lb), n in per_bar.items() if tt == t and n > 4]
-        notes_ctx = sum(len(track.bars[step.start_bar + lb].notes) for (tt, lb), n in per_bar.items()
-                        if tt == t and n > 4 and step.start_bar + lb < len(track.bars))
+        # the track's context bars in this prompt (its targets are placeholders there)
+        ctx_bars = [(lb, n) for (tt, lb), n in per_bar.items()
+                    if tt == t and n > 4 and (t, step.start_bar + lb) not in gen and step.start_bar + lb < len(track.bars)]
+        ctx = [n for _, n in ctx_bars]
+        notes_ctx = sum(len(track.bars[step.start_bar + lb].notes) for lb, _ in ctx_bars)
         per_note = (sum(ctx) - 4 * len(ctx)) / notes_ctx if notes_ctx else (2.5 if drum else 3.5)
         now = len(track.bars[b].notes) if b < len(track.bars) else 0
         if now:

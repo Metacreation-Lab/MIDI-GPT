@@ -88,3 +88,26 @@ def test_rank_by_attention_per_token():
 def test_attention_from_last_reads_the_model(tiny_gpt2):
     a = context_fit.attention_from_last(tiny_gpt2, list(range(1, 40)))
     assert a.shape == (39,) and a.sum() > 0
+
+
+def _two_target_session(tiny_gpt2, ghost_tokenizer, ghost_analyzer, **cfg):
+    # two busy infill targets over the whole window: generating both at once cannot fit 512 positions
+    score = Score(tracks=[melodic_track(4, 16, base_pitch=48), melodic_track(4, 16, base_pitch=72), melodic_track(4, 2)])
+    eng = InferenceEngine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
+    tracks = [TrackPrompt(id=0, bars=[0, 1, 2, 3]), TrackPrompt(id=1, bars=[0, 1, 2, 3]), TrackPrompt(id=2, bars=[])]
+    return eng.session(score, GenerationRequest(tracks=tracks, config=InferenceConfig(model_dim=4, mask_mode="attention", **cfg)))
+
+
+def test_auto_steps_split_when_dropping_is_not_allowed(tiny_gpt2, ghost_tokenizer, ghost_analyzer):
+    sess = _two_target_session(tiny_gpt2, ghost_tokenizer, ghost_analyzer, context="all",
+                               tracks_per_step=0, bars_per_step=0)
+    plan = sess.plan_summary()
+    assert sess.dropped_context == []
+    assert len(plan) > 1
+    assert all(len(st["generate"]) == 1 for st in plan)            # one track per step first
+
+
+def test_fixed_steps_are_not_split(tiny_gpt2, ghost_tokenizer, ghost_analyzer):
+    sess = _two_target_session(tiny_gpt2, ghost_tokenizer, ghost_analyzer, context="all",
+                               tracks_per_step=2, bars_per_step=4)
+    assert len(sess.plan_summary()) == 1

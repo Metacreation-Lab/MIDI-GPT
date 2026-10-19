@@ -686,6 +686,7 @@ class SamplingSession:
 
         # Context tracks left out so every step fits (context_fit); request track ids. Set by _fit_context.
         self.dropped_context: list[int] = []
+        self._split_bps = self._split_tps = 0     # "auto" bars / tracks per step made smaller by _fit_context
         self._fit_context()
 
     def _set_tracks(self, request):
@@ -703,21 +704,43 @@ class SamplingSession:
         self._request = request
 
     def _fit_context(self):
-        """Leave whole context tracks out of the request until every step of the plan fits the model: prompt +
-        budget_margin x estimated output < the model's context (midigpt.inference.context_fit). The window
-        step-down in run() stays the last resort."""
+        """Make every step of the plan fit the model: prompt + budget_margin x estimated output < the model's
+        context (midigpt.inference.context_fit). In order, changing only what the request leaves to the session:
+        leave whole context tracks out (context "auto" / "listed"); generate fewer infill tracks per step
+        (tracks_per_step "auto"); fewer bars per step (bars_per_step "auto"). The window step-down in run() stays
+        the last resort, and keeps whatever was dropped."""
         cfg = self._request.config
-        if getattr(cfg, "context", "auto") == "all":
-            return
-        steps = self._plan(self._build_selection_mask(), cfg)
-        if not steps:
-            return
+        mode = getattr(cfg, "context", "auto")
         max_ctx = self._model_max_context()
+        for _ in range(16):                 # each split halves something: a handful of rounds at most
+            measured, steps = self._measure_plan()
+            if not measured:
+                return
+            over = lambda dropped: [m[3] - sum(m[4][t] for t in dropped) >= max_ctx for m in measured]  # noqa: E731
+            if not any(over(())):
+                return
+            dropped = []
+            if mode != "all":
+                for t in self._drop_order(measured, steps):
+                    dropped.append(t)
+                    if not any(over(dropped)):
+                        break
+            if dropped and not any(over(dropped)):
+                self._drop(dropped)
+                return
+            if self._split(steps):          # smaller steps, then measure again (no drops kept)
+                continue
+            if dropped:                     # still over: drop what helps, the step-down does the rest
+                self._drop(dropped)
+            return
+
+    def _measure_plan(self):
+        """Per planned step: (prompt tokens, track of each token, hidden spans, prompt + margin x estimated output,
+        tokens per track)."""
+        cfg = self._request.config
+        steps = self._plan(self._build_selection_mask(), cfg)
         py = self._score if isinstance(self._score, Score) else from_cpp(self._score)
-        n = len(py.tracks)
-        vocab = self._engine._tokenizer._vocab
-        targets = {t for st in steps for t, _ in st.bars_to_generate}
-        measured = []    # (prompt tokens, owners, spans, need, per-track cost)
+        n, vocab, measured = len(py.tracks), self._engine._tokenizer._vocab, []
         for st in steps:
             gen = set(st.bars_to_generate)
             _, state, _, use_spans, *_ = self._prepare_state(copy.deepcopy(py), st, emit_snapshot=False)
@@ -729,32 +752,53 @@ class SamplingSession:
             per_bar = context_fit.bar_tokens(tokens, vocab, owners)
             need = len(tokens) + cfg.budget_margin * context_fit.estimate_generated(py, st, per_bar)
             measured.append((tokens, owners, list(state.hidden_spans()) if use_spans else [], need, costs))
-        over = lambda dropped: [m[3] - sum(m[4][t] for t in dropped) >= max_ctx for m in measured]
-        if not any(over(())):
-            return
+        return measured, steps
+
+    def _drop_order(self, measured, steps) -> list[int]:
+        """Context tracks in the order they go: context_drop as given, then (context "auto") the least attended
+        per token on the fullest step, or the role table when that prompt is too long to read."""
+        cfg = self._request.config
+        py = self._score if isinstance(self._score, Score) else from_cpp(self._score)
+        targets = {t for st in steps for t, _ in st.bars_to_generate}
         keep = {self._kept.index(t) for t in cfg.context_keep if t in self._kept}
-        candidates = [t for t in range(n) if t not in targets and t not in keep]
+        candidates = [t for t in range(len(py.tracks)) if t not in targets and t not in keep]
         order = [self._kept.index(t) for t in cfg.context_drop if t in self._kept and self._kept.index(t) in candidates]
         if cfg.context == "auto":
             rest = [t for t in candidates if t not in order]
-            worst = max(range(len(measured)), key=lambda i: measured[i][3])
-            tokens, owners, spans, _, costs = measured[worst]
-            att = context_fit.attention_from_last(self._engine._model, tokens, spans) if len(tokens) < max_ctx else None
+            tokens, owners, spans, _, costs = max(measured, key=lambda m: m[3])
+            att = (context_fit.attention_from_last(self._engine._model, tokens, spans)
+                   if len(tokens) < self._model_max_context() else None)
             order += (context_fit.rank_by_attention(att, owners, rest, costs) if att is not None
                       else context_fit.rank_by_roles(py, sorted(targets), rest, costs))
-        dropped = []
-        for t in order:
-            dropped.append(t)
-            if not any(over(dropped)):
-                break
-        if not dropped:
-            return
+        return order
+
+    def _drop(self, dropped):
         ids = {self._kept[t] for t in dropped}
-        self.dropped_context = sorted(ids)
+        self.dropped_context = sorted(set(self.dropped_context) | ids)
         log.info("context: leaving out tracks %s so every step fits", self.dropped_context)
         self._set_tracks(replace_cfg(self._full_request, tracks=[
-            replace_cfg(tp, ignore=True, bars=[]) if tp.id in ids else tp for tp in self._full_request.tracks
+            replace_cfg(tp, ignore=True, bars=[]) if tp.id in set(self.dropped_context) else tp
+            for tp in self._full_request.tracks
         ]))
+
+    def _split(self, steps) -> bool:
+        """Smaller steps, for whatever the request left "auto": first fewer infill tracks per step (halved), then
+        fewer bars per step (halved, down to one). False when nothing is left to split."""
+        cfg = self._request.config
+        if cfg.tracks_per_step == 0:
+            widest = max((len({t for t, _ in st.bars_to_generate}) for st in steps if not st.is_autoregressive),
+                         default=1)
+            if widest > 1:
+                self._split_tps = max(1, widest // 2)
+                return True
+        if cfg.bars_per_step == 0:
+            # an AR window from bar 0 writes the whole window whatever bars_per_step is: only infill steps and
+            # the later AR steps get smaller, and each split must make them smaller
+            cur = self._split_bps or max((len({b for _, b in st.bars_to_generate}) for st in steps), default=1)
+            if cur > 1:
+                self._split_bps = cur // 2
+                return True
+        return False
 
     def __enter__(self):
         return self
@@ -905,7 +949,9 @@ class SamplingSession:
         n_tracks, n_bars = len(mask.selected), len(mask.selected[0]) if mask.selected else 0
         planned = planner.plan(
             mask.selected, mask.autoregressive, mask.ignore, cfg.model_dim,
-            cfg.bars_per_step, cfg.tracks_per_step, cfg.ar_overlap, cfg.min_overlap_bars,
+            cfg.bars_per_step or getattr(self, "_split_bps", 0),
+            cfg.tracks_per_step or getattr(self, "_split_tps", 0),
+            cfg.ar_overlap, cfg.min_overlap_bars,
         )
         ignored = {t for t in range(n_tracks) if mask.ignore[t]}
         return [s.to_core(n_tracks, n_bars, ignored) for s in planned]
