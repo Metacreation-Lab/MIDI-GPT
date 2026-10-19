@@ -816,6 +816,7 @@ def _load_single_model(args: argparse.Namespace) -> ModelEntry:
         log.info("Loading checkpoint: %s (device=%s)", args.ckpt, args.device or "auto")
         engine = InferenceEngine.from_checkpoint(str(path), device=args.device)
         label = args.ckpt
+        model_id = path.stem
     else:
         log.info(
             "Loading pretrained: %s from %s (device=%s)",
@@ -825,7 +826,8 @@ def _load_single_model(args: argparse.Namespace) -> ModelEntry:
             args.pretrained, hf_repo=args.hf_repo, device=args.device
         )
         label = f"{args.hf_repo}/{args.pretrained}"
-    return ModelEntry(id="default", engine=engine, label=label, max_parallel=args.max_parallel)
+        model_id = args.pretrained
+    return ModelEntry(id=model_id, engine=engine, label=label, max_parallel=args.max_parallel)
 
 
 def main() -> None:
@@ -846,8 +848,9 @@ def main() -> None:
         models, default_model = _build_models_from_config(cfg)
     else:
         host, port, idle_timeout, max_queue = args.host, args.port, args.idle_timeout, args.max_queue
-        models = {"default": _load_single_model(args)}
-        default_model = "default"
+        entry = _load_single_model(args)
+        models = {entry.id: entry}
+        default_model = entry.id
 
     log.info(
         "Serving %d model(s): %s (default=%s, max_queue=%d)",

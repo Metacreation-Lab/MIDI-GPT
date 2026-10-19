@@ -84,6 +84,23 @@ def test_info_reports_attribute_track_types(tiny_gpt2, ghost_tokenizer, ghost_an
     assert set(data["attribute_track_types"].values()) <= {"melodic", "drum", "both"}
 
 
+@pytest.mark.parametrize("argv, expected_id", [
+    (["--pretrained", "prism_medium"], "prism_medium"),
+    (["--ckpt", "{tmp}/my_model-final.safetensors"], "my_model-final"),
+])
+def test_single_model_id_names_the_model(monkeypatch, tmp_path, argv, expected_id):
+    """--pretrained / --ckpt serve the model under its own name, not "default"."""
+    import sys
+    from midigpt.http import server as server_mod
+
+    (tmp_path / "my_model-final.safetensors").touch()
+    monkeypatch.setattr(InferenceEngine, "from_pretrained", classmethod(lambda cls, *a, **k: object()))
+    monkeypatch.setattr(InferenceEngine, "from_checkpoint", classmethod(lambda cls, *a, **k: object()))
+    monkeypatch.setattr(sys, "argv", ["midigpt-http"] + [a.format(tmp=tmp_path) for a in argv])
+    entry = server_mod._load_single_model(server_mod._parse_args())
+    assert entry.id == expected_id
+
+
 @pytest.mark.parametrize("config, switchable, has_genres", [
     ("expressive_encoder.json", True, True),
     ("prism_encoder.json", False, True),
