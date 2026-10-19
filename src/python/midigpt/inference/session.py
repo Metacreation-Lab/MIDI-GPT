@@ -601,14 +601,6 @@ def _sample_infill_bars(request: GenerationRequest, seed: int) -> GenerationRequ
 class SamplingSession:
     def __init__(self, engine, score: Score, request: GenerationRequest):
         self._engine = engine
-        # Ignored tracks are left out of the prompt entirely: encoded, each one
-        # still costs a track header and a MaskBar per bar of every window.
-        # The session works on the remaining tracks, renumbered 0..n-1, and
-        # _expand() puts the ignored ones back into every result.
-        self._full_score = score
-        self._full_request = request
-        self._set_tracks(request)
-        request = self._request
         # cfg.seed < 0 means "caller doesn't care about reproducibility" —
         # resolve that to an actual random seed ONCE per session (not
         # per-attempt/per-candidate) so it stays consistent across every
@@ -620,12 +612,20 @@ class SamplingSession:
         # config.infill_probability < 1 keeps a random subset of the infill
         # target bars, picked once per session from the resolved seed so a
         # replayed seed picks the same bars. generated_bars ({track id: bars})
-        # is what the session will actually generate (exposed in the HTTP
-        # response as "generated_bars").
-        self._request = request = _sample_infill_bars(request, self.resolved_seed)
+        # is what the session will actually generate, in the request's track
+        # ids (exposed in the HTTP response as "generated_bars").
+        request = _sample_infill_bars(request, self.resolved_seed)
         self.generated_bars: dict[int, list[int]] = {
             tp.id: sorted(set(tp.bars)) for tp in request.tracks if tp.bars and not tp.ignore
         }
+        # Ignored tracks are left out of the prompt entirely: encoded, each one
+        # still costs a track header and a MaskBar per bar of every window.
+        # The session works on the remaining tracks, renumbered 0..n-1, and
+        # _expand() puts the ignored ones back into every result.
+        self._full_score = score
+        self._full_request = request
+        self._set_tracks(request)
+        request = self._request
         self.model_forward_time: float = 0.0
         self.encode_time: float = 0.0
         self.decode_time: float = 0.0
