@@ -217,6 +217,7 @@ Controls the step planner and sampling pipeline.
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `num_candidates` | int | 1 | Independent full generations from the same prompt (one seed each), no accept/reject filtering — see `SamplingSession.run_variations`. Not the same as `max_attempts`, which retries the *same* candidate on rejection |
+| `infill_probability` | float | 1.0 | Infill only: generate `round(p × N)` of the N infill target bars (at least 1), chosen at random with the request seed; the others stay as they are and act as context. AR targets are never dropped. `SamplingSession.generated_bars` lists the bars picked |
 
 ---
 

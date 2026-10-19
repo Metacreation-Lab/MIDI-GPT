@@ -101,6 +101,7 @@ def _single_response(
         "status": status,
         "score": result.to_dict() if result is not None else None,
         "seed": sess.resolved_seed,
+        "generated_bars": {str(t): bars for t, bars in sess.generated_bars.items()},
         "timing": {
             "model_forward_s": sess.model_forward_time,
             "encode_s": sess.encode_time,
@@ -126,6 +127,7 @@ def _candidates_response(
         "model": model_id,
         "status": status,
         "base_seed": sess.resolved_seed,
+        "generated_bars": {str(t): bars for t, bars in sess.generated_bars.items()},
         "candidates": [
             {
                 "score": v["score"].to_dict() if v["score"] is not None else None,

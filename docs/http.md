@@ -196,6 +196,7 @@ Generate or infill music. Pass the full score and generation parameters; receive
   "status": "completed",
   "score": { ... },
   "seed": 12345,
+  "generated_bars": {"0": [2, 5]},
   "timing": {
     "model_forward_s": 0.42,
     "encode_s": 0.01,
@@ -214,6 +215,8 @@ Generate or infill music. Pass the full score and generation parameters; receive
 }
 ```
 
+`generated_bars` maps each generated track id to the bars it generated: the request's target bars, or the random subset `config.infill_probability` picked (the same for every candidate, and the same again for the same seed).
+
 `status` is `"completed"` or `"cancelled"` (see [`POST /generate/{request_id}/cancel`](#post-generaterequest_idcancel) below) — a cancelled response still carries whatever partial `score` was generated before the cancel was observed. `context_tokens` is the last step's prompt and `generated_tokens` the whole request's output; `peak_context_tokens` is the fullest the model's window got in any step (prompt plus that step's tokens). `truncated: true` means generation stopped because it hit the context budget, not because it reached a natural end — it may be cut off mid-bar/mid-track.
 
 **Response** (`config.num_candidates > 1`)
@@ -226,6 +229,7 @@ Generate or infill music. Pass the full score and generation parameters; receive
   "model": "yellow_medium",
   "status": "completed",
   "base_seed": 12345,
+  "generated_bars": {"0": [2, 5]},
   "candidates": [
     {"score": { ... }, "seed": 12345, "gen_count": 4, "error": null, "truncated": false},
     {"score": null, "seed": 12346, "gen_count": 0, "error": "...", "truncated": false}

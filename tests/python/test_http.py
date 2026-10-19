@@ -119,6 +119,24 @@ def test_generate_returns_score_and_timing(tiny_gpt2, ghost_tokenizer, ghost_ana
         assert key in data["timing"], f"missing timing key: {key}"
 
 
+def test_generate_reports_generated_bars(tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score):
+    import torch
+    torch.manual_seed(0)
+    client = _client(_engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer))
+    body = _generate_body(simple_score)
+    assert client.post("/generate", json=body).json()["generated_bars"] == {"0": [0, 1, 2, 3]}
+    body["request"]["config"]["infill_probability"] = 0.5
+    picked = client.post("/generate", json=body).json()["generated_bars"]["0"]
+    assert len(picked) == 2 and set(picked) <= {0, 1, 2, 3}
+
+
+def test_generate_400_on_bad_infill_probability(tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score):
+    client = _client(_engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer))
+    body = _generate_body(simple_score)
+    body["request"]["config"]["infill_probability"] = 0
+    assert client.post("/generate", json=body).status_code in (400, 422)
+
+
 @pytest.mark.slow
 def test_generate_score_has_correct_track_count(tiny_gpt2, ghost_tokenizer, ghost_analyzer, simple_score):
     import torch

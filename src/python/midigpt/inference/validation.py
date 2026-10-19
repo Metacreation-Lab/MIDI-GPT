@@ -137,6 +137,10 @@ def validate_request(
         )
     if cfg.temperature <= 0:
         raise RequestValidationError(f"temperature must be > 0 (got {cfg.temperature})")
+    if not (0.0 < cfg.infill_probability <= 1.0):
+        raise RequestValidationError(
+            f"infill_probability must be in (0, 1] (got {cfg.infill_probability}); use 1.0 to infill every target bar"
+        )
     # temperature_escalation: must be >= 1.0 (multiplier per failed attempt).
     # Cap at a reasonable maximum so retries can't explode into pure noise.
     _TEMP_ESC_MAX = 3.0

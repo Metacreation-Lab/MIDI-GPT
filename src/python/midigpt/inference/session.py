@@ -574,6 +574,29 @@ class _VariationForcer:
             self.note_idx = 0
 
 
+def _sample_infill_bars(request: GenerationRequest, seed: int) -> GenerationRequest:
+    """Keep round(p * N) of the N infill (track, bar) targets, at least one,
+    chosen uniformly at random with `seed` (p = config.infill_probability).
+    The pool spans every infill track, so the count is exact for the request
+    as a whole. Dropped bars become context; AR and ignored tracks are left
+    untouched."""
+    p = getattr(request.config, "infill_probability", 1.0)
+    if p >= 1.0:
+        return request
+    pool = sorted(
+        (tp.id, b) for tp in request.tracks if not tp.ignore and not tp.autoregressive for b in set(tp.bars)
+    )
+    if not pool:
+        return request
+    k = max(1, int(p * len(pool) + 0.5))
+    keep = set(random.Random(seed).sample(pool, k))
+    tracks = [
+        tp if tp.ignore or tp.autoregressive else replace_cfg(tp, bars=[b for b in tp.bars if (tp.id, b) in keep])
+        for tp in request.tracks
+    ]
+    return replace_cfg(request, tracks=tracks)
+
+
 class SamplingSession:
     def __init__(self, engine, score: Score, request: GenerationRequest):
         self._engine = engine
@@ -600,6 +623,15 @@ class SamplingSession:
         # via http/server.py's response ("seed" / "base_seed" field).
         _cfg_seed = getattr(request.config, "seed", -1)
         self.resolved_seed: int = _cfg_seed if _cfg_seed is not None and _cfg_seed >= 0 else random.randint(0, 2**31 - 1)
+        # config.infill_probability < 1 keeps a random subset of the infill
+        # target bars, picked once per session from the resolved seed so a
+        # replayed seed picks the same bars. generated_bars ({track id: bars})
+        # is what the session will actually generate (exposed in the HTTP
+        # response as "generated_bars").
+        self._request = request = _sample_infill_bars(request, self.resolved_seed)
+        self.generated_bars: dict[int, list[int]] = {
+            tp.id: sorted(set(tp.bars)) for tp in request.tracks if tp.bars and not tp.ignore
+        }
         self.model_forward_time: float = 0.0
         self.encode_time: float = 0.0
         self.decode_time: float = 0.0
