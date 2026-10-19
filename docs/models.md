@@ -15,6 +15,20 @@ The `yellow` model conditions on: **note density**, **min/max polyphony**, and *
 
 `InferenceEngine.from_pretrained(name)` downloads the current checkpoint for that model name.
 
+### Access tokens
+
+When the model repo is gated, downloading a checkpoint needs a Hugging Face account that has accepted the license:
+
+1. Sign in at [huggingface.co](https://huggingface.co), open [Metacreation/MIDI-GPT](https://huggingface.co/Metacreation/MIDI-GPT) and accept the license.
+2. Create an access token (Settings → Access Tokens; "Read" is enough).
+3. Give it to midigpt, either way:
+   - run `hf auth login` once (stores the token for every tool that uses `huggingface_hub`), or
+   - set `HF_TOKEN=hf_...` in the environment.
+
+`InferenceEngine.from_pretrained(name, token="hf_...")` and `hf_token` in the [HTTP server's config file](http.md#multiple-models-in-one-server) take a token directly. Prefer `hf auth login` or `HF_TOKEN` over putting a token on a command line or in a shared file.
+
+A checkpoint is downloaded once; after that it loads from the cache (`~/.cache/huggingface/hub/`) even without a network connection or token.
+
 ---
 
 ## Yellow

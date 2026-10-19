@@ -790,6 +790,7 @@ def _build_models_from_config(cfg: dict) -> tuple[dict[str, ModelEntry], str]:
         max_queue: 64             # optional, overrides --max-queue (server-wide, all models)
         max_generation_seconds: 0 # optional, overrides --max-generation-seconds
         hf_repo: Metacreation/MIDI-GPT   # optional default for pretrained entries
+        hf_token: hf_...          # optional; default is HF_TOKEN / `hf auth login`
         device: cpu               # optional default device for every entry
         max_parallel: 1           # optional default concurrency for every entry
         default_model: yellow_medium     # optional; defaults to the first entry's id
@@ -804,6 +805,7 @@ def _build_models_from_config(cfg: dict) -> tuple[dict[str, ModelEntry], str]:
           - id: my_custom
             ckpt: /path/to/custom-final.safetensors
             hf_repo: myorg/myrepo       # per-entry override (pretrained entries only)
+            hf_token: hf_...            # per-entry override (pretrained entries only)
 
     Each entry needs exactly one of ``ckpt`` (local .safetensors path) or
     ``pretrained`` (HuggingFace checkpoint-filename prefix).
@@ -813,6 +815,7 @@ def _build_models_from_config(cfg: dict) -> tuple[dict[str, ModelEntry], str]:
         raise SystemExit("config file must have a non-empty top-level 'models' list")
 
     default_hf_repo = cfg.get("hf_repo", "Metacreation/MIDI-GPT")
+    default_hf_token = cfg.get("hf_token")
     default_device = cfg.get("device")
     default_max_parallel = cfg.get("max_parallel", 1)
 
@@ -844,7 +847,8 @@ def _build_models_from_config(cfg: dict) -> tuple[dict[str, ModelEntry], str]:
                 "Loading model %r pretrained=%s from %s (device=%s)",
                 mid, pretrained, hf_repo, device or "auto",
             )
-            engine = InferenceEngine.from_pretrained(pretrained, hf_repo=hf_repo, device=device)
+            engine = _from_pretrained(pretrained, hf_repo=hf_repo, device=device,
+                                      token=spec.get("hf_token", default_hf_token))
             label = f"{hf_repo}/{pretrained}"
 
         models[mid] = ModelEntry(id=mid, engine=engine, label=label, max_parallel=max_parallel)
@@ -858,6 +862,13 @@ def _build_models_from_config(cfg: dict) -> tuple[dict[str, ModelEntry], str]:
         )
 
     return models, default_model
+
+
+def _from_pretrained(name: str, **kw) -> InferenceEngine:
+    try:
+        return InferenceEngine.from_pretrained(name, **kw)
+    except PermissionError as exc:  # a gated repo without access: say what to do, no traceback
+        raise SystemExit(str(exc)) from exc
 
 
 def _load_single_model(args: argparse.Namespace) -> ModelEntry:
@@ -874,9 +885,7 @@ def _load_single_model(args: argparse.Namespace) -> ModelEntry:
             "Loading pretrained: %s from %s (device=%s)",
             args.pretrained, args.hf_repo, args.device or "auto",
         )
-        engine = InferenceEngine.from_pretrained(
-            args.pretrained, hf_repo=args.hf_repo, device=args.device
-        )
+        engine = _from_pretrained(args.pretrained, hf_repo=args.hf_repo, device=args.device)
         label = f"{args.hf_repo}/{args.pretrained}"
         model_id = args.pretrained
     return ModelEntry(id=model_id, engine=engine, label=label, max_parallel=args.max_parallel)

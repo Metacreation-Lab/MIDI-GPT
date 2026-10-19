@@ -67,7 +67,7 @@ print(f"Generated {total} notes")
 result.to_midi("output.mid")
 ```
 
-The model is downloaded once and cached by `huggingface_hub` in `~/.cache/huggingface/hub/`.
+The model is downloaded once and cached by `huggingface_hub` in `~/.cache/huggingface/hub/`. When the model repo is gated, accept its license on [Hugging Face](https://huggingface.co/Metacreation/MIDI-GPT) and run `hf auth login` (or set `HF_TOKEN`) first; see [access tokens](docs/models.md#access-tokens).
 
 ---
 

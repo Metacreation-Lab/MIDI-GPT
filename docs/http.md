@@ -47,6 +47,7 @@ idle_timeout: 0
 max_queue: 64            # server-wide across every model
 max_generation_seconds: 0
 hf_repo: Metacreation/MIDI-GPT   # default for pretrained entries
+hf_token: hf_...          # optional; default is HF_TOKEN / `hf auth login`
 device: cpu               # default device for every entry
 max_parallel: 1           # default per-model concurrency
 default_model: yellow_medium     # defaults to the first entry's id if omitted
@@ -61,6 +62,7 @@ models:
   - id: my_custom
     ckpt: /path/to/custom-final.safetensors
     hf_repo: myorg/myrepo       # per-entry override (pretrained entries only)
+    hf_token: hf_...            # per-entry override (pretrained entries only)
 ```
 
 ```bash
@@ -68,6 +70,8 @@ midigpt-http --config models.yaml
 ```
 
 `host`/`port`/`idle_timeout`/`log_level`/`max_queue`/`max_generation_seconds` in the file override the equivalent CLI flags if both are given.
+
+`hf_token` is only needed for a gated repo, and only when the server's environment has no `HF_TOKEN` and no `hf auth login`; see [access tokens](models.md#access-tokens). A gated model the server can't access stops it at startup with a message saying how to get access.
 
 ---
 

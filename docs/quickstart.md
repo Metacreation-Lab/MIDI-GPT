@@ -44,6 +44,8 @@ from midigpt.inference import InferenceEngine
 engine = InferenceEngine.from_pretrained("yellow_medium")   # or "prism_medium", "expressive_medium"
 ```
 
+When the model repo is gated, accept its license on [Hugging Face](https://huggingface.co/Metacreation/MIDI-GPT) and run `hf auth login` (or set `HF_TOKEN`) before the first download; see [access tokens](models.md#access-tokens).
+
 Load from a local checkpoint file:
 
 ```python

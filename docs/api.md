@@ -79,14 +79,18 @@ def from_pretrained(
     hf_repo: str = "Metacreation/MIDI-GPT",
     analyzer: AttributeAnalyzer | None = None,
     device: str | None = None,
+    token: str | None = None,
 ) -> InferenceEngine
 ```
 
-`name` is the checkpoint filename prefix on the repo, e.g. `yellow_medium`, `prism_medium`, `expressive_medium`. The actual filename is resolved dynamically — prefers `<name>-final.safetensors`, falls back to the highest-step snapshot. Downloads and caches via `huggingface_hub`. `device`: `"cpu"`, `"cuda"`, `"mps"`, or `None`/`"auto"` to auto-detect.
+`name` is the checkpoint filename prefix on the repo, e.g. `yellow_medium`, `prism_medium`, `expressive_medium`. The actual filename is resolved dynamically — prefers `<name>-final.safetensors`, falls back to the highest-step snapshot. Downloads and caches via `huggingface_hub`; when the Hub can't be reached or refuses the download, a cached copy is used (with a warning). `device`: `"cpu"`, `"cuda"`, `"mps"`, or `None`/`"auto"` to auto-detect.
+
+`token` is a Hugging Face access token, for a gated repo (see [Models — access tokens](models.md#access-tokens)). When `None`, the token from `HF_TOKEN` or `hf auth login` is used. A gated repo with no access and nothing cached raises `PermissionError`, saying how to get access.
 
 ```python
 engine = InferenceEngine.from_pretrained("yellow_medium")
 engine = InferenceEngine.from_pretrained("prism_medium", hf_repo="myorg/myrepo", device="cuda")
+engine = InferenceEngine.from_pretrained("prism_medium", token="hf_...")
 ```
 
 ### `InferenceEngine.from_checkpoint`
