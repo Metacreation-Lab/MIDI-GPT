@@ -209,7 +209,7 @@ def _full_request(score, ar_track: int = 0) -> GenerationRequest:
 
 
 def test_session_on_real_score_smoke(packed_bundle_path, real_score):
-    """Realistic multi-track Aicha (trimmed to 16 bars) — engine.session must
+    """Realistic multi-track score (trimmed to 16 bars) — engine.session must
     validate and return a SamplingSession."""
     engine = InferenceEngine.from_checkpoint(str(packed_bundle_path))
     request = _full_request(real_score, ar_track=0)
@@ -219,7 +219,7 @@ def test_session_on_real_score_smoke(packed_bundle_path, real_score):
 
 
 def test_session_on_long_piano_score_smoke(packed_bundle_path, long_piano_score):
-    """Long dense piano score (Maestro_1, 16 bars) — confirms engine.session
+    """Piano score (Mozart KV 309, 16 bars) — confirms engine.session
     handles realistic windowed contexts."""
     engine = InferenceEngine.from_checkpoint(str(packed_bundle_path))
     request = _full_request(long_piano_score, ar_track=0)

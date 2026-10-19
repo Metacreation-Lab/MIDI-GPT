@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MIDI_DIR = Path(__file__).parent / "midi"
+MIDI_DIR = REPO_ROOT / "tests" / "midi"
 YELLOW_CFG = REPO_ROOT / "models" / "yellow_config.json"
 
 
@@ -38,7 +38,7 @@ def silence_stdio():
 
 
 def midi_files(filter_predicate=None):
-    """Return sorted list of MIDI files in the comparison/midi/ folder."""
+    """Return sorted list of MIDI files in tests/midi/."""
     files = sorted(MIDI_DIR.glob("*.mid"))
     if filter_predicate:
         files = [f for f in files if filter_predicate(f)]

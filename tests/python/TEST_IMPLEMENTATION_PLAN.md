@@ -121,7 +121,7 @@ Located at `tests/python/conftest.py`. Provides:
 | `tiny_gpt2` | `GPT2LMHeadModel` | Synthetic small GPT2 (seed=0) |
 | `fake_model_factory` | callable | `factory(logit_fn=...)` → `FakeModel` |
 | `packed_bundle_path` | `Path` | tmp_path packed .pt of tiny_gpt2 |
-| `sample_midi_path` | `Path` | tests/midi/Aicha.mid |
+| `sample_midi_path` | `Path` | tests/midi/oga_just_say_no_to_yes.mid |
 
 Module-level helpers (importable as `from conftest import ...`):
 `make_bar`, `make_note`, `melodic_track`, `drum_track`.

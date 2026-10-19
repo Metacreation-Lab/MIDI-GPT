@@ -1,7 +1,7 @@
 """
 Generate synthetic MIDI edge-case fixtures for comparison tests.
 
-Run once to populate tests/comparison/midi/edge_*.mid:
+Run once to populate tests/midi/edge_*.mid:
     .venv/bin/python3 tests/comparison/generate_edge_fixtures.py
 """
 from pathlib import Path
@@ -12,7 +12,7 @@ sys.path.insert(0, str(REPO_ROOT / "midigpt" / "src" / "python"))
 
 from midigpt._types import Score, Track, Bar, Note
 
-OUT_DIR = Path(__file__).parent / "midi"
+OUT_DIR = Path(__file__).resolve().parents[1] / "midi"
 RES = 480                   # standard MIDI resolution (ticks per quarter)
 QUARTER = RES               # 480 ticks
 HALF    = 2 * RES           # 960

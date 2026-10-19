@@ -259,7 +259,7 @@ def packed_bundle_path(tmp_path, tiny_gpt2, ghost_config_json) -> pathlib.Path:
 # --------------------------------------------------------------------------- #
 @pytest.fixture
 def sample_midi_path() -> pathlib.Path:
-    p = MIDI_DIR / "Aicha.mid"
+    p = MIDI_DIR / "oga_just_say_no_to_yes.mid"
     if not p.exists():
         pytest.skip(f"MIDI fixture missing: {p}")
     return p
@@ -269,9 +269,11 @@ def sample_midi_path() -> pathlib.Path:
 #  Real-MIDI fixtures: exercise components on realistic, full-length data
 # --------------------------------------------------------------------------- #
 #
-# `tests/midi/` ships a curated mix:
-#   - pop songs (multi-track, many bars):  Aicha, Funkytown, Mr. Blue Sky, ...
-#   - classical/piano (long, dense):       Maestro_*, POP909_*, Etude No. 4
+# `tests/midi/` ships a curated mix, every file CC0, CC BY or public domain
+# (see tests/midi/SOURCES.md):
+#   - multitrack band arrangements:         oga_* (drums, bass, guitars, keys)
+#   - classical piano and string quartets:  mutopia_*
+#   - drum performances:                    groove_*
 #   - edge-case files (named edge_*.mid):  cross-bar sustain, dense polyphony,
 #                                          drums + melodic, time-sig change,
 #                                          very long note
@@ -282,18 +284,15 @@ def sample_midi_path() -> pathlib.Path:
 # tracks, drums + melodic, sustained notes, time-sig changes, etc.).
 
 REAL_POP_FILES = [
-    "Aicha.mid",
-    "Funkytown.mid",
-    "Mr. Blue Sky.mid",
-    "All The Small Things.mid",
-    "I Gotta Feeling.mid",
+    "oga_just_say_no_to_yes.mid",
+    "oga_savior_of_humanity.mid",
+    "oga_the_invisible_gardener.mid",
+    "oga_the_ritual.mid",
 ]
 REAL_PIANO_FILES = [
-    "Maestro_1.mid",
-    "Maestro_2.mid",
-    "POP909_008.mid",
-    "POP909_010.mid",
-    "6338816_Etude No. 4.mid",
+    "mutopia_mozart_kv309_1.mid",
+    "mutopia_mozart_kv457_1.mid",
+    "mutopia_bach_invention_08.mid",
 ]
 EDGE_FILES = [
     "edge_cross_bar_sustain.mid",
@@ -353,23 +352,23 @@ def _trim_to_window(score: Score, n_bars: int = 16) -> Score:
 
 @pytest.fixture
 def real_score(sample_midi_path) -> Score:
-    """A realistic Score (Aicha) trimmed to 16 bars — multi-track, dense.
+    """A realistic Score (oga_just_say_no_to_yes) trimmed to 16 bars — multi-track, with drums.
     Use when you want realistic data without parametrization overhead."""
     return _trim_to_window(Score.from_midi(str(sample_midi_path)), 16)
 
 
 @pytest.fixture
 def real_score_untrimmed(sample_midi_path) -> Score:
-    """Full Aicha score with all bars/tracks — use only with components
+    """Full oga_just_say_no_to_yes score with all bars/tracks — use only with components
     that can handle arbitrary lengths (Score IO, MIDI roundtrip, etc.)."""
     return Score.from_midi(str(sample_midi_path))
 
 
 @pytest.fixture
 def long_piano_score() -> Score:
-    """A dense single-instrument score (Maestro_1, 16 bars) — good for
+    """A piano score (Mozart KV 309, 16 bars) — good for
     stress-testing encoders, attribute analyzers, and step planners."""
-    return _trim_to_window(Score.from_midi(str(_midi("Maestro_1.mid"))), 16)
+    return _trim_to_window(Score.from_midi(str(_midi("mutopia_mozart_kv309_1.mid"))), 16)
 
 
 @pytest.fixture
