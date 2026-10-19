@@ -215,7 +215,7 @@ def test_session_on_real_score_smoke(packed_bundle_path, real_score):
     request = _full_request(real_score, ar_track=0)
     session = engine.session(real_score, request)
     assert isinstance(session, SamplingSession)
-    assert session._score is real_score
+    assert session._full_score is real_score
 
 
 def test_session_on_long_piano_score_smoke(packed_bundle_path, long_piano_score):
