@@ -1,3 +1,4 @@
+import contextlib
 import copy
 import json
 import logging
@@ -562,6 +563,19 @@ class _VariationForcer:
 class SamplingSession:
     def __init__(self, engine, score: Score, request: GenerationRequest):
         self._engine = engine
+        # Ignored tracks are left out of the prompt entirely: encoded, each one
+        # still costs a track header and a MaskBar per bar of every window.
+        # The session works on the remaining tracks, renumbered 0..n-1, and
+        # _expand() puts the ignored ones back into every result.
+        self._full_score = score
+        self._kept = sorted(tp.id for tp in request.tracks if not tp.ignore)
+        if len(self._kept) < len(score.tracks):
+            py_full = score if isinstance(score, Score) else from_cpp(score)
+            score = replace_cfg(py_full, tracks=[py_full.tracks[i] for i in self._kept])
+            request = replace_cfg(request, tracks=[
+                replace_cfg(tp, id=self._kept.index(tp.id))
+                for tp in sorted(request.tracks, key=lambda tp: tp.id) if not tp.ignore
+            ])
         self._score = score
         self._request = request
         # cfg.seed < 0 means "caller doesn't care about reproducibility" —
@@ -625,7 +639,53 @@ class SamplingSession:
     def __exit__(self, *_):
         pass
 
+    def _expand(self, result):
+        """`result` with the ignored tracks of the input score back in place."""
+        if result is None or len(self._kept) == len(self._full_score.tracks):
+            return result
+        full = self._full_score if isinstance(self._full_score, Score) else from_cpp(self._full_score)
+        py = result if isinstance(result, Score) else from_cpp(result)
+        if py.resolution != full.resolution:  # what a context track goes through
+            tok = self._engine._tokenizer
+            full = tok.normalize_output(tok.normalize_input(copy.deepcopy(full)))
+        tracks = [copy.deepcopy(t) for t in full.tracks]
+        for i, t_id in enumerate(self._kept):
+            tracks[t_id] = py.tracks[i]
+        return replace_cfg(py, tracks=tracks)
+
+    @contextlib.contextmanager
+    def _full_track_ids(self):
+        """note_sink / prompt_state_sink see the caller's track ids, not the
+        renumbered ones (see __init__)."""
+        note_sink, state_sink, kept = self.note_sink, self.prompt_state_sink, self._kept
+        if note_sink is not None:
+            self.note_sink = lambda notes: note_sink([{**n, "track": kept[n["track"]]} for n in notes])
+        if state_sink is not None:
+            self.prompt_state_sink = lambda snap: state_sink(
+                {**snap, "tracks": [{**t, "id": kept[t["id"]]} for t in snap["tracks"]]})
+        try:
+            yield
+        finally:
+            self.note_sink, self.prompt_state_sink = note_sink, state_sink
+
     def run(self) -> Score:
+        with self._full_track_ids():
+            try:
+                return self._expand(self._run())
+            except GenerationCancelled as exc:
+                raise GenerationCancelled(self._expand(exc.partial), exc.gen_count) from None
+
+    def run_variations(self) -> list:
+        """See _run_variations; every candidate score includes the ignored tracks."""
+        def expand(out):
+            return [{**c, "score": self._expand(c["score"])} for c in out]
+        with self._full_track_ids():
+            try:
+                return expand(self._run_variations())
+            except GenerationCancelled as exc:
+                raise GenerationCancelled(expand(exc.partial), exc.gen_count) from None
+
+    def _run(self) -> Score:
         self.gen_count = 0
         self.model_forward_time = 0.0
         self.encode_time = 0.0
@@ -685,7 +745,7 @@ class SamplingSession:
                 continue
         raise RuntimeError(f"no model_dim in {candidates} fits the model (last: {last_exc})")
 
-    def run_variations(self) -> list:
+    def _run_variations(self) -> list:
         """cfg.num_candidates independent full generations from the SAME
         prompt — one seed per candidate, NO accept/reject filtering (unlike
         the max_attempts retry loop). Meant for "give me a few takes, I'll
@@ -755,6 +815,13 @@ class SamplingSession:
                     "to %d sequential run() calls",
                     exc, N,
                 )
+            except _ContextOverflow as exc:
+                # the sequential path steps model_dim down per candidate
+                log.warning(
+                    "run_variations: context overflow at model_dim=%d (ctx=%d, max=%d); "
+                    "falling back to %d sequential run() calls",
+                    d, exc.ctx_len, exc.model_max, N,
+                )
             except GenerationCancelled as exc:
                 # exc.partial is _sample_step_batch's own raw tuple list —
                 # reshape into the same dict shape a successful return
@@ -797,7 +864,7 @@ class SamplingSession:
                 self.resolved_seed = seeds[i]
                 self._snapshot_sent = False
                 try:
-                    result = self.run()
+                    result = self._run()
                     out.append({
                         "score": result, "seed": seeds[i], "gen_count": self.gen_count,
                         "error": None, "truncated": self.truncated,

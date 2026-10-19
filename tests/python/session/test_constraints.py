@@ -67,7 +67,9 @@ def test_selection_mask_ignore_flag(tiny_gpt2, ghost_tokenizer, ghost_analyzer, 
     )
     session = engine.session(two_track_score, req)
     mask = session._build_selection_mask()
-    assert list(mask.ignore) == [False, True]
+    # the ignored track is left out of the session's score (see test_ignored_tracks.py)
+    assert session._kept == [0]
+    assert list(mask.ignore) == [False]
 
 
 def test_build_constraints_invoked_during_run(
