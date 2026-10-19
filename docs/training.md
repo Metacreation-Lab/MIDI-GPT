@@ -53,6 +53,8 @@ python -m midigpt.training.trainer \
     --output-dir  checkpoints/run_001
 ```
 
+`--grad-accum N` overrides `gradient_accumulation_steps` (with several GPUs, keep `per_device_batch_size × N × GPUs` at the effective batch you want). `--resume-from PATH` resumes from a Lightning `.ckpt`; `--resume-from auto` picks the latest one in `<output-dir>/checkpoints`.
+
 **Python API:**
 
 ```python
@@ -65,6 +67,7 @@ train(
     config,
     train_path="/data/train/00000.parquet",
     eval_path="/data/valid/00000.parquet",
+    # resume_from="checkpoints/run_001/checkpoints/last.ckpt",
 )
 ```
 
@@ -78,7 +81,7 @@ train(
 
 | Field | Default | Description |
 |---|---|---|
-| `encoder_config_path` | `""` | Path to an encoder `.json` or a packed `.pt` bundle |
+| `encoder_config_path` | `""` | Path to an encoder `.json`, or a `.safetensors` / packed `.pt` checkpoint to take its encoder config from |
 | `n_embd` | `512` | Embedding dimension |
 | `n_layer` | `6` | Number of transformer layers |
 | `n_head` | `8` | Number of attention heads |
@@ -104,16 +107,24 @@ Window sizes (bars per training sample) aren't a `TrainConfig` field either — 
 | `infill_bar_fraction` | `0.5` | Max per-cell infill density (drawn from Uniform(0, this)) |
 | `mask_apply_probability` | `0.5` | Fraction of samples with `MASK_BAR` applied |
 | `mask_mode` | `2` | `MaskMode`: 0 = RANDOM, 1 = STRUCTURED, 2 = MIXED |
+| `mask_bar_fraction` | `0.25` | Most bars masked, as a share of the eligible bars |
+| `mask_max_lookahead` | `4` | Structured masking: the most bars ahead that are masked |
 
 ### Optimisation
 
 | Field | Default | Description |
 |---|---|---|
 | `learning_rate` | `5e-5` | Peak learning rate |
+| `weight_decay` | `0.01` | AdamW weight decay |
+| `max_grad_norm` | `1.0` | Gradient clipping (`0` = off) |
+| `lr_scheduler_type` | `"linear"` | `"linear"`, `"cosine"` or `"constant"` |
 | `per_device_batch_size` | `4` | Per-GPU batch size |
+| `gradient_accumulation_steps` | `8` | Batches accumulated per optimiser step |
+| `num_epochs` | `10` | Epochs, when `max_steps` is 0 |
 | `max_steps` | `0` | Total training steps — `0` means use `num_epochs` instead to derive the total |
 | `warmup_steps` | `500` | Linear LR warmup steps |
 | `precision` | `"fp16"` | `"fp16"`, `"bf16"`, or `"fp32"` |
+| `seed` | `42` | Random seed for Lightning, the data loaders and sampling |
 
 ### Infrastructure
 
@@ -122,7 +133,10 @@ Window sizes (bars per training sample) aren't a `TrainConfig` field either — 
 | `num_workers` | `0` | Data loader worker processes. The C++ MIDI parser isn't fork-safe, but the loader uses a `spawn` context, so raising this above 0 is safe |
 | `save_steps` | `1000` | Save a checkpoint every N steps |
 | `eval_steps` | `500` | Run validation every N steps |
+| `limit_val_batches` | `0` | Validation batches per eval (`0` = the whole validation set) |
+| `logging_steps` | `50` | Log metrics every N steps |
 | `logger` | `"none"` | `"tensorboard"`, `"wandb"`, or `"none"` |
+| `wandb_project` / `wandb_entity` | `"midigpt"` / `""` | WandB project and entity (your account when empty); used when `logger` is `"wandb"` |
 | `output_dir` | `"checkpoints"` | Where to write checkpoints and the final bundle |
 
 ---

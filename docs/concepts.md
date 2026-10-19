@@ -10,11 +10,11 @@ Under the hood, this involves breaking your request into a sequence of **generat
 
 ## The step planner
 
-When you call `engine.session(score, request).run()`, the C++ `StepPlanner` analyses your `GenerationRequest` and produces an ordered list of `GenerationStep`s. Each step is one independent forward pass through the model.
+When you call `engine.session(score, request).run()`, the step planner (`midigpt.inference.planner`) analyses your `GenerationRequest` and produces an ordered list of steps. Each step is one independent forward pass through the model.
 
 ```mermaid
 flowchart TD
-    A["score + GenerationRequest"] --> B["StepPlanner (C++)"]
+    A["score + GenerationRequest"] --> B["step planner"]
     B --> C["Step 1"]
     B --> D["Step 2"]
     B --> E["Step N"]
@@ -33,13 +33,16 @@ The planner decides:
 
 - **How many steps** — in an order that lets each step use the output of previous ones as context: AR tracks first, one at a time, then infill.
 - **Which bars are in the context window** — a window of `model_dim` bars placed on the targets, not on a grid from bar 0. An AR step keeps `model_dim − bars_per_step` bars of the track's own history before the bars it writes and writes up to the window's right edge (so the first window from bar 0 is written whole), then the window slides by `bars_per_step`. An infill step's window is centred on its chunk of target bars.
-- **How many tracks to encode at once** — controlled by `tracks_per_step`.
+- **How many infill tracks to generate together** — controlled by `tracks_per_step`. An AR step always generates one track.
+- **The order of the infill steps** — the planner's order, or a random one with `shuffle=True` (seeded by the request seed).
+
+`model_dim`, `bars_per_step` and `tracks_per_step` each also take `"auto"`: the largest window the piece fills; for AR, `max(min_overlap_bars, ar_overlap × model_dim)` bars of history per step, for infill a whole window; every infill track at once. Pass `plan_only=True` to see the plan without generating.
 
 ---
 
 ## The context window
 
-Every step encodes a fixed-width slice of the score. That slice is `model_dim` bars wide and contains up to `tracks_per_step` tracks.
+Every step encodes a fixed-width slice of the score. That slice is `model_dim` bars wide and contains every track not marked `ignore` (unless context fitting leaves some out, see below).
 
 Within the window, each bar plays one of three roles:
 
@@ -71,11 +74,21 @@ A larger `model_dim` gives the model more musical context (useful for long-range
 
 ### `tracks_per_step`
 
-How many tracks are packed into the token stream per step. Higher values let the model see inter-track relationships (harmony, rhythm interaction) but increase sequence length. The default is the number of non-ignored tracks in the request.
+How many infill target tracks are generated in the same step. Every non-ignored track is in the window as context either way; generating tracks together lets them respond to each other, at the cost of more tokens per step. The default is 1; `"auto"` generates every infill track at once. AR is always one track per step.
 
 ### `bars_per_step`
 
 How many target bars are generated in a single step. A value of 1 gives the model maximum context around each bar but requires more steps. A higher value generates multiple bars in one forward pass at the cost of less surrounding context per bar.
+
+### When a request doesn't fit
+
+Before generating, each step is checked against the model's context length: its prompt plus `budget_margin` × its estimated output must fit. When it doesn't:
+
+1. Whole context tracks are left out (`config.context`): `"auto"` drops the tracks in `context_drop` first, then the ones the model attends to least; `"listed"` drops only `context_drop`; `"all"` never drops. Tracks in `context_keep`, and target tracks, are never dropped.
+2. For what the request left `"auto"`, fewer infill tracks per step, then fewer bars per step.
+3. Only then does the window (`model_dim`) step down, keeping the steps already done.
+
+The tracks left out are reported as `SamplingSession.dropped_context` (and `dropped_context` in the HTTP response).
 
 ---
 

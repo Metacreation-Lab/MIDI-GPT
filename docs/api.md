@@ -12,10 +12,10 @@ from midigpt import Score, Track, Bar, Note
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `pitch` | int | 0 | MIDI pitch (0–127) |
-| `velocity` | int | 64 | MIDI velocity (0–127) |
-| `onset_ticks` | int | 0 | Start time in ticks, relative to bar start |
-| `duration_ticks` | int | 0 | Duration in ticks |
+| `pitch` | int | — | MIDI pitch (0–127) |
+| `velocity` | int | — | MIDI velocity (0–127) |
+| `onset_ticks` | int | — | Start time in ticks, relative to bar start |
+| `duration_ticks` | int | — | Duration in ticks |
 | `delta` | int | 0 | Sub-grid microtiming offset in ticks (used by `expressive`) |
 
 ### `Bar`
@@ -48,8 +48,9 @@ from midigpt import Score, Track, Bar, Note
 **Class methods:**
 
 ```python
-Score.from_midi(path: str) -> Score
-Score.from_dict(d: dict)   -> Score
+Score.from_midi(path: str)    -> Score
+Score.from_bytes(data: bytes) -> Score   # MIDI file contents
+Score.from_dict(d: dict)      -> Score
 ```
 
 **Instance methods:**
@@ -135,8 +136,9 @@ Bundle of per-track generation targets and global configuration.
 
 | Field | Type | Description |
 |---|---|---|
-| `tracks` | list[TrackPrompt] | One entry per track you want to control |
+| `tracks` | list[TrackPrompt] | One entry per score track (use `ignore=True` for tracks to leave out) |
 | `config` | InferenceConfig | Global sampling and step-planner settings |
+| `controls` | dict[str, Any] | Piece-level controls: `"velocity"` / `"microtiming"` (bool; checkpoints with `switchable_velocity` / `switchable_microtiming`) and `"genre"` (a name from the checkpoint's genres). See `GET /info` |
 
 ---
 
@@ -153,7 +155,7 @@ Describes what to do with one track.
 | `id` | int | — | Track index in the score (0-based) |
 | `bars` | list[int] | — | Absolute bar indices to generate |
 | `autoregressive` | bool | `False` | Generate in AR mode (no per-bar prompt) |
-| `ignore` | bool | `False` | Exclude this track from the token stream entirely |
+| `ignore` | bool | `False` | Leave this track out of the prompt; it comes back unchanged in the result |
 | `mask_bars` | list[int] | `[]` | Bars to hide with MASK_BAR (disjoint from `bars`) |
 | `attributes` | dict[str, int] | `{}` | Quantized attribute overrides for the whole track |
 | `controls` | dict[str, Any] | `{}` | Non-attribute, first-class controls — see below |
@@ -168,7 +170,7 @@ Check a checkpoint's `supports_*` capabilities (`GET /info` — see [HTTP Server
 |---|---|---|
 | `time_signature` | int | Index into `encoder_config.time_signatures` |
 | `pitch_mask` | dict | Restrict/shape which pitches this track's `NoteOnset` tokens may sample. Hard allow-set (pick one): `{"pitches": [60, 62, 64]}` (exact MIDI pitches), `{"scale": "major", "root": 0}` (preset name + pitch class 0–11), or `{"pitch_classes": [0, 2, 4, 5, 7, 9, 11]}` (any octave). Optional soft reweight layered on top: `"shape": {"type": "uniform", "min": 48, "max": 72}` or `"shape": {"type": "normal", "mean": 60, "std": 8}` |
-| `rhythm_mask` | dict | Restrict/shape which within-bar tick this track's `TimeAbsolutePos` tokens may land on. Mutually exclusive (pick one): `"positions"` — hard exact rhythm, forces the onset grid and polyphony exactly (`[{"pos": 0, "polyphony": 1}, {"pos": 24, "polyphony": 2}]`; first entry must be `pos=0`; requires `config.mask_mode` to leave `tracks_per_step == 1`), or `"grid"` — soft grid-granularity bias (`{"unit": "eighth", "strength": 0.8}`; `unit`: whole/half/quarter/eighth/sixteenth/quarter_triplet/eighth_triplet/sixteenth_triplet; `strength` 1.0 = hard-quantize, 0.0 = no bias) |
+| `rhythm_mask` | dict | Restrict/shape which within-bar tick this track's `TimeAbsolutePos` tokens may land on. Mutually exclusive (pick one): `"positions"` — hard exact rhythm, forces the onset grid and polyphony exactly (`[{"pos": 0, "polyphony": 1}, {"pos": 24, "polyphony": 2}]`; first entry must be `pos=0`; requires `config.tracks_per_step == 1`, and `"auto"` becomes 1), or `"grid"` — soft grid-granularity bias (`{"unit": "eighth", "strength": 0.8}`; `unit`: whole/half/quarter/eighth/sixteenth/quarter_triplet/eighth_triplet/sixteenth_triplet; `strength` 1.0 = hard-quantize, 0.0 = no bias) |
 | `remix` | dict | Regenerate this track's bars as a partial variation of content already on `score` for those bars, instead of generating fresh. The onset schedule (which ticks have notes, how many per tick) is always reproduced exactly from the reference — only note-level values are eligible for resampling. `{"amount": 0.3, "mode": "pitch"}`: `amount` is the fraction of eligible note-attributes resampled (0–1); `mode: "pitch"` — only pitch is eligible, duration stays exact ("vary notes, keep the rhythm"); `mode: "full"` — pitch and duration are each independently eligible. Velocity is always left to free sampling in both modes |
 
 ---
@@ -185,7 +187,7 @@ Controls the step planner and sampling pipeline.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `model_dim` | int or `"auto"` | 8 | Context window size in bars — must be in the checkpoint's `num_bars_map`. `"auto"`: the largest one the piece fills |
+| `model_dim` | int or `"auto"` | 4 | Context window size in bars — must be in the checkpoint's `num_bars_map`. `"auto"`: the largest one the piece fills |
 | `bars_per_step` | int or `"auto"` | 1 | AR: new bars per step (the rest of the window is the track's own history). Infill: the span of target bars one step covers. `"auto"`: AR keeps `max(min_overlap_bars, ar_overlap × model_dim)` bars of history; infill takes a whole window |
 | `tracks_per_step` | int or `"auto"` | 1 | Infill tracks generated together (AR is always one track per step). `"auto"`: all of them |
 | `ar_overlap` | float | 0.5 | `"auto"` `bars_per_step`, AR: the share of the window kept as history |
@@ -194,7 +196,8 @@ Controls the step planner and sampling pipeline.
 | `context_drop` | list[int] | `[]` | Tracks to drop first, in this order |
 | `context_keep` | list[int] | `[]` | Tracks never dropped (targets never are) |
 | `budget_margin` | float | 1.25 | Safety factor on the estimated output tokens |
-| `plan_only` | bool | false | Return the plan (windows and the bars each step writes) without generating; `/generate` answers `{"status": "planned", "model_dim", "plan": [...]}` |
+| `plan_only` | bool | false | Return the plan (windows and the bars each step writes) without generating; `/generate` answers `{"status": "planned", "model_dim", "plan": [...], "dropped_context"}` (see [HTTP Server](http.md)), and `SamplingSession.plan_summary()` returns the same plan |
+| `shuffle` | bool | false | Run the infill steps in random order, seeded by the request seed; AR steps keep their order, each continuing the last |
 | `mask_mode` | str | `"token"` | How to represent future bars: `"token"`, `"attention"`, `"attention_approx"`, `"attention_skip"`, `"remove"` |
 
 ### Sampling
@@ -230,6 +233,7 @@ Controls the step planner and sampling pipeline.
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `num_candidates` | int | 1 | Independent full generations from the same prompt (one seed each), no accept/reject filtering — see `SamplingSession.run_variations`. Not the same as `max_attempts`, which retries the *same* candidate on rejection |
+| `batch_attempts` | bool | false | Run the `max_attempts` retries as one batched forward pass. Not recommended: measured slower, since every retry runs a full step |
 | `infill_probability` | float | 1.0 | Infill only: generate `round(p × N)` of the N infill target bars (at least 1), chosen at random with the request seed; the others stay as they are and act as context. AR targets are never dropped. `SamplingSession.generated_bars` lists the bars picked |
 
 ---
@@ -250,14 +254,29 @@ def run(self) -> Score
 
 Execute all generation steps and return the completed score. The input score is not mutated.
 
-### `SamplingSession.gen_count`
+### `SamplingSession` attributes
 
-```python
-@property
-def gen_count(self) -> int
-```
+Readable during and after `run()`:
 
-Number of bars generated so far. Useful for progress tracking when running steps manually.
+| Attribute | Description |
+|---|---|
+| `resolved_seed` | The seed actually used (a random one when `config.seed` is `-1`); pass it back as `seed` to replay the generation |
+| `generated_bars` | `{track_id: [bars]}` the session generates: the target bars, or the subset `infill_probability` picked |
+| `dropped_context` | Context tracks left out so every step fits the model |
+| `gen_count` | Tokens generated so far, over the whole request |
+| `attempt` | The retry attempt in progress (1-based) |
+| `truncated` | `True` when a step stopped at the context budget instead of ending naturally |
+| `context_len` / `max_context_len` | The current step's prompt length and the model's context length, in tokens |
+| `peak_window_tokens()` | The fullest the model's window got in any step (prompt plus that step's tokens) |
+| `plan_summary()` | The step plan, without generating (see `plan_only`) |
+
+Optional callbacks, set before `run()` (the HTTP server's streaming uses them; single-candidate only):
+
+| Attribute | Called with |
+|---|---|
+| `note_sink` | A list of newly completed notes (dicts with the caller's track ids) |
+| `progress_sink` | No arguments, every 32 generated tokens |
+| `prompt_state_sink` | Once per run: what each (track, bar) is in the first step's prompt (context, masked or to generate) |
 
 ### `SamplingSession.run_variations`
 
@@ -293,4 +312,4 @@ Raised by `InferenceEngine.session()` when the request is structurally invalid �
 from midigpt.inference import GenerationCancelled
 ```
 
-Raised by `SamplingSession.run()`/`run_variations()` when `cancel_event` is observed set mid-decode. Carries whatever was generated before the cancellation, decoded through the same path a natural completion would use: `exc.partial` is a `Score` (from `run()`) or the same list of per-candidate dicts `run_variations()` normally returns (from `run_variations()`); `exc.gen_count` is how many bars were generated before the cancel.
+Raised by `SamplingSession.run()`/`run_variations()` when `cancel_event` is observed set mid-decode. Carries whatever was generated before the cancellation, decoded through the same path a natural completion would use: `exc.partial` is a `Score` (from `run()`) or the same list of per-candidate dicts `run_variations()` normally returns (from `run_variations()`); `exc.gen_count` is how many tokens were generated before the cancel.

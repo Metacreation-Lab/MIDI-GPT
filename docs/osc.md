@@ -11,7 +11,22 @@ midigpt-server --ckpt models/yellow_medium-final.safetensors --port 7400
 
 Generation is triggered bar-by-bar via `/midigpt/bar/end` and runs on a dedicated background thread — the OSC listener never blocks.
 
-> **Studio UI:** The browser-based studio (`midigpt-studio`) is not included in the PyPI wheel. Clone the repository and run it directly from source. It requires a SoundFont file for audio playback — see `src/python/midigpt/osc/studio/static/sf2/SOUNDFONTS.md`.
+### `midigpt-server` options
+
+| Flag | Default | Description |
+|---|---|---|
+| `--ckpt PATH` | — (required) | Checkpoint to load (`.safetensors` or packed `.pt`) |
+| `--host HOST` / `--port PORT` | `0.0.0.0` / `7400` | UDP address to listen on |
+| `--reply-port PORT` | sender's port | Always send replies to this port |
+| `--max_attempts N` | `3` | Retry attempts per generation |
+| `--model_dim N` | — | Initial `model_dim` (also settable over OSC) |
+| `--buffer N` / `--lookahead N` | — | Initial `buffer_bars` / `lookahead_bars` (also settable over OSC) |
+| `--gen_timeout SECONDS` | — | Generation timeout; `0` = off (also settable over OSC) |
+| `--log_level LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+
+`midigpt-listen [--host HOST] [--port PORT]` prints every OSC message it receives, with no model: handy for checking what a client sends.
+
+> **Studio UI:** The browser-based studio is not included in the PyPI wheel. Clone the repository and run it from source with `python -m midigpt.osc.studio.app --ckpt <checkpoint>`. It requires a SoundFont file for audio playback — see `src/python/midigpt/osc/studio/static/sf2/SOUNDFONTS.md`.
 
 ---
 

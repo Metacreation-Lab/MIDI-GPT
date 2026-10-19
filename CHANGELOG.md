@@ -11,6 +11,37 @@ section above `[Unreleased]` before tagging.
 
 ## [Unreleased]
 
+### Changed
+- **Breaking — single-model server id:** `midigpt-http --pretrained NAME` now serves the model as `NAME`, and `--ckpt PATH` as the checkpoint's file name, instead of `"default"`, so `/models` and `/info` say which model is loaded. Clients that send `"model": "default"` get a 400; omit `model` to use the server's default model. ([#9](https://github.com/Metacreation-Lab/MIDI-GPT/issues/9))
+- **Step planner:** a new Python planner replaces the C++ grid planner. Windows are placed on the target bars instead of a grid from bar 0: an autoregressive step keeps up to `model_dim − bars_per_step` bars of the track's own history and slides only when generation reaches the window's edge, and infill bars are taken in chunks with a window centred on each. `model_dim`, `bars_per_step` and `tracks_per_step` also take `"auto"`. `config.plan_only` returns the plan without generating. ([#26](https://github.com/Metacreation-Lab/MIDI-GPT/pull/26))
+- **Ignored tracks are left out of the prompt** (`TrackPrompt.ignore=True`): they no longer cost a track header and a masked bar per window, and come back unchanged in every result. ([#22](https://github.com/Metacreation-Lab/MIDI-GPT/pull/22))
+- **Python 3.13 and 3.14 wheels**, so `pip` no longer falls back to a C++ source build on them. On Intel Macs, `midigpt[inference]` still needs Python ≤ 3.12 (no newer PyTorch wheels). ([#13](https://github.com/Metacreation-Lab/MIDI-GPT/issues/13))
+- **Model weights license:** the pretrained weights move to the Metacreation Non-Commercial Research License, with gated access on Hugging Face; the code stays MIT. The README and docs say so and list the final checkpoints.
+
+### Added
+- **Context fitting:** when a step would not fit the model, whole context tracks are left out (`config.context` = `"auto"`, `"listed"` or `"all"`, with `context_drop` / `context_keep` / `budget_margin`), and auto steps are split when that isn't enough. Responses list them as `dropped_context`. ([#26](https://github.com/Metacreation-Lab/MIDI-GPT/pull/26))
+- **`config.infill_probability`:** infill a random, seeded subset of the target bars; the rest stay as context. `SamplingSession.generated_bars` and the `generated_bars` response field say which bars were generated. ([#25](https://github.com/Metacreation-Lab/MIDI-GPT/pull/25))
+- **`config.novelty_threshold`:** with `novelty_check`, reject a step whose generated bars share at least this share of their (pitch, onset) notes with the original, not only an identical one. Default 1.0 keeps the old behaviour. ([#16](https://github.com/Metacreation-Lab/MIDI-GPT/pull/16))
+- **`config.shuffle`** now works: infill steps run in random order, seeded by the request seed. ([#18](https://github.com/Metacreation-Lab/MIDI-GPT/pull/18))
+- **Streamed progress:** every streamed frame carries `progress` (`generated_tokens`, `step_generated_tokens`, `context_tokens`, `max_context_tokens`, `model_forward_s`, `attempt`), a `progress` frame comes every 32 tokens, and responses report `attempts` and `tokens.peak_context_tokens`. ([#14](https://github.com/Metacreation-Lab/MIDI-GPT/pull/14))
+- **`GET /info`** reports `model_dim_options`, `max_context_tokens`, `switchable_velocity`, `switchable_microtiming` and `genres` in `capabilities`, and `attribute_track_types` (which tracks each attribute applies to). ([#19](https://github.com/Metacreation-Lab/MIDI-GPT/pull/19), [#10](https://github.com/Metacreation-Lab/MIDI-GPT/issues/10))
+- **`--max-generation-seconds`** (or `max_generation_seconds` in the config file): cancel any generation that has run longer than this. Off by default.
+- **Hugging Face tokens:** `InferenceEngine.from_pretrained(..., token=...)` and `hf_token` in the HTTP server's config file, for the gated model repo. The default is still `HF_TOKEN` or `hf auth login`. A missing license acceptance or token now raises a `PermissionError` that says what to do, and `midigpt-http` stops with that message.
+- **Offline loading:** when the Hub can't be reached or refuses the download, `from_pretrained` uses the cached checkpoint.
+
+### Fixed
+- **Expressive velocities:** 128-level velocities decoded to 0 (a note-off), so most generated notes from `expressive_medium` were silent. ([#20](https://github.com/Metacreation-Lab/MIDI-GPT/pull/20))
+- **Prism / expressive autoregressive drift:** the grammar masked the attribute tokens these models write in track and bar headers, so generated bars lost their headers and the part drifted (8-bar AR note F1 against the original was 0.17 on prism, against 0.46 on yellow). ([#21](https://github.com/Metacreation-Lab/MIDI-GPT/pull/21))
+- **Unsorted notes:** a bar whose notes weren't listed in time order could move its downbeat note to the bar's last onset, changing context bars. ([#11](https://github.com/Metacreation-Lab/MIDI-GPT/pull/11))
+- **Drum rhythm masks and remix:** drum tracks emit no `NoteDuration`, so the rhythm and remix forcers never counted a drum note and piled hundreds of notes on one onset. ([#12](https://github.com/Metacreation-Lab/MIDI-GPT/pull/12))
+- **Long autoregressive generations:** the token budget was counted over the whole session instead of per attempt, so later steps came back empty and the request failed; a step window that decodes short keeps its bar positions. ([#15](https://github.com/Metacreation-Lab/MIDI-GPT/pull/15))
+- **AR prompts after the first window** ended inside the last context bar, so the model kept editing it; several AR tracks in one step only generated the first. ([#17](https://github.com/Metacreation-Lab/MIDI-GPT/pull/17))
+- **Step planning:** `tracks_per_step` grouped raw track indices instead of the selected tracks, and a step-down to a smaller `model_dim` regenerated every finished step instead of only the rest. ([#18](https://github.com/Metacreation-Lab/MIDI-GPT/pull/18))
+- **`run_variations`** (`num_candidates > 1`) now steps `model_dim` down on a context overflow instead of failing. ([#22](https://github.com/Metacreation-Lab/MIDI-GPT/pull/22))
+- **HTTP queue slots:** a streaming client that disconnected never gave its queue slot back, so after `max_queue` dropped streams every request got 503 ([#23](https://github.com/Metacreation-Lab/MIDI-GPT/pull/23)); a non-streaming request whose client went away kept generating to the end, holding the model and its queue slot. Both are now cancelled.
+- **`InferenceConfig(bars_per_step="auto")`** (and `model_dim` / `tracks_per_step`) raised a `TypeError`; `"auto"` only worked through `from_dict` (JSON, HTTP).
+- **Model docs** link the current checkpoints and list context lengths. ([#24](https://github.com/Metacreation-Lab/MIDI-GPT/pull/24))
+
 ## [0.3.4] - 2026-08-19
 
 ### Added

@@ -16,11 +16,13 @@ On Intel Macs, `midigpt[inference]` needs Python 3.12 or older: PyTorch stopped 
 
 | Extra | What it adds |
 |---|---|
-| `inference` | `torch>=2.0`, `tqdm`, `huggingface_hub` |
-| `train` | PyTorch Lightning, HuggingFace `datasets`, `pyarrow`, `python-dotenv` |
+| `inference` | `torch>=2.0`, `tqdm`, `huggingface_hub`, `safetensors` |
+| `train` | PyTorch Lightning, HuggingFace `datasets`, `pyarrow`, `python-dotenv`, `wandb` |
 | `realtime` | `python-osc`, Flask, Flask-SocketIO |
+| `http` | FastAPI, uvicorn |
 | `dev` | `pytest`, `ruff`, `mypy` |
 | `docs` | `mkdocs-material`, `mkdocstrings` |
+| `all` | `realtime` + `train` |
 
 ### Developer install
 
@@ -110,6 +112,7 @@ request = GenerationRequest(
         temperature=1.0,
         top_p=0.95,
         model_dim=8,    # context window in bars — must be in the model's num_bars_map
+        mask_mode="attention",  # the default "token" needs a MaskBar token; no released model has one
     ),
 )
 
@@ -124,11 +127,13 @@ result.to_midi("output.mid")
 Generate a new track from scratch, conditioned on musical attributes:
 
 ```python
+score = Score(tracks=[Track(bars=[Bar() for _ in range(8)])])   # one empty 8-bar track
+
 request = GenerationRequest(
     tracks=[
         TrackPrompt(
             id=0,
-            bars=[],               # empty = generate the whole track
+            bars=list(range(8)),   # the bars to generate, in order
             autoregressive=True,
             attributes={"max_polyphony": 3},       # quantized attribute level
             controls={"time_signature": 0},         # index into encoder TS list
@@ -137,6 +142,7 @@ request = GenerationRequest(
     config=InferenceConfig(
         temperature=1.0,
         model_dim=8,
+        mask_mode="attention",
         polyphony_hard_limit=4,
     ),
 )
@@ -151,27 +157,31 @@ Introspect available attribute controls for the loaded model:
 
 ```python
 engine._analyzer.attribute_sizes()
-# {"note_density": 10, "min_polyphony": 10, "max_polyphony": 10, ...}
+# {"note_density": 10, "min_polyphony": 10, "max_polyphony": 10, "min_note_duration": 6, ...}
 
 engine._analyzer.attribute_value_labels()
 # {"note_density": ["very sparse", "sparse", ..., "very dense"], ...}
 
 engine._analyzer.attribute_track_types()
-# {"note_density": "melodic", "min_polyphony": "melodic", ...}
+# {"note_density": "drum", "min_polyphony": "melodic", ...}
+
+engine._analyzer.attribute_levels()
+# {"note_density": "track", ...}   — "track" goes in attributes, "bar" in bar_attributes
 ```
 
-Pass quantized levels (integers in `[0, size)`) in `TrackPrompt.attributes`. Level 0 is the sparsest / quietest bin; `size - 1` is the densest / loudest.
+Pass quantized levels (integers in `[0, size)`) in `TrackPrompt.attributes`. Level 0 is the sparsest / quietest bin; `size - 1` is the densest / loudest. An attribute set on the wrong kind of track (see `attribute_track_types()`) is rejected: on `yellow`, `note_density` is drum-only, polyphony and note duration melodic-only.
 
-Per-bar overrides let you shape the attribute trajectory across bars:
+Per-bar overrides shape an attribute across bars. They take bar-level attributes, which `prism` and `expressive` have (`yellow`'s are all track-level):
 
 ```python
+# prism_medium, melodic track
 TrackPrompt(
     id=0,
     bars=[0, 1, 2, 3],
-    attributes={"note_density": 5},        # global default
+    attributes={"max_note_duration": 3},      # track-level
     bar_attributes={
-        0: {"note_density": 2},            # override bar 0 to be sparser
-        3: {"note_density": 8},            # override bar 3 to be denser
+        0: {"bar_max_polyphony": 1},          # bar 0: one note at a time
+        3: {"bar_max_polyphony": 6},          # bar 3: chords
     },
 )
 ```

@@ -19,21 +19,22 @@ from midigpt.inference import (
 
 req = GenerationRequest(
     tracks=[TrackPrompt(id=0, bars=[4, 5, 6, 7])],
-    config=InferenceConfig(temperature=1.0, top_p=0.95),
+    config=InferenceConfig(temperature=1.0, top_p=0.95, mask_mode="attention"),
 )
-score_out = engine.sample(score_in, req)
+score_out = engine.session(score_in, req).run()
 ```
 
-`engine.sample()` performs three logical stages:
+`engine.session(...).run()` performs three logical stages:
 
 1. **Validation** (`validation.py::validate_request`) — sanity-checks the
    request against the encoder config + score. Fails fast with
    `RequestValidationError`. May normalize fields (e.g. clamp
    `temperature_escalation` to a max).
-2. **Planning** (`_core.StepPlanner`) — decomposes the request into a sequence
-   of *steps*. Each step picks a window of bars + a subset of tracks to
-   generate, given `model_dim`, `bars_per_step`, `tracks_per_step`,
-   `mask_mode`, and `shuffle`.
+2. **Planning** (`planner.py::plan`) — decomposes the request into a sequence
+   of *steps*. Each step picks a window of bars + the target bars to
+   generate, given `model_dim`, `bars_per_step` and `tracks_per_step`. Context
+   fitting (`context_fit.py`) first leaves out context tracks a step would not
+   fit with; `shuffle` then reorders the infill steps (`session.py::_order_steps`).
 3. **Sampling** (`session.py::SamplingSession`) — for each step, runs the
    token-level loop: build constraint graph, encode prompt, repeatedly call
    the model, mask/filter logits, multinomial draw, advance the FSM. Retries
@@ -51,14 +52,15 @@ nothing exotic is on by default.
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `temperature` | float | `1.0` | Softmax temperature. `<1` sharpens, `>1` flattens. Must be `> 0`. |
-| `seed` | int | `-1` | Torch RNG seed. `-1` leaves the global generator alone (free-running). Bumped by attempt index on retries — see §5. |
+| `seed` | int | `-1` | Torch RNG seed. `-1` draws a random seed once per session (`SamplingSession.resolved_seed`, reported by the HTTP server), so the run can be replayed. Bumped by attempt index on retries — see §5. |
 | `max_attempts` | int | `3` | Hard retry budget per step. See §5. |
 
 ### Retry behavior
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `novelty_check` | bool | `True` | If enabled and the candidate is bitwise-identical (pitch + onset_ticks) to the original in every generated bar, the attempt is **rejected** and retried. When disabled, identity is just logged as a warning. See §5. |
+| `novelty_check` | bool | `True` | If enabled and the candidate is too similar to the original in the step's generated bars (see `novelty_threshold`), the attempt is **rejected** and retried. When disabled, it is just logged as a warning. See §5. |
+| `novelty_threshold` | float | `1.0` | Similarity, in `(0, 1]`, at which `novelty_check` rejects: the share of (bar, pitch, onset) notes the candidate shares with the original. `1.0` rejects only an identical result. |
 | `silence_check` | bool | `True` | If enabled and the candidate generated 0 notes in target bars, the attempt is rejected. Disabled → warning only. |
 | `temperature_escalation` | float | `1.0` | Multiplier applied to `temperature` per failed attempt. `1.0` = off. Clamped to `[1.0, 3.0]`. Useful when retries keep landing on the same tokens. |
 
@@ -66,10 +68,16 @@ nothing exotic is on by default.
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `model_dim` | int | `4` | Context window length **in bars**. Must be one of the values in `encoder_config.num_bars_map`. |
-| `bars_per_step` | int | `1` | Bars generated per step. Must be `≤ model_dim`. |
-| `tracks_per_step` | int | `1` | Tracks generated per step. `> 1` enables interleaved multi-track AR within a single window. |
-| `shuffle` | bool | `False` | Randomize the order of the infill steps (AR steps keep theirs); seeded by `seed` when set. |
+| `model_dim` | int or `"auto"` | `4` | Context window length **in bars**. Must be one of the values in `encoder_config.num_bars_map`. `"auto"`: the largest the piece fills. |
+| `bars_per_step` | int or `"auto"` | `1` | Bars generated per step. Must be `≤ model_dim`. `"auto"`: AR keeps `max(min_overlap_bars, ar_overlap × model_dim)` bars of history; infill takes a whole window. |
+| `tracks_per_step` | int or `"auto"` | `1` | Infill tracks generated per step (AR is always one track per step). `"auto"`: every infill track. |
+| `ar_overlap` / `min_overlap_bars` | float / int | `0.5` / `2` | AR history kept per step when `bars_per_step` is `"auto"`. |
+| `context` | str | `"auto"` | Context fitting when a step would not fit: `"auto"` drops `context_drop`, then the least-attended tracks; `"listed"` only `context_drop`; `"all"` never drops. `context_keep` is never dropped. |
+| `context_drop` / `context_keep` / `budget_margin` | list / list / float | `[]` / `[]` / `1.25` | See `context`; `budget_margin` multiplies a step's estimated output tokens. |
+| `plan_only` | bool | `False` | Return the plan (`SamplingSession.plan_summary()`) without generating. |
+| `shuffle` | bool | `False` | Randomize the order of the infill steps (AR steps keep theirs); seeded by the request seed. |
+| `infill_probability` | float | `1.0` | Infill only: generate `round(p × N)` of the N infill target bars (at least 1), picked with the request seed; the rest stay as context. `SamplingSession.generated_bars` lists them. |
+| `num_candidates` | int | `1` | Independent generations from the same prompt, one seed each (`run_variations()`). |
 
 ### Span-masking (lookahead)
 
@@ -79,7 +87,7 @@ nothing exotic is on by default.
 
 Detail per mode:
 
-- **`token`** — standard: future bars get a `MaskBar` token in the prompt. Requires the vocab to define `MaskBar` (most modern checkpoints do).
+- **`token`** — future bars get a `MaskBar` token in the prompt. Requires the vocab to define `MaskBar`; none of the released checkpoints does, so use one of the attention modes with them.
 - **`attention`** — future bars are encoded as their normal token spans, but the model's self-attention is masked over those spans via a key mask carried through KV-cache. Lowest perplexity at the cost of bookkeeping.
 - **`attention_approx`** — like `attention`, but the masked positions are *zeroed* in KV-cache after prefill rather than masked on every step. Cheaper, slightly noisier.
 - **`attention_skip`** — the masked positions are physically removed from the input; `position_ids` are passed explicitly so the model sees the right absolute positions. Cheapest, but assumes rotary/relative positions cope.
@@ -90,6 +98,7 @@ Detail per mode:
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `polyphony_hard_limit` | int | `0` | Global cap on simultaneous note onsets. `0` = no cap. Implemented as a `PolyphonyConstraint(limit)` added to every step's constraint graph. Useful to prevent the model from sticking too many notes in a single onset. |
+| `density_hard_limit` | int | `0` | Global cap on note onsets per bar. `0` = no cap. Implemented as a `DensityConstraint` on every step's constraint graph. |
 
 ### Token-sampling filters (top / mask)
 
@@ -167,7 +176,7 @@ Per-track instructions. There must be one prompt per track in the score
 | `mask_bars` | list[int] | `[]` | Bars encoded as `TOKEN_MASK_BAR` ("unknown / hidden"). Disjoint from `bars`. Any bar in the step window not listed in either becomes **context** (its actual notes, including silent if empty). |
 | `attributes` | dict[str,int] | `{}` | Analyzer-derived attribute overrides. Keys = attribute *instance* names (e.g. `"min_polyphony"`, `"note_density"`). Values = quantized levels. See §4. |
 | `controls` | dict[str,Any] | `{}` | **Non-attribute** controls — first-class token-locking knobs that don't flow through the AttributeAnalyzer. Currently: `"time_signature": int` (index into `encoder_config.time_signatures`). |
-| `bar_attributes` | dict[int, dict[str,int]] | `{}` | Per-bar attribute overrides, keyed by absolute bar index. Only bar-level attributes (e.g. `tension`, `bar_pitch_class_set`) may appear here. Bar index must be in `tp.bars`. See [updatedAttributeControl.md](../../../docs/updatedAttributeControl.md) for full semantics. |
+| `bar_attributes` | dict[int, dict[str,int]] | `{}` | Per-bar attribute overrides, keyed by absolute bar index. Only bar-level attributes (e.g. `tension`, `bar_pitch_class_set`) may appear here. Bar index must be in `tp.bars`. See [attribute_controls_guide.md](../../../docs/attribute_controls_guide.md) for full semantics. |
 | `bar_controls` | dict[int, dict[str,Any]] | `{}` | Per-bar non-attribute controls, keyed by absolute bar index. Currently: `"time_signature": int`. Cross-track coherence is enforced — the same bar index must resolve to the same TS across every generating track. |
 
 ### `attributes` vs `controls` — why two dicts
@@ -254,11 +263,11 @@ the last candidate, and a hint string suggesting which knobs to relax.
 
 ### Seed bumping per attempt
 
-When `seed >= 0`, the i-th attempt uses `seed + i` so retries actually
-explore (otherwise `torch.manual_seed(seed)` would produce identical draws
-on every attempt and `max_attempts > 1` would be a no-op).
-`seed < 0` leaves the global RNG state untouched, so each attempt draws
-from wherever the generator is.
+The i-th attempt uses `resolved_seed + i` so retries actually explore
+(otherwise `torch.manual_seed(seed)` would produce identical draws on every
+attempt and `max_attempts > 1` would be a no-op). `resolved_seed` is
+`config.seed`, or a random seed drawn once per session when `seed < 0`, so
+every run can be replayed from the seed it reports.
 
 ### When checks tend to fail
 
@@ -301,7 +310,8 @@ in `_build_constraints` for the historical bug.
 
 ## 7. Step planning summary
 
-`StepPlanner` produces `GenerationStep` objects. Each carries:
+`planner.py::plan` produces `PlannedStep` objects (converted to the C++
+`GenerationStep` with `to_core()`). Each carries:
 
 - `start_bar`, `end_bar` — absolute bar bounds of this step's window.
 - `track_indices` — which tracks contribute notes to this step's
@@ -313,18 +323,24 @@ in `_build_constraints` for the historical bug.
   becomes `False` (masked) regardless of the planner's default.
 - `is_autoregressive` — True for full-AR windows.
 
-The session may reduce `model_dim` between steps (largest-first) if the
-encoded prompt overflows the model's positional context — see
-`SamplingSession.run`.
+Before generating, `_fit_context` checks each step against the model's
+context length and leaves out whole context tracks (`config.context`), then
+makes `"auto"` `tracks_per_step`/`bars_per_step` smaller. If a step still
+overflows, or an AR step is truncated, `_run` steps `model_dim` down and
+plans only what is left, keeping the steps already done.
 
 ---
 
 ## 8. Common usage patterns
 
+In all of these, `bars` lists the bars to generate (for AR, in order), and
+the config needs a `mask_mode` other than `"token"` with the released
+checkpoints.
+
 ### Full-AR generation, free attributes
 
 ```python
-TrackPrompt(id=0, bars=[], autoregressive=True)
+TrackPrompt(id=0, bars=list(range(8)), autoregressive=True)
 ```
 
 ### Full-AR with a locked time signature and polyphony cap
@@ -332,7 +348,7 @@ TrackPrompt(id=0, bars=[], autoregressive=True)
 ```python
 TrackPrompt(
     id=0,
-    bars=[],
+    bars=list(range(8)),
     autoregressive=True,
     controls={"time_signature": 0},        # index into encoder TS list
     attributes={"max_polyphony": 3},
@@ -355,18 +371,21 @@ req = GenerationRequest(
 )
 ```
 
-### Multi-track AR window with leading context
+### Two AR tracks, one track per step
 
 ```python
 GenerationRequest(
     tracks=[
-        TrackPrompt(id=0, bars=[], autoregressive=True),   # pure AR
-        TrackPrompt(id=1, bars=[], autoregressive=True),   # pure AR
+        TrackPrompt(id=0, bars=list(range(8)), autoregressive=True),
+        TrackPrompt(id=1, bars=list(range(8)), autoregressive=True),
         TrackPrompt(id=2, bars=[], ignore=True),           # leave alone
     ],
-    config=InferenceConfig(tracks_per_step=2, bars_per_step=2),
+    config=InferenceConfig(model_dim=8, bars_per_step="auto", mask_mode="attention"),
 )
 ```
+
+AR steps always generate one track; track 1's steps see track 0's
+generated bars as context.
 
 ---
 

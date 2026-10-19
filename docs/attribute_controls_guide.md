@@ -211,14 +211,16 @@ Or, if the model's `token_domains` already includes `"MyNewAttribute"`, `from_co
 ### 8. Use it at inference
 
 ```python
-from midigpt import generate, TrackPrompt
+from midigpt.inference import GenerationRequest, InferenceConfig, TrackPrompt
 
 tp = TrackPrompt(
-    instrument=0,
+    id=0,
+    bars=[0, 1, 2, 3],
     attributes={"my_new_attribute": 5},  # track-level: bin index 0..size-1
     # bar_attributes={0: {"my_new_attribute": 3}},  # bar-level
 )
-result = generate(score, track_prompts=[tp], ...)
+request = GenerationRequest(tracks=[tp], config=InferenceConfig(model_dim=4, mask_mode="attention"))
+result = engine.session(score, request).run()
 ```
 
 The validation layer checks:

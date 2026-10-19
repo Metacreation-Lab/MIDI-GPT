@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/midigpt)](https://pypi.org/project/midigpt/)
 [![CI](https://img.shields.io/github/actions/workflow/status/Metacreation-Lab/MIDI-GPT/wheels.yml?branch=main&label=CI)](https://github.com/Metacreation-Lab/MIDI-GPT/actions/workflows/wheels.yml)
 [![Docs](https://img.shields.io/badge/docs-online-blue)](https://metacreation-lab.github.io/MIDI-GPT/)
-[![License: MIT](https://img.shields.io/github/license/Metacreation-Lab/MIDI-GPT)](LICENSE)
+[![Code license: MIT](https://img.shields.io/github/license/Metacreation-Lab/MIDI-GPT?label=code%20license)](LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2501.17011-b31b1b)](https://arxiv.org/abs/2501.17011)
 [![HuggingFace](https://img.shields.io/badge/HuggingFace-Metacreation%2FMIDI--GPT-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/Metacreation/MIDI-GPT)
 
@@ -14,8 +14,8 @@ A transformer model for **computer-assisted multitrack music composition**.
 
 - **Fill in missing bars** while preserving your existing arrangement
 - **Generate new tracks** from scratch, conditioned on musical attributes
-- **Steer the output** by controlling note density, polyphony, and note duration — globally or per bar
-- **Run a MIDI-GPT API server** via a HTTP server
+- **Steer the output** with attribute controls (note density, polyphony, note duration, and on `prism`/`expressive` also key, pitch range, pitch classes and genre), globally or per bar
+- **Run a MIDI-GPT API server** over HTTP, with streaming, cancellation and several models in one process
 - **One-line setup** — load pretrained models from HuggingFace Hub, no compiler needed
 
 ---
@@ -37,6 +37,7 @@ On Intel Macs, `midigpt[inference]` needs Python 3.12 or older: PyTorch stopped 
 | `realtime` | `python-osc`, Flask, Flask-SocketIO |
 | `http` | FastAPI, uvicorn |
 | `dev` | `pytest`, `ruff`, `mypy` |
+| `docs` | `mkdocs-material`, `mkdocstrings` |
 | `all` | `realtime` + `train` |
 
 ---
@@ -73,14 +74,18 @@ The model is downloaded once and cached by `huggingface_hub` in `~/.cache/huggin
 
 ## Models
 
-| Name | `num_bars_map` | Infill | Attributes | Download |
-|---|---|---|---|---|
-| `yellow_medium` | 4, 8 | yes | note density, polyphony (min/max), note duration (min/max) | [yellow_medium-final.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow_medium-final.safetensors) |
-| `yellow_small` | 4, 8 | yes | note density, polyphony (min/max), note duration (min/max) | [yellow_small-final.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow_small-final.safetensors) |
-| `prism_medium` | 4, 8, 12, 16 | yes | key signature, pitch range, silence, note duration, note density (bar), polyphony (bar), pitch class set, genre | [prism_medium-step58000.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/prism_medium-step58000.safetensors) — training in progress |
-| `expressive_medium` | 4, 8, 12, 16 | yes | key signature, pitch range, silence, note duration, note density (bar), polyphony (bar), pitch class set, nomml, genre | [expressive_medium-step56000.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/expressive_medium-step56000.safetensors) — training in progress |
+| Model | Checkpoint | `num_bars_map` | Context (tokens) | Infill | Attributes |
+|---|---|---|---|---|---|
+| `yellow_medium` | [checkpoint](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow_medium-final.safetensors) | 4, 8 | 2048 | yes | note density, polyphony (min/max), note duration (min/max) |
+| `yellow_small` | [checkpoint](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/yellow_small-final.safetensors) | 4, 8 | 2048 | yes | note density, polyphony (min/max), note duration (min/max) |
+| `prism_medium` | [checkpoint](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/prism_medium-final.safetensors) | 4, 8, 12, 16 | 4096 | yes | key signature, pitch range, silence, note duration, note density (bar), polyphony (bar), pitch class set, genre |
+| `expressive_medium` | [checkpoint](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/expressive_medium-final.safetensors) | 4, 8, 12, 16 | 4096 | yes | key signature, pitch range, silence, note duration, note density (bar), polyphony (bar), pitch class set, nomml, genre |
 
-`model_dim` in `InferenceConfig` is the context window in bars, not a vocabulary dimension — pass a value from the model's `num_bars_map`. `expressive_medium` additionally encodes sub-grid timing via delta tokens and supports switchable velocity/microtiming controls. See [docs/models.md](docs/models.md) for the full breakdown.
+`InferenceEngine.from_pretrained(name)` downloads the current checkpoint for that model name.
+
+`model_dim` in `InferenceConfig` is the context window in bars, not a vocabulary dimension — pass a value from the model's `num_bars_map`. `expressive_medium` additionally encodes sub-grid timing via delta tokens and supports switchable velocity/microtiming controls. `yellow` has no `MaskBar` token, so use `mask_mode="attention"` (or `"attention_approx"`, `"attention_skip"`, `"remove"`) with it. See [docs/models.md](docs/models.md) for the full breakdown.
+
+The weights are licensed separately from the code, under the [Metacreation Non-Commercial Research License](https://huggingface.co/Metacreation/MIDI-GPT/blob/main/LICENSE-WEIGHTS.md): non-commercial research (including research-creation) and education. They were trained on [GigaMIDI](https://huggingface.co/datasets/Metacreation/GigaMIDI); see the [model card](https://huggingface.co/Metacreation/MIDI-GPT) for details.
 
 ---
 
@@ -106,7 +111,7 @@ request = GenerationRequest(
         TrackPrompt(id=0, bars=[4, 5, 6, 7]),   # bars to regenerate
         TrackPrompt(id=1, bars=[], ignore=True), # leave track 1 unchanged
     ],
-    config=InferenceConfig(temperature=1.0, top_p=0.95, model_dim=8),
+    config=InferenceConfig(temperature=1.0, top_p=0.95, model_dim=8, mask_mode="attention"),
 )
 
 result = engine.session(score, request).run()
@@ -116,20 +121,24 @@ result.to_midi("output.mid")
 ### Autoregressive generation from scratch
 
 ```python
+score = Score(tracks=[Track(bars=[Bar() for _ in range(8)])])   # one empty 8-bar track
+
 request = GenerationRequest(
     tracks=[
         TrackPrompt(
             id=0,
-            bars=[],
+            bars=list(range(8)),                   # bars to generate, in order
             autoregressive=True,
             attributes={"max_polyphony": 3},      # quantized attribute level
             controls={"time_signature": 0},        # index into encoder TS list
         ),
     ],
-    config=InferenceConfig(temperature=1.0, model_dim=8, polyphony_hard_limit=4),
+    config=InferenceConfig(temperature=1.0, model_dim=8, mask_mode="attention", polyphony_hard_limit=4),
 )
 result = engine.session(score, request).run()
 ```
+
+Every track in the score needs a `TrackPrompt`; use `ignore=True` for tracks to leave out.
 
 ### Key types
 
@@ -147,8 +156,8 @@ result = engine.session(score, request).run()
 |---|---|---|---|
 | `id` | int | — | Track index in the score |
 | `bars` | list[int] | — | Bars to generate |
-| `autoregressive` | bool | `False` | Generate from scratch (no per-bar prompt) |
-| `ignore` | bool | `False` | Omit this track from the token stream |
+| `autoregressive` | bool | `False` | Generate `bars` from scratch, continuing the track's earlier bars (no per-bar prompt) |
+| `ignore` | bool | `False` | Leave this track out of the prompt; it comes back unchanged in the result |
 | `mask_bars` | list[int] | `[]` | Bars hidden with `MASK_BAR` (disjoint from `bars`) |
 | `attributes` | dict[str,int] | `{}` | Quantized attribute overrides |
 | `controls` | dict[str,Any] | `{}` | Token locks e.g. `{"time_signature": 0}` |
@@ -167,6 +176,19 @@ result = engine.session(score, request).run()
 | `mask_p` | `0.0` (off) | Anti-nucleus: remove tokens summing to ≥ `mask_p` from the top |
 
 A small `mask_k=1` or `mask_p=0.3` pushes the model off its most-confident picks — useful for getting diverse outputs when `novelty_check=True`.
+
+### Generation options
+
+A few more `InferenceConfig` fields (see [docs/api.md](docs/api.md) for all of them):
+
+| Field | Default | Meaning |
+|---|---|---|
+| `model_dim` / `bars_per_step` / `tracks_per_step` | `4` / `1` / `1` | Window size and step size; each also takes `"auto"` to let the planner choose |
+| `num_candidates` | `1` | Generate several independent takes (one seed each) from the same prompt |
+| `infill_probability` | `1.0` | Infill only a random share of the target bars; `session.generated_bars` says which |
+| `novelty_check` / `novelty_threshold` | `True` / `1.0` | Retry a step whose result shares at least this share of its notes with the original |
+| `context` | `"auto"` | When a step won't fit the model, leave out whole context tracks (`"auto"`, `"listed"`, `"all"`); `session.dropped_context` lists them |
+| `plan_only` | `False` | Return the step plan without generating |
 
 ### Mask modes
 
@@ -189,10 +211,10 @@ Introspect available controls at runtime:
 ```python
 engine._analyzer.attribute_sizes()         # {"note_density": 10, "min_polyphony": 10, ...}
 engine._analyzer.attribute_value_labels()  # {"note_density": ["very sparse", ...], ...}
-engine._analyzer.attribute_track_types()   # {"note_density": "melodic", ...}
+engine._analyzer.attribute_track_types()   # {"note_density": "drum", "min_polyphony": "melodic", ...}
 ```
 
-Pass quantized levels (integers in `[0, size)`) in `TrackPrompt.attributes`.
+Pass quantized levels (integers in `[0, size)`) in `TrackPrompt.attributes`. Each attribute applies to melodic tracks, drum tracks or both (`attribute_track_types()`); on `yellow`, `note_density` is drum-only and polyphony and note duration are melodic-only.
 
 ---
 
@@ -239,7 +261,7 @@ train(config, train_path="/data/train/00000.parquet", eval_path="/data/valid/000
 | `mask_apply_probability` | `0.5` | Fraction of samples with `MASK_BAR` applied |
 | `precision` | `"fp16"` | `"fp16"`, `"bf16"`, or `"fp32"` |
 | `logger` | `"none"` | `"tensorboard"`, `"wandb"`, or `"none"` |
-| `num_workers` | `0` | Must be 0 — the C++ MIDI parser is not fork-safe |
+| `num_workers` | `0` | Data loader workers; the loader uses a `spawn` context, so above 0 is safe |
 
 ---
 
@@ -251,18 +273,24 @@ pip install "midigpt[http]"
 # From a local checkpoint (.safetensors or .pt)
 midigpt-http --ckpt checkpoints/run_001/model_final.safetensors --port 8000
 
-# From HuggingFace Hub (by name or repo ID)
-midigpt-http --pretrained yellow --port 8000
-midigpt-http --pretrained Metacreation/MIDI-GPT --hf-filename yellow_medium-final.safetensors --port 8000
+# From HuggingFace Hub, by checkpoint name (optionally from another repo with --hf-repo)
+midigpt-http --pretrained yellow_medium --port 8000
+
+# Several models in one server
+midigpt-http --config models.yaml
 ```
 
 A stateless REST API — every request carries the full score and generation parameters. The interactive API docs are available at `http://localhost:8000/docs`.
 
 | Endpoint | Description |
 |---|---|
-| `GET /health` | Liveness probe |
-| `GET /info` | Model capabilities and attribute sizes |
-| `POST /generate` | `{score, request}` → `{score, timing}` |
+| `GET /health` | Liveness probe, with queue depth |
+| `GET /info` | A model's capabilities, valid `model_dim` values, context length and attributes |
+| `GET /models` | The loaded models and the default one |
+| `POST /generate` | `{score, request}` → `{score, timing, tokens, ...}`; `"stream": true` streams notes and progress as server-sent events |
+| `POST /generate/{request_id}/cancel` | Stop an in-flight generation; its `/generate` call returns `"cancelled"` with what it has so far |
+
+A generation whose client disconnects is cancelled; `--max-generation-seconds` caps how long one may run. See [docs/http.md](docs/http.md) for the config file, response fields and streaming.
 
 ```bash
 # Score: 1 melodic track, 4 empty bars — generate all 4 from scratch
@@ -283,7 +311,7 @@ curl -s -X POST http://localhost:8000/generate \
     },
     "request": {
       "tracks": [{"id": 0, "bars": [0, 1, 2, 3]}],
-      "config": {"model_dim": 4}
+      "config": {"model_dim": 4, "mask_mode": "attention"}
     }
   }' | jq .score
 ```
@@ -383,4 +411,6 @@ Set `MIDIGPT_LOG_LEVEL=DEBUG` (or a numeric level) before importing. Accepts bot
 
 ## License
 
-MIT License — Copyright (c) 2026 Metacreation Lab. See [LICENSE](LICENSE).
+The code is released under the MIT License — Copyright (c) 2026 Metacreation Lab. See [LICENSE](LICENSE).
+
+The pretrained weights are not covered by the MIT License: they are under the [Metacreation Non-Commercial Research License](https://huggingface.co/Metacreation/MIDI-GPT/blob/main/LICENSE-WEIGHTS.md), for non-commercial research and education. For other uses, contact pasquier@sfu.ca.

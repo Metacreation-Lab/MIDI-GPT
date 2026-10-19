@@ -140,5 +140,5 @@ A few things worth knowing before modifying the code:
 
 1. Bump `version` in `pyproject.toml` and `__version__` in `src/python/midigpt/__init__.py`.
 2. Commit and push to `dev`, open a PR into `main`.
-3. After merge, tag the commit: `git tag vX.Y.Z && git push upstream vX.Y.Z`.
-4. The `wheels.yml` workflow builds wheels on Linux / macOS / Windows × Python 3.10–3.12, creates a draft GitHub Release, and publishes to PyPI via OIDC Trusted Publishing (gated by the `PyPI` environment).
+3. After merge, tag the commit with an annotated tag: `git tag -a vX.Y.Z -m vX.Y.Z && git push upstream vX.Y.Z`.
+4. The `wheels.yml` workflow builds wheels on Linux / macOS / Windows × Python 3.10–3.14, creates a GitHub Release from the `CHANGELOG.md` section for the tag, and publishes to PyPI via OIDC Trusted Publishing (gated by the `PyPI` environment).

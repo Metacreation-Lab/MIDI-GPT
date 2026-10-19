@@ -1,6 +1,6 @@
 # Examples & Controllable Generation
 
-This page showcases **MIDI-GPT**'s core capabilities using recognizable, real-world musical examples: **Track Sampling**, **Bar Infilling (Inpainting)**, and **Autoregressive Continuation**. All examples below are generated using the public `yellow` model checkpoint.
+This page showcases **MIDI-GPT**'s core capabilities using recognizable, real-world musical examples: **Track Sampling**, **Bar Infilling (Inpainting)**, and **Autoregressive Continuation**. All examples below are generated with a public `yellow` checkpoint.
 
 By setting **Attribute Controls** (such as polyphony, note density, and note duration), you can guide the model to generate musical parts that perfectly fit your composition.
 
@@ -108,7 +108,7 @@ We take a guitar (`acoustic_guitar_steel`) and bass (`electric_bass_finger`) par
 ---
 
 ### Example 2: Classical Cello
-We take `violin`, `violin`, and `viola` tracks from a Baroque concerto's solo section as context and generate a `cello` bassline restricted to monophonic (`max_polyphony = 0`). By sweeping `max_note_duration` from index `1` (16th notes) through index `4` (half notes) and adding a `min_note_duration = 4` (sustained legato) variant, we get 5 generations spanning the full duration spectrum.
+We take `violin`, `viola`, and `cello` tracks from a Baroque concerto's solo section as context and generate a `cello` bassline restricted to monophonic (`max_polyphony = 0`). By sweeping `max_note_duration` from index `1` (16th notes) through index `4` (half notes) and adding a `min_note_duration = 4` (sustained legato) variant, we get 5 generations spanning the full duration spectrum.
 
 <div class="midi-example-card">
   <strong>Strings Ensemble Prompt (Context)</strong>

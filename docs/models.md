@@ -1,6 +1,6 @@
 # Models
 
-midigpt ships pretrained checkpoints for three encoder families — `yellow_medium`, `prism_medium`, and `expressive_medium` — each trained on a different encoder configuration and loadable via `InferenceEngine.from_pretrained`. Choosing the right model depends on the kind of music you're working with and the generation mode you need.
+midigpt ships pretrained checkpoints for three encoder families — `yellow` (`yellow_medium`, and the smaller, faster `yellow_small`), `prism_medium`, and `expressive_medium` — each trained on a different encoder configuration and loadable via `InferenceEngine.from_pretrained`. Choosing the right model depends on the kind of music you're working with and the generation mode you need.
 
 ## Overview
 
@@ -12,6 +12,10 @@ midigpt ships pretrained checkpoints for three encoder families — `yellow_medi
 | `expressive_medium` | 4, 8, 12, 16 | 4096 | no | yes | 128 | [expressive_medium-final.safetensors](https://huggingface.co/Metacreation/MIDI-GPT/resolve/main/expressive_medium-final.safetensors) |
 
 The `yellow` model conditions on: **note density**, **min/max polyphony**, and **min/max note duration**. `prism` and `expressive` support a wider set of attribute controls: **key signature**, **pitch range**, **silence proportion**, **min/max note duration**, **note density (bar-level)**, **min/max polyphony (bar-level)**, **pitch class set (bar-level)**, and 18 **genre** groups. `expressive` additionally has **NOMML** (median metric depth) and piece-level switchable microtiming/velocity controls; `prism` does not.
+
+Each attribute applies to melodic tracks, drum tracks or both: on `yellow`, note density is drum-only and polyphony and note duration are melodic-only; on `prism` and `expressive`, bar-level note density is drum-only and silence proportion applies to both. `engine._analyzer.attribute_track_types()` and `GET /info` (`attribute_track_types`) give the mapping for a checkpoint.
+
+The weights are under the [Metacreation Non-Commercial Research License](https://huggingface.co/Metacreation/MIDI-GPT/blob/main/LICENSE-WEIGHTS.md) (non-commercial research, including research-creation, and education), separately from the MIT-licensed code. They were trained on [GigaMIDI](https://huggingface.co/datasets/Metacreation/GigaMIDI) v2.0.0.
 
 `InferenceEngine.from_pretrained(name)` downloads the current checkpoint for that model name.
 
@@ -75,7 +79,7 @@ A microtiming-aware checkpoint. The encoder emits `delta` offset tokens that cap
 
 Which `mask_mode` values work with each model:
 
-| `mask_mode` | yellow_medium | prism_medium | expressive_medium |
+| `mask_mode` | yellow_medium / yellow_small | prism_medium | expressive_medium |
 |---|---|---|---|
 | `"attention"` | yes | yes | yes |
 | `"attention_approx"` | yes | yes | yes |
@@ -85,7 +89,7 @@ Which `mask_mode` values work with each model:
 
 Which `model_dim` values are valid:
 
-| `model_dim` | yellow_medium | prism_medium | expressive_medium |
+| `model_dim` | yellow_medium / yellow_small | prism_medium | expressive_medium |
 |---|---|---|---|
 | 4 | yes | yes | yes |
 | 8 | yes | yes | yes |

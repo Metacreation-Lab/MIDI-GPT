@@ -132,13 +132,13 @@ Omit `model` to get the server's default model.
     "max_polyphony": true,
     "min_note_duration": true,
     "max_note_duration": true,
-    "supports_token_mask": true,
+    "supports_token_mask": false,
     "supports_attention_mask": true,
     "supports_attention_approx": true,
     "supports_attention_skip": true,
     "supports_remove": true,
     "supports_pitch_mask": true,
-    "pitch_mask_scale_presets": ["major", "minor", "..."],
+    "pitch_mask_scale_presets": ["blues", "chromatic", "dorian", "..."],
     "supports_rhythm_mask": true,
     "rhythm_mask_grid_units": ["eighth", "eighth_triplet", "..."],
     "supports_remix": true,
@@ -153,21 +153,23 @@ Omit `model` to get the server's default model.
     "note_density": 10,
     "min_polyphony": 10,
     "max_polyphony": 10,
-    "min_note_duration": 10,
-    "max_note_duration": 10
+    "min_note_duration": 6,
+    "max_note_duration": 6
   },
   "attribute_track_types": {
-    "note_density": "melodic",
+    "note_density": "drum",
     "min_polyphony": "melodic",
     "max_polyphony": "melodic",
-    "min_note_duration": "both",
-    "max_note_duration": "both"
+    "min_note_duration": "melodic",
+    "max_note_duration": "melodic"
   },
-  "resolution": 480
+  "resolution": 12
 }
 ```
 
 `model_dim_options` lists the window lengths (bars) the checkpoint was trained with, the valid values of `config.model_dim`; `max_context_tokens` is its context length. `switchable_velocity`/`switchable_microtiming` say whether the `velocity`/`microtiming` request controls are accepted, and `genres` lists the genre names it was trained with (empty when it has none). `attribute_track_types` says which tracks each attribute applies to (`"melodic"`, `"drum"` or `"both"`); a request that sets an attribute on the wrong kind of track gets a 422.
+
+The example is `yellow_medium`'s: on yellow, `note_density` applies only to drum tracks, polyphony and note duration only to melodic tracks. `resolution` is the checkpoint's ticks per quarter note.
 
 `supports_pitch_mask`/`supports_rhythm_mask`/`supports_remix` gate whether this model's checkpoint can accept the `pitch_mask`, `rhythm_mask`, and `remix` controls documented in [API Reference — `TrackPrompt`](api.md#trackprompt) — always check per model rather than assuming any two checkpoints agree.
 
@@ -216,6 +218,7 @@ Generate or infill music. Pass the full score and generation parameters; receive
   "status": "completed",
   "score": { ... },
   "seed": 12345,
+  "attempts": 1,
   "generated_bars": {"0": [2, 5]},
   "dropped_context": [3],
   "timing": {
@@ -228,8 +231,8 @@ Generate or infill music. Pass the full score and generation parameters; receive
     "context_tokens": 512,
     "generated_tokens": 128,
     "peak_context_tokens": 640,
-    "max_context_tokens": 1024,
-    "context_utilization": 0.5,
+    "max_context_tokens": 2048,
+    "context_utilization": 0.25,
     "tokens_per_second": 304.76,
     "truncated": false
   }
@@ -240,7 +243,27 @@ Generate or infill music. Pass the full score and generation parameters; receive
 
 `dropped_context` lists the context tracks left out so every step fits the model (see `config.context`); empty when nothing was dropped.
 
+`attempts` is how many tries the request took (1 unless a step was retried after failing `novelty_check`/`silence_check`).
+
 `status` is `"completed"` or `"cancelled"` (see [`POST /generate/{request_id}/cancel`](#post-generaterequest_idcancel) below) — a cancelled response still carries whatever partial `score` was generated before the cancel was observed. `context_tokens` is the last step's prompt and `generated_tokens` the whole request's output; `peak_context_tokens` is the fullest the model's window got in any step (prompt plus that step's tokens). `truncated: true` means generation stopped because it hit the context budget, not because it reached a natural end — it may be cut off mid-bar/mid-track.
+
+**Response** (`config.plan_only: true`)
+
+A dry run: the request is validated and planned, nothing is generated. `plan` has one entry per step, in the order they would run: the window (`[start, end)` bars), whether it is autoregressive, and the bars it would write per track. `dropped_context` is what context fitting would leave out. The example is 12 bars of AR on one track with `model_dim: 8` and `bars_per_step: "auto"`.
+
+```json
+{
+  "request_id": "a1b2c3d4...",
+  "model": "yellow_medium",
+  "status": "planned",
+  "model_dim": 8,
+  "plan": [
+    {"window": [0, 8], "autoregressive": true, "generate": {"0": [0, 1, 2, 3, 4, 5, 6, 7]}},
+    {"window": [4, 12], "autoregressive": true, "generate": {"0": [8, 9, 10, 11]}}
+  ],
+  "dropped_context": []
+}
+```
 
 **Response** (`config.num_candidates > 1`)
 
@@ -253,6 +276,7 @@ Generate or infill music. Pass the full score and generation parameters; receive
   "status": "completed",
   "base_seed": 12345,
   "generated_bars": {"0": [2, 5]},
+  "dropped_context": [],
   "candidates": [
     {"score": { ... }, "seed": 12345, "gen_count": 4, "error": null, "truncated": false},
     {"score": null, "seed": 12346, "gen_count": 0, "error": "...", "truncated": false}
@@ -337,12 +361,12 @@ curl -s -X POST http://localhost:8000/generate \
     },
     "request": {
       "tracks": [{"id": 0, "bars": [0, 1, 2, 3]}],
-      "config": {"model_dim": 4}
+      "config": {"model_dim": 4, "mask_mode": "attention"}
     }
   }'
 ```
 
-The response `score` field contains the filled-in notes in the same JSON shape.
+The response `score` field contains the filled-in notes in the same JSON shape. `mask_mode` defaults to `"token"`, which needs a `MaskBar` token that none of the released checkpoints has (`capabilities.supports_token_mask` in `/info`), so set one of the attention modes.
 
 ---
 
