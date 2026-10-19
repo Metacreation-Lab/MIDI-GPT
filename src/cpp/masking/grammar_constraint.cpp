@@ -59,6 +59,62 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
     // Default: everything disallowed
     std::fill(mask.begin(), mask.end(), true);
 
+    // Attribute tokens, in the encoder's order (encoder.cpp post_inst_attrs and bar_attrs). Prism and expressive
+    // write track-level key / silence / NOMML and bar-level density / polyphony before TimeSig; a grammar without
+    // them masked the token the model was trained to write next and pushed every generated bar off its layout.
+    // BarLevelOnsetPolyphonyMax shares its value with the track-level OnsetPolyphony alias: in_bar_ tells them apart.
+    auto allow_track_attrs = [&]() {
+        allow(TokenType::NoteDensity);
+        allow(TokenType::MinPolyphony);
+        allow(TokenType::MaxPolyphony);
+        allow(TokenType::MinNoteDuration);
+        allow(TokenType::MaxNoteDuration);
+        allow(TokenType::OnsetPolyphony);
+        allow(TokenType::PitchRange);
+        allow(TokenType::KeySignature);
+        allow(TokenType::SilenceProportion);
+        allow(TokenType::TrackLevelNomml);
+    };
+    auto allow_bar_attrs = [&]() {
+        allow(TokenType::Tension);
+        allow(TokenType::TensionDrum);
+        allow(TokenType::PitchClassSet);
+        allow(TokenType::BarLevelOnsetDensity);
+        allow(TokenType::BarLevelOnsetPolyphonyMin);
+        allow(TokenType::BarLevelOnsetPolyphonyMax);
+    };
+    auto allow_bar_body = [&]() {                  // what may follow the bar header
+        allow(TokenType::MaskBar);
+        allow(TokenType::TimeAbsolutePos);
+        allow(TokenType::VelocityLevel);
+        allow(TokenType::NoteOnset);
+        allow(TokenType::NotePitch);
+        allow(TokenType::DeltaDirection);
+        allow(TokenType::Delta);
+        if (!require_notes_ || has_notes_in_block_) allow(TokenType::BarEnd);
+    };
+    bool bar_attr_state = false;
+    switch (current_state_) {
+        case TokenType::Tension:
+        case TokenType::TensionDrum:
+        case TokenType::PitchClassSet:
+        case TokenType::BarLevelOnsetDensity:
+        case TokenType::BarLevelOnsetPolyphonyMin:
+            bar_attr_state = true;
+            break;
+        case TokenType::BarLevelOnsetPolyphonyMax:
+            bar_attr_state = in_bar_;
+            break;
+        default:
+            break;
+    }
+    if (bar_attr_state) {
+        allow_bar_attrs();
+        allow(TokenType::TimeSig);
+        allow_bar_body();
+        return;
+    }
+
     switch (current_state_) {
 
         case TokenType::PieceStart:
@@ -83,13 +139,7 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             break;
 
         case TokenType::Instrument:
-            allow(TokenType::NoteDensity);
-            allow(TokenType::MinPolyphony);
-            allow(TokenType::MaxPolyphony);
-            allow(TokenType::MinNoteDuration);
-            allow(TokenType::MaxNoteDuration);
-            allow(TokenType::OnsetPolyphony);
-            allow(TokenType::PitchRange);
+            allow_track_attrs();
             if (exact_bars_ < 0) {
                 allow(TokenType::Bar);
                 allow(TokenType::TrackEnd);
@@ -108,13 +158,10 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
         case TokenType::MaxNoteDuration:
         case TokenType::OnsetPolyphony:
         case TokenType::PitchRange:
-            allow(TokenType::NoteDensity);
-            allow(TokenType::MinPolyphony);
-            allow(TokenType::MaxPolyphony);
-            allow(TokenType::MinNoteDuration);
-            allow(TokenType::MaxNoteDuration);
-            allow(TokenType::OnsetPolyphony);
-            allow(TokenType::PitchRange);
+        case TokenType::KeySignature:
+        case TokenType::SilenceProportion:
+        case TokenType::TrackLevelNomml:
+            allow_track_attrs();
             if (exact_bars_ < 0) {
                 allow(TokenType::Bar);
                 allow(TokenType::TrackEnd);
@@ -127,8 +174,7 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
 
         case TokenType::Bar:
             allow(TokenType::TimeSig);
-            allow(TokenType::Tension);
-            allow(TokenType::PitchClassSet);
+            allow_bar_attrs();
             allow(TokenType::MaskBar);
             allow(TokenType::TimeAbsolutePos);
             // Encoder skips TimeAbsolutePos when onset==0, so allow direct
@@ -154,20 +200,6 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             allow(TokenType::Delta);
             if (!require_notes_ || has_notes_in_block_) allow(TokenType::BarEnd);
             allow(TokenType::FillInPlaceholder);
-            break;
-
-        case TokenType::Tension:
-        case TokenType::PitchClassSet:
-            allow(TokenType::Tension);
-            allow(TokenType::PitchClassSet);
-            allow(TokenType::MaskBar);
-            allow(TokenType::TimeAbsolutePos);
-            allow(TokenType::VelocityLevel);
-            allow(TokenType::NoteOnset);
-            allow(TokenType::NotePitch);
-            allow(TokenType::DeltaDirection);
-            allow(TokenType::Delta);
-            if (!require_notes_ || has_notes_in_block_) allow(TokenType::BarEnd);
             break;
 
         case TokenType::MaskBar:
