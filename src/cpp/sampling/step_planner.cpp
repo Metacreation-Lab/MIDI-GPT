@@ -56,10 +56,20 @@ void StepPlanner::find_steps_inner(std::vector<GenerationStep>& steps,
     // Context amount: AR gets all context before, infill centers
     int num_context = autoregressive ? model_dim - bps : (model_dim - bps) / 2;
 
+    // Group the tracks that have targets in this pass, tracks_per_step at a
+    // time (grouping raw track indices would split two selected neighbours
+    // across steps because of an unselected track between them).
+    std::vector<std::vector<int>> groups;
+    for (int ti = 0; ti < nt; ++ti) {
+        if (std::find(sel[ti].begin(), sel[ti].end(), true) == sel[ti].end()) continue;
+        if (groups.empty() || static_cast<int>(groups.back().size()) >= tps) groups.emplace_back();
+        groups.back().push_back(ti);
+    }
+
     // Iterate in (tracks_per_step, bars_per_step) grid
-    for (int i = 0; i < nt; i += tps) {
+    for (const auto& group : groups) {
         for (int j = 0; j < nb; j += bps) {
-            int num_tracks = std::min(tps, nt - i);
+            int num_tracks = static_cast<int>(group.size());
 
             // --- Determine window start t ---
             int t;
@@ -100,13 +110,12 @@ void StepPlanner::find_steps_inner(std::vector<GenerationStep>& steps,
             }
 
             int window_end = t + model_dim;
-            int a = i + num_tracks; // track range end
 
             // --- Build step matrix: sel * kernel, minus already generated ---
             std::vector<std::vector<bool>> step_matrix(nt, std::vector<bool>(nb, false));
-            for (int ti = i; ti < a; ++ti) {
+            for (int ki = 0; ki < num_tracks; ++ki) {
+                int ti = group[ki];
                 for (int bi = t; bi < std::min(window_end, nb); ++bi) {
-                    int ki = ti - i;
                     int kj = bi - t;
                     if (kj < model_dim && sel[ti][bi] && kernel[ki][kj]) {
                         step_matrix[ti][bi] = true;
@@ -115,7 +124,7 @@ void StepPlanner::find_steps_inner(std::vector<GenerationStep>& steps,
             }
             // For AR: remove already generated bars
             if (autoregressive) {
-                for (int ti = i; ti < a; ++ti) {
+                for (int ti : group) {
                     for (int bi = t; bi < std::min(window_end, nb); ++bi) {
                         if (generated[ti][bi]) {
                             step_matrix[ti][bi] = false;
@@ -197,7 +206,7 @@ void StepPlanner::find_steps_inner(std::vector<GenerationStep>& steps,
             }
 
             // Update generated matrix
-            for (int ti = i; ti < a; ++ti) {
+            for (int ti : group) {
                 for (int bi = t; bi < std::min(window_end, nb); ++bi) {
                     if (step_matrix[ti][bi]) {
                         generated[ti][bi] = true;
