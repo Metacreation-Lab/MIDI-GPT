@@ -33,7 +33,10 @@ void StepPlanner::find_steps_inner(std::vector<GenerationStep>& steps,
     int nb = static_cast<int>(mask_.selected[0].size());
     int model_dim = config_.model_dim;
     int bps = std::clamp(bars_per_step_, 1, model_dim);
-    int tps = std::clamp(tracks_per_step_, 1, nt);
+    // An AR step's prompt ends on one agent track (SessionState moves it last
+    // and cuts it at its first target bar), so AR tracks get a step each; a
+    // later AR track then sees the earlier ones' generated bars as context.
+    int tps = autoregressive ? 1 : std::clamp(tracks_per_step_, 1, nt);
 
     // Build effective selection: selected & (autoregressive XOR infill)
     // For AR:    sel = selected & autoregressive_mask
