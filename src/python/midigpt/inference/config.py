@@ -238,12 +238,6 @@ class InferenceConfig:
     tracks_per_step: int = 1  # tracks processed per step
     model_dim: int = 4  # context window size in bars (NOT vocab size)
     shuffle: bool = False  # random order for the infill steps
-    # Infill only: generate round(infill_probability * N) of the N infill
-    # target bars (at least 1), chosen at random with the request seed; the
-    # rest stay as they are and act as context. 1.0 = every target bar.
-    # AR targets are never dropped. SamplingSession.generated_bars says which
-    # bars were picked.
-    infill_probability: float = 1.0
     # Mask mode selector: one of "token", "attention", "attention_approx",
     # "attention_skip", or "remove". Controls how future bars are represented
     # in the context and how the model attends to them.
@@ -301,6 +295,13 @@ class InferenceConfig:
     # fallback rule, and http/server.py's /generate handler for the response
     # shape difference ("score" vs "candidates").
     num_candidates: int = 1
+
+    # Infill only: generate round(infill_probability * N) of the N infill
+    # target bars (at least 1), chosen at random with the request seed; the
+    # rest stay as they are and act as context. 1.0 = every target bar.
+    # AR targets are never dropped. SamplingSession.generated_bars says which
+    # bars were picked.
+    infill_probability: float = 1.0
 
     @classmethod
     def from_dict(cls, d: dict) -> "InferenceConfig":
