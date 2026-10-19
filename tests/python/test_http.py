@@ -77,6 +77,13 @@ def test_info_has_capabilities_and_attributes(tiny_gpt2, ghost_tokenizer, ghost_
     assert caps["genres"] == []
 
 
+def test_info_reports_attribute_track_types(tiny_gpt2, ghost_tokenizer, ghost_analyzer):
+    data = _client(_engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)).get("/info").json()
+    assert data["attribute_track_types"] == ghost_analyzer.attribute_track_types()
+    assert set(data["attribute_track_types"]) == set(data["attributes"])
+    assert set(data["attribute_track_types"].values()) <= {"melodic", "drum", "both"}
+
+
 @pytest.mark.parametrize("config, switchable, has_genres", [
     ("expressive_encoder.json", True, True),
     ("prism_encoder.json", False, True),

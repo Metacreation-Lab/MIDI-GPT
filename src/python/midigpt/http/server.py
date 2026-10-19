@@ -510,6 +510,8 @@ class HttpServer:
                 "checkpoint": entry.label,
                 "capabilities": self._capabilities(engine),
                 "attributes": engine._analyzer.attribute_sizes(),
+                # which tracks each attribute applies to: "melodic" | "drum" | "both"
+                "attribute_track_types": engine._analyzer.attribute_track_types(),
                 "resolution": engine._tokenizer._vocab.config().resolution,
             }
 

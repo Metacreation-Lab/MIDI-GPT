@@ -136,7 +136,12 @@ Omit `model` to get the server's default model.
     "supports_rhythm_mask": true,
     "rhythm_mask_grid_units": ["eighth", "eighth_triplet", "..."],
     "supports_remix": true,
-    "supports_streaming": true
+    "supports_streaming": true,
+    "model_dim_options": [4, 8],
+    "max_context_tokens": 2048,
+    "switchable_velocity": false,
+    "switchable_microtiming": false,
+    "genres": []
   },
   "attributes": {
     "note_density": 10,
@@ -145,9 +150,18 @@ Omit `model` to get the server's default model.
     "min_note_duration": 10,
     "max_note_duration": 10
   },
+  "attribute_track_types": {
+    "note_density": "melodic",
+    "min_polyphony": "melodic",
+    "max_polyphony": "melodic",
+    "min_note_duration": "both",
+    "max_note_duration": "both"
+  },
   "resolution": 480
 }
 ```
+
+`model_dim_options` lists the window lengths (bars) the checkpoint was trained with, the valid values of `config.model_dim`; `max_context_tokens` is its context length. `switchable_velocity`/`switchable_microtiming` say whether the `velocity`/`microtiming` request controls are accepted, and `genres` lists the genre names it was trained with (empty when it has none). `attribute_track_types` says which tracks each attribute applies to (`"melodic"`, `"drum"` or `"both"`); a request that sets an attribute on the wrong kind of track gets a 422.
 
 `supports_pitch_mask`/`supports_rhythm_mask`/`supports_remix` gate whether this model's checkpoint can accept the `pitch_mask`, `rhythm_mask`, and `remix` controls documented in [API Reference — `TrackPrompt`](api.md#trackprompt) — always check per model rather than assuming any two checkpoints agree.
 
