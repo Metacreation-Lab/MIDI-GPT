@@ -41,6 +41,17 @@ TEST_CASE("VelocityQuantizer reverse matches legacy reverse map") {
     }
 }
 
+TEST_CASE("VelocityQuantizer with 128 levels decodes every level to a velocity in it") {
+    // Most 128-level bins hold a single velocity; they used to decode to 0.
+    VelocityQuantizer vq(128);
+    CHECK(vq.decode(0) == 0);
+    for (int level = 1; level < 128; ++level) {
+        int v = vq.decode(level);
+        CHECK(v > 0);
+        CHECK(vq.encode(v) == level);
+    }
+}
+
 TEST_CASE("VelocityQuantizer roundtrip") {
     VelocityQuantizer vq(32);
     for (int v = 0; v < 128; ++v) {

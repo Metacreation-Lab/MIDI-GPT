@@ -84,7 +84,7 @@ private:
 // Fully derived from num_levels (= domain_size in config).
 //
 //   encode: v == 0 ? 0 : min(1 + v*(N-1)/128, N-1)
-//   decode: second element of the bin (bin[1])
+//   decode: second element of the bin (bin[1]), or its only element
 // ============================================================
 class VelocityQuantizer {
 public:
@@ -92,13 +92,16 @@ public:
         if (num_levels_ < 2) {
             throw std::runtime_error("VelocityQuantizer requires at least 2 levels");
         }
-        // Pre-compute the decode table: the second MIDI velocity in each bin.
-        // Matches original enums::DEFAULT_VELOCITY_MAP inverse exactly.
+        // Pre-compute the decode table: the second MIDI velocity in each bin
+        // (matches original enums::DEFAULT_VELOCITY_MAP inverse exactly), or
+        // the bin's only velocity: with 128 levels most bins hold one, and
+        // leaving those at 0 decoded every note at velocity 0 (note off).
         decode_table_.assign(num_levels_, 0);
         std::vector<int> count(num_levels_, 0);
         for (int v = 1; v < 128; ++v) {
             int level = encode(v);
-            if (++count[level] == 2) decode_table_[level] = v;
+            int n = ++count[level];
+            if (n == 1 || n == 2) decode_table_[level] = v;
         }
     }
 
