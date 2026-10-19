@@ -52,6 +52,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 try:
+    import anyio
     import uvicorn
     from fastapi import FastAPI, HTTPException, Response
     from fastapi.responses import StreamingResponse
@@ -423,13 +424,21 @@ class HttpServer:
                     # connection could leave a generation running
                     # unbounded while blocking every other request behind
                     # the still-held semaphore.
+                    #
+                    # On a disconnect Starlette cancels this task, and anyio
+                    # re-cancels every await in the finally: shield the wait,
+                    # or it raises at once, the decode thread keeps running
+                    # and on_finish() never runs (the queue slot leaks).
                     cancel_event.set()
-                    await gen_future
-                    self._cancel_events.pop(request_id, None)
-                    on_finish()  # release this request's _admit() queue slot
-                    import torch
-                    if torch.backends.mps.is_available():
-                        await loop.run_in_executor(None, torch.mps.empty_cache)
+                    try:
+                        with anyio.CancelScope(shield=True):
+                            await gen_future
+                            import torch
+                            if torch.backends.mps.is_available():
+                                await loop.run_in_executor(None, torch.mps.empty_cache)
+                    finally:
+                        self._cancel_events.pop(request_id, None)
+                        on_finish()  # release this request's _admit() queue slot
 
         return StreamingResponse(
             event_source(), media_type="text/event-stream", headers={"X-Request-Id": request_id}
