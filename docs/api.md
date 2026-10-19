@@ -186,6 +186,10 @@ Controls the step planner and sampling pipeline.
 | `tracks_per_step` | int or `"auto"` | 1 | Infill tracks generated together (AR is always one track per step). `"auto"`: all of them |
 | `ar_overlap` | float | 0.5 | `"auto"` `bars_per_step`, AR: the share of the window kept as history |
 | `min_overlap_bars` | int | 2 | `"auto"` `bars_per_step`, AR: at least this many bars of history |
+| `context` | str | `"auto"` | When a step would not fit the model (prompt + `budget_margin` × its estimated output), whole context tracks are left out of the request: `"auto"` drops `context_drop` first, then the tracks the model attends to least (attention from the end of the prompt, top layers, per token; a role table when the prompt is too long to read); `"listed"` drops only `context_drop`; `"all"` never drops. The window steps down only when dropping is not enough |
+| `context_drop` | list[int] | `[]` | Tracks to drop first, in this order |
+| `context_keep` | list[int] | `[]` | Tracks never dropped (targets never are) |
+| `budget_margin` | float | 1.25 | Safety factor on the estimated output tokens |
 | `plan_only` | bool | false | Return the plan (windows and the bars each step writes) without generating; `/generate` answers `{"status": "planned", "model_dim", "plan": [...]}` |
 | `mask_mode` | str | `"token"` | How to represent future bars: `"token"`, `"attention"`, `"attention_approx"`, `"attention_skip"`, `"remove"` |
 

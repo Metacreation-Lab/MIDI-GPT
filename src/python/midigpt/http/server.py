@@ -102,6 +102,7 @@ def _single_response(
         "score": result.to_dict() if result is not None else None,
         "seed": sess.resolved_seed,
         "generated_bars": {str(t): bars for t, bars in sess.generated_bars.items()},
+        "dropped_context": sess.dropped_context,
         "timing": {
             "model_forward_s": sess.model_forward_time,
             "encode_s": sess.encode_time,
@@ -128,6 +129,7 @@ def _candidates_response(
         "status": status,
         "base_seed": sess.resolved_seed,
         "generated_bars": {str(t): bars for t, bars in sess.generated_bars.items()},
+        "dropped_context": sess.dropped_context,
         "candidates": [
             {
                 "score": v["score"].to_dict() if v["score"] is not None else None,
@@ -547,7 +549,8 @@ class HttpServer:
 
                 if getattr(sess._request.config, "plan_only", False):   # a dry run: the steps, nothing generated
                     return {"request_id": body.request_id, "model": entry.id, "status": "planned",
-                            "model_dim": sess._request.config.model_dim, "plan": sess.plan_summary()}
+                            "model_dim": sess._request.config.model_dim, "plan": sess.plan_summary(),
+                            "dropped_context": sess.dropped_context}
 
                 sess.enable_profiling = True
                 num_candidates = getattr(req.config, "num_candidates", 1)

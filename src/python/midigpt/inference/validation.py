@@ -130,6 +130,15 @@ def validate_request(
         raise RequestValidationError(f"tracks_per_step must be > 0, or \"auto\" (got {cfg.tracks_per_step})")
     if not (0.0 <= cfg.ar_overlap < 1.0):
         raise RequestValidationError(f"ar_overlap must be in [0, 1) (got {cfg.ar_overlap})")
+    if cfg.context not in ("auto", "listed", "all"):
+        raise RequestValidationError(f'context must be "auto", "listed" or "all" (got {cfg.context!r})')
+    _ids = {tp.id for tp in request.tracks}
+    for _name in ("context_drop", "context_keep"):
+        _bad = [t for t in getattr(cfg, _name) if t not in _ids]
+        if _bad:
+            raise RequestValidationError(f"{_name} names tracks the request does not have: {_bad}")
+    if cfg.budget_margin < 1.0:
+        raise RequestValidationError(f"budget_margin must be >= 1 (got {cfg.budget_margin})")
     if cfg.min_overlap_bars < 0:
         raise RequestValidationError(f"min_overlap_bars must be >= 0 (got {cfg.min_overlap_bars})")
     if cfg.max_attempts < 1:

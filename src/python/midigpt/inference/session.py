@@ -11,7 +11,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 import midigpt._core as _core
-from midigpt.inference import planner
+from midigpt.inference import context_fit, planner
 from midigpt._converters import from_cpp, to_cpp
 from midigpt._core import GenerationStep  # Import GenerationStep directly from _core
 from midigpt._types import Bar, Score
@@ -606,16 +606,9 @@ class SamplingSession:
         # The session works on the remaining tracks, renumbered 0..n-1, and
         # _expand() puts the ignored ones back into every result.
         self._full_score = score
-        self._kept = sorted(tp.id for tp in request.tracks if not tp.ignore)
-        if len(self._kept) < len(score.tracks):
-            py_full = score if isinstance(score, Score) else from_cpp(score)
-            score = replace_cfg(py_full, tracks=[py_full.tracks[i] for i in self._kept])
-            request = replace_cfg(request, tracks=[
-                replace_cfg(tp, id=self._kept.index(tp.id))
-                for tp in sorted(request.tracks, key=lambda tp: tp.id) if not tp.ignore
-            ])
-        self._score = score
-        self._request = request
+        self._full_request = request
+        self._set_tracks(request)
+        request = self._request
         # cfg.seed < 0 means "caller doesn't care about reproducibility" —
         # resolve that to an actual random seed ONCE per session (not
         # per-attempt/per-candidate) so it stays consistent across every
@@ -690,6 +683,78 @@ class SamplingSession:
         # generated tokens in _sample_step (the streamed path), so a client
         # can show throughput and context use even between notes.
         self.progress_sink: "Callable[[], None] | None" = None
+
+        # Context tracks left out so every step fits (context_fit); request track ids. Set by _fit_context.
+        self.dropped_context: list[int] = []
+        self._fit_context()
+
+    def _set_tracks(self, request):
+        """The session works on the request's non-ignored tracks, renumbered 0..n-1 (_kept: their ids)."""
+        score = self._full_score
+        self._kept = sorted(tp.id for tp in request.tracks if not tp.ignore)
+        if len(self._kept) < len(score.tracks):
+            py_full = score if isinstance(score, Score) else from_cpp(score)
+            score = replace_cfg(py_full, tracks=[py_full.tracks[i] for i in self._kept])
+            request = replace_cfg(request, tracks=[
+                replace_cfg(tp, id=self._kept.index(tp.id))
+                for tp in sorted(request.tracks, key=lambda tp: tp.id) if not tp.ignore
+            ])
+        self._score = score
+        self._request = request
+
+    def _fit_context(self):
+        """Leave whole context tracks out of the request until every step of the plan fits the model: prompt +
+        budget_margin x estimated output < the model's context (midigpt.inference.context_fit). The window
+        step-down in run() stays the last resort."""
+        cfg = self._request.config
+        if getattr(cfg, "context", "auto") == "all":
+            return
+        steps = self._plan(self._build_selection_mask(), cfg)
+        if not steps:
+            return
+        max_ctx = self._model_max_context()
+        py = self._score if isinstance(self._score, Score) else from_cpp(self._score)
+        n = len(py.tracks)
+        vocab = self._engine._tokenizer._vocab
+        targets = {t for st in steps for t, _ in st.bars_to_generate}
+        measured = []    # (prompt tokens, owners, spans, need, per-track cost)
+        for st in steps:
+            gen = set(st.bars_to_generate)
+            _, state, _, use_spans, *_ = self._prepare_state(copy.deepcopy(py), st, emit_snapshot=False)
+            tokens = list(state.context_tokens())
+            agent = next(iter(gen))[0] if st.is_autoregressive else None
+            order = [t for t in range(n) if t != agent] + ([agent] if agent is not None else [])
+            owners = context_fit.track_of_token(tokens, vocab, order)
+            costs = {t: owners.count(t) for t in range(n)}
+            per_bar = context_fit.bar_tokens(tokens, vocab, owners)
+            need = len(tokens) + cfg.budget_margin * context_fit.estimate_generated(py, st, per_bar)
+            measured.append((tokens, owners, list(state.hidden_spans()) if use_spans else [], need, costs))
+        over = lambda dropped: [m[3] - sum(m[4][t] for t in dropped) >= max_ctx for m in measured]
+        if not any(over(())):
+            return
+        keep = {self._kept.index(t) for t in cfg.context_keep if t in self._kept}
+        candidates = [t for t in range(n) if t not in targets and t not in keep]
+        order = [self._kept.index(t) for t in cfg.context_drop if t in self._kept and self._kept.index(t) in candidates]
+        if cfg.context == "auto":
+            rest = [t for t in candidates if t not in order]
+            worst = max(range(len(measured)), key=lambda i: measured[i][3])
+            tokens, owners, spans, _, costs = measured[worst]
+            att = context_fit.attention_from_last(self._engine._model, tokens, spans) if len(tokens) < max_ctx else None
+            order += (context_fit.rank_by_attention(att, owners, rest, costs) if att is not None
+                      else context_fit.rank_by_roles(py, sorted(targets), rest, costs))
+        dropped = []
+        for t in order:
+            dropped.append(t)
+            if not any(over(dropped)):
+                break
+        if not dropped:
+            return
+        ids = {self._kept[t] for t in dropped}
+        self.dropped_context = sorted(ids)
+        log.info("context: leaving out tracks %s so every step fits", self.dropped_context)
+        self._set_tracks(replace_cfg(self._full_request, tracks=[
+            replace_cfg(tp, ignore=True, bars=[]) if tp.id in ids else tp for tp in self._full_request.tracks
+        ]))
 
     def __enter__(self):
         return self
@@ -1400,20 +1465,11 @@ class SamplingSession:
                         })
         return new_notes
 
-    def _sample_step(self, score: Score, step, temperature: float, seed: int = -1) -> Score:
-        try:
-            import torch
-        except ImportError:
-            raise ImportError("pip install midigpt[inference]") from None
-
-        # Seed the global torch RNG so torch.multinomial below is reproducible
-        # when the user pins a seed. seed<0 means "leave the RNG state alone"
-        # — i.e. continue from wherever the global generator currently is.
-        if seed is not None and seed >= 0:
-            torch.manual_seed(int(seed))
-            if torch.cuda.is_available():
-                torch.cuda.manual_seed_all(int(seed))
-
+    def _prepare_state(self, score, step, emit_snapshot: bool = True):
+        """The step's SessionState as _sample_step builds it: analyzer and user attributes on the tracks, the
+        context the request implies, piece-level controls. Returns (normalized score, state, mask_mode,
+        use_span_masks, encode start time, use_velocity, use_microtiming). Also used to measure prompts before generating (emit_snapshot=False).
+        """
         # Three attribute regimes:
         #  - Full AR  (tp.autoregressive, no prefix bars): skip analyzer; user
         #    attributes are forced via AttributeValueConstraint so the model
@@ -1520,7 +1576,7 @@ class SamplingSession:
         # During AR later steps would flip T→C as bars get committed; the
         # caller (e.g. studio) has a single static prediction to compare
         # against, so later snapshots would never line up.
-        if self.prompt_state_sink is not None and not self._snapshot_sent:
+        if emit_snapshot and self.prompt_state_sink is not None and not self._snapshot_sent:
             self._snapshot_sent = True
             try:
                 self.prompt_state_sink(self._snapshot_prompt_state(step))
@@ -1557,6 +1613,23 @@ class SamplingSession:
             use_microtiming=_use_microtiming,
             genre=_genre,
         )
+        return score, state, mask_mode, use_span_masks, t_enc, _use_velocity, _use_microtiming
+
+    def _sample_step(self, score: Score, step, temperature: float, seed: int = -1) -> Score:
+        try:
+            import torch
+        except ImportError:
+            raise ImportError("pip install midigpt[inference]") from None
+
+        # Seed the global torch RNG so torch.multinomial below is reproducible
+        # when the user pins a seed. seed<0 means "leave the RNG state alone"
+        # — i.e. continue from wherever the global generator currently is.
+        if seed is not None and seed >= 0:
+            torch.manual_seed(int(seed))
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(int(seed))
+
+        score, state, mask_mode, use_span_masks, t_enc, _use_velocity, _use_microtiming = self._prepare_state(score, step)
 
         _ctx_toks = state.context_tokens()
         context_len = len(_ctx_toks)

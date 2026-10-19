@@ -248,6 +248,14 @@ class InferenceConfig:
     ar_overlap: float = 0.5  # auto bars_per_step, AR: share of the window kept as history
     min_overlap_bars: int = 2  # auto bars_per_step, AR: at least this many bars of history
     plan_only: bool = False  # return the plan (steps, windows, bars) without generating
+    # When a step would not fit the model (prompt + budget_margin x its estimated output), whole context tracks
+    # are left out of the request (midigpt.inference.context_fit): "auto" drops context_drop first, then the
+    # tracks the model attends to least; "listed" only drops context_drop; "all" never drops. context_keep is
+    # never dropped. Track ids are the request's.
+    context: str = "auto"
+    context_drop: list = dataclasses.field(default_factory=list)
+    context_keep: list = dataclasses.field(default_factory=list)
+    budget_margin: float = 1.25
     shuffle: bool = False  # random order for the infill steps
     # Mask mode selector: one of "token", "attention", "attention_approx",
     # "attention_skip", or "remove". Controls how future bars are represented
