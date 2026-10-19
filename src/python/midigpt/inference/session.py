@@ -12,7 +12,7 @@ from tqdm import tqdm
 import midigpt._core as _core
 from midigpt._converters import from_cpp, to_cpp
 from midigpt._core import GenerationStep  # Import GenerationStep directly from _core
-from midigpt._types import Score
+from midigpt._types import Bar, Score
 from midigpt.inference.config import (
     GenerationRequest,
     InferenceConfig,
@@ -698,8 +698,21 @@ class SamplingSession:
                 self._snapshot_sent = False
                 n_steps = 0
                 for step in tqdm(planner.plan()):
-                    score = self._run_step(score, step, cfg_try)
+                    # An AR window that ran out of tokens is missing its last
+                    # bars (or every attempt came back empty): try the next
+                    # smaller window, which leaves more of the context for
+                    # generating. The smallest one keeps the cut-off result
+                    # (reported as truncated).
+                    step_down = step.is_autoregressive and d != candidates[-1]
+                    try:
+                        score = self._run_step(score, step, cfg_try)
+                    except RuntimeError:
+                        if step_down and self.truncated:
+                            raise _ContextOverflow(self.context_len, self.max_context_len) from None
+                        raise
                     n_steps += 1
+                    if step_down and self.truncated:
+                        raise _ContextOverflow(self.context_len, self.max_context_len)
                 if n_steps == 0:
                     log.warning(
                         "planner produced zero steps at model_dim=%d — nothing was "
@@ -1455,6 +1468,9 @@ class SamplingSession:
         if context_len >= model_max_ctx:
             raise _ContextOverflow(context_len, model_max_ctx)
         max_gen_tokens = model_max_ctx - context_len - 1
+        # gen_count runs across every step and attempt of the session; the
+        # budget is this attempt's own tokens.
+        gen_start = self.gen_count
         n_gen_tracks = sum(1 for tp in self._request.tracks
                            if not getattr(tp, "ignore", False) and tp.bars)
         if max_gen_tokens < n_gen_tracks * 20:
@@ -1542,14 +1558,14 @@ class SamplingSession:
         # lose the first note entirely or flood the stream with every
         # pre-existing context note mislabeled as "new".
         _last_streamed_partial = (
-            self._engine._tokenizer.normalize_output(from_cpp(state.result()))
+            self._restore_window(score, self._engine._tokenizer.normalize_output(from_cpp(state.result())), step)
             if self.note_sink is not None else None
         )
         kv = _KVRunner(self._engine._model, self._engine._initial_kv)
         with torch.no_grad():
             while (
                 not state.complete()
-                and self.gen_count < max_gen_tokens
+                and self.gen_count - gen_start < max_gen_tokens
                 and not (self.cancel_event is not None and self.cancel_event.is_set())
             ):
                 is_prefill = kv.is_prefill
@@ -1737,7 +1753,9 @@ class SamplingSession:
                 # decode path a natural completion uses, so it can't drift
                 # out of sync with what the final result will actually say.
                 if self.note_sink is not None and tname == "NoteDuration":
-                    partial = self._engine._tokenizer.normalize_output(from_cpp(state.result()))
+                    partial = self._restore_window(
+                        score, self._engine._tokenizer.normalize_output(from_cpp(state.result())), step
+                    )
                     new_notes = self._diff_notes(_last_streamed_partial, partial)
                     if new_notes:
                         self.note_sink(new_notes)
@@ -1763,7 +1781,9 @@ class SamplingSession:
                                       use_velocity=_use_vel_actual)
 
         t_dec = time.perf_counter()
-        result = self._engine._tokenizer.normalize_output(from_cpp(state.result()))
+        result = self._restore_window(
+            score, self._engine._tokenizer.normalize_output(from_cpp(state.result())), step
+        )
         if self.enable_profiling:
             self.decode_time += time.perf_counter() - t_dec
 
@@ -2192,7 +2212,9 @@ class SamplingSession:
             if row_errors[i] is not None:
                 results.append((None, gen_counts[i], row_errors[i], row_truncated[i]))
                 continue
-            result = self._engine._tokenizer.normalize_output(from_cpp(states[i].result()))
+            result = self._restore_window(
+                score, self._engine._tokenizer.normalize_output(from_cpp(states[i].result())), step
+            )
             if _tlogger is not None:
                 gap_bar_set = set()
                 for tp in self._request.tracks:
@@ -2532,6 +2554,28 @@ class SamplingSession:
                             count += 1
         return count
 
+    @staticmethod
+    def _restore_window(before: Score, after: Score, step) -> Score:
+        """Give every track of a decoded step result its full bar count back.
+
+        SessionState splices the bars outside the step window around the
+        decoded window. A window that decodes short (the token budget ran out,
+        or a partial decode mid-generation) would shift every later bar
+        earlier and shrink the track, so the missing window bars are put back
+        empty, where the window ends.
+        """
+        for tb, ta in zip(before.tracks, after.tracks):
+            missing = len(tb.bars) - len(ta.bars)
+            if missing <= 0:
+                continue
+            at = max(min(step.end_bar, len(tb.bars)) - missing, 0)
+            ta.bars[at:at] = [
+                Bar(ts_numerator=b.ts_numerator, ts_denominator=b.ts_denominator,
+                    beat_length=b.beat_length)
+                for b in tb.bars[at:at + missing]
+            ]
+        return after
+
     def _is_identical(self, a: Score, b: Score) -> bool:
         for tp in self._request.tracks:
             for bar_idx in tp.bars:
@@ -2545,8 +2589,10 @@ class SamplingSession:
                     if tp.id < len(b.tracks) and bar_idx < len(b.tracks[tp.id].bars)
                     else None
                 )
-                if ta is None or tb is None:
+                if ta is None and tb is None:
                     continue
+                if ta is None or tb is None:
+                    return False
                 if sorted((n.pitch, n.onset_ticks) for n in ta.notes) != sorted(
                     (n.pitch, n.onset_ticks) for n in tb.notes
                 ):
