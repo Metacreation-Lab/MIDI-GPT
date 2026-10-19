@@ -67,3 +67,13 @@ def test_full_probability_keeps_every_bar(tiny_gpt2, ghost_tokenizer, ghost_anal
     engine = InferenceEngine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
     req = GenerationRequest(tracks=[TrackPrompt(id=0, bars=[3, 1])], config=InferenceConfig(model_dim=4))
     assert engine.session(simple_score, req).generated_bars == {0: [1, 3]}
+
+
+def test_generated_bars_use_the_callers_track_ids(tiny_gpt2, ghost_tokenizer, ghost_analyzer, two_track_score):
+    # track 0 ignored: the session renumbers the tracks it keeps, generated_bars must not
+    engine = InferenceEngine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
+    req = GenerationRequest(tracks=[TrackPrompt(id=0, bars=[], ignore=True), TrackPrompt(id=1, bars=[0, 1, 2, 3])],
+                            config=InferenceConfig(seed=3, infill_probability=0.5, model_dim=4))
+    sess = engine.session(two_track_score, req)
+    assert list(sess.generated_bars) == [1] and len(sess.generated_bars[1]) == 2
+    assert sess._request.tracks[0].bars == sess.generated_bars[1]
