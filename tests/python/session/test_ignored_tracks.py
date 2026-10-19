@@ -89,3 +89,14 @@ def test_run_variations_falls_back_on_overflow(tiny_gpt2, ghost_tokenizer, ghost
     assert out[0]["error"] is None
     assert all(len(c["score"].tracks) == 3 and c["score"].tracks[1] == expected.tracks[1]
                for c in out if c["score"] is not None)
+
+
+def test_results_keep_the_input_tempo(tiny_gpt2, ghost_tokenizer, ghost_analyzer):
+    engine = InferenceEngine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
+    score = _score()
+    score.tempo = 434782                                  # not the 500000 default
+    for tracks in ([TrackPrompt(id=0, bars=[]), TrackPrompt(id=1, bars=[]), TrackPrompt(id=2, bars=[1, 2])],
+                   [TrackPrompt(id=0, bars=[]), TrackPrompt(id=1, bars=[], ignore=True),
+                    TrackPrompt(id=2, bars=[1, 2])]):
+        result, _, _ = _run(engine, score, tracks)
+        assert result.tempo == 434782

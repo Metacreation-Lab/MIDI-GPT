@@ -817,18 +817,21 @@ class SamplingSession:
         return max(self.peak_window, self.window_tokens())
 
     def _expand(self, result):
-        """`result` with the ignored tracks of the input score back in place."""
-        if result is None or len(self._kept) == len(self._full_score.tracks):
+        """`result` with the ignored tracks of the input score back in place, and the input's tempo
+        (tempo isn't tokenized, so a decoded score has the default)."""
+        if result is None:
             return result
         full = self._full_score if isinstance(self._full_score, Score) else from_cpp(self._full_score)
         py = result if isinstance(result, Score) else from_cpp(result)
+        if len(self._kept) == len(full.tracks):
+            return replace_cfg(py, tempo=full.tempo)
         if py.resolution != full.resolution:  # what a context track goes through
             tok = self._engine._tokenizer
             full = tok.normalize_output(tok.normalize_input(copy.deepcopy(full)))
         tracks = [copy.deepcopy(t) for t in full.tracks]
         for i, t_id in enumerate(self._kept):
             tracks[t_id] = py.tracks[i]
-        return replace_cfg(py, tracks=tracks)
+        return replace_cfg(py, tracks=tracks, tempo=full.tempo)
 
     @contextlib.contextmanager
     def _full_track_ids(self):

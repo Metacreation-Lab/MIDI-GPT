@@ -39,6 +39,7 @@ section above `[Unreleased]` before tagging.
 - **Step planning:** `tracks_per_step` grouped raw track indices instead of the selected tracks, and a step-down to a smaller `model_dim` regenerated every finished step instead of only the rest. ([#18](https://github.com/Metacreation-Lab/MIDI-GPT/pull/18))
 - **`run_variations`** (`num_candidates > 1`) now steps `model_dim` down on a context overflow instead of failing. ([#22](https://github.com/Metacreation-Lab/MIDI-GPT/pull/22))
 - **HTTP queue slots:** a streaming client that disconnected never gave its queue slot back, so after `max_queue` dropped streams every request got 503 ([#23](https://github.com/Metacreation-Lab/MIDI-GPT/pull/23)); a non-streaming request whose client went away kept generating to the end, holding the model and its queue slot. Both are now cancelled.
+- **Tempo:** generated scores came back at the default 120 BPM (500000 µs per beat) instead of the input's tempo.
 - **`InferenceConfig(bars_per_step="auto")`** (and `model_dim` / `tracks_per_step`) raised a `TypeError`; `"auto"` only worked through `from_dict` (JSON, HTTP).
 - **Model docs** link the current checkpoints and list context lengths. ([#24](https://github.com/Metacreation-Lab/MIDI-GPT/pull/24))
 
