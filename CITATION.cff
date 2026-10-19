@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata below."
 title: "MIDI-GPT: A Controllable Generative Model for Computer-Assisted Multitrack Music Composition"
-version: 0.2.3
+version: 0.4.0
 date-released: 2026-06-01
 url: "https://github.com/Metacreation-Lab/MIDI-GPT"
 repository-code: "https://github.com/Metacreation-Lab/MIDI-GPT"

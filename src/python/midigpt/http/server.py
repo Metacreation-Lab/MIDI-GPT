@@ -63,6 +63,7 @@ except ImportError:
         "Install with: pip install midigpt[http]"
     ) from None
 
+from midigpt import __version__
 from midigpt._types import Score
 from midigpt.inference import GenerationCancelled, GenerationRequest, InferenceEngine
 from midigpt.inference.config import GRID_UNIT_FRACTIONS, PITCH_SCALE_PRESETS
@@ -522,7 +523,7 @@ class HttpServer:
         app = FastAPI(
             title="MIDI-GPT HTTP Server",
             description="Stateless REST API for MIDI-GPT music generation.",
-            version="0.2.3",
+            version=__version__,
             lifespan=lifespan,
         )
 
