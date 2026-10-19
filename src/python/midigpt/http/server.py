@@ -337,7 +337,8 @@ class HttpServer:
 
     def _capabilities(self, engine: InferenceEngine) -> dict:
         ec = engine._tokenizer._vocab.config()
-        td_types = {d.get("type") for d in json.loads(ec.to_json()).get("token_domains", [])}
+        ec_json = json.loads(ec.to_json())
+        td_types = {d.get("type") for d in ec_json.get("token_domains", [])}
         ac_names = set(engine._analyzer.attribute_sizes().keys())
         return {
             "tension": "tension" in ac_names,
@@ -357,6 +358,9 @@ class HttpServer:
             "rhythm_mask_grid_units": sorted(GRID_UNIT_FRACTIONS),
             "supports_remix": "TimeAbsolutePos" in td_types and "NoteOnset" in td_types,
             "supports_streaming": True,
+            # window lengths (bars) the checkpoint was trained with: valid config.model_dim values
+            "model_dim_options": sorted(ec_json.get("num_bars_map") or []),
+            "max_context_tokens": engine._model.max_context(),
         }
 
     async def _stream_generate(
