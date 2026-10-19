@@ -338,8 +338,10 @@ class HttpServer:
 
     def _capabilities(self, engine: InferenceEngine) -> dict:
         ec = engine._tokenizer._vocab.config()
-        td_types = {d.get("type") for d in json.loads(ec.to_json()).get("token_domains", [])}
+        ec_json = json.loads(ec.to_json())
+        td_types = {d.get("type") for d in ec_json.get("token_domains", [])}
         ac_names = set(engine._analyzer.attribute_sizes().keys())
+        genres = getattr(ec, "genre_grouping", None)
         return {
             "tension": "tension" in ac_names,
             "note_density": "note_density" in ac_names,
@@ -358,6 +360,13 @@ class HttpServer:
             "rhythm_mask_grid_units": sorted(GRID_UNIT_FRACTIONS),
             "supports_remix": "TimeAbsolutePos" in td_types and "NoteOnset" in td_types,
             "supports_streaming": True,
+            # window lengths (bars) the checkpoint was trained with: valid config.model_dim values
+            "model_dim_options": sorted(ec_json.get("num_bars_map") or []),
+            "max_context_tokens": engine._model.max_context(),
+            # request.controls the checkpoint accepts (same rules as validation.py)
+            "switchable_velocity": bool(ec_json.get("switchable_velocity", False)),
+            "switchable_microtiming": bool(ec_json.get("switchable_microtiming", False)),
+            "genres": [genres.decode(i) for i in range(genres.num_genres())] if genres is not None else [],
         }
 
     async def _stream_generate(

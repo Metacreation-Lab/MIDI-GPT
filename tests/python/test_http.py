@@ -73,6 +73,32 @@ def test_info_has_capabilities_and_attributes(tiny_gpt2, ghost_tokenizer, ghost_
         assert key in caps, f"missing capability: {key}"
     assert "attributes" in data
     assert isinstance(data["attributes"], dict)
+    assert caps["switchable_velocity"] is False and caps["switchable_microtiming"] is False
+    assert caps["genres"] == []
+
+
+@pytest.mark.parametrize("config, switchable, has_genres", [
+    ("expressive_encoder.json", True, True),
+    ("prism_encoder.json", False, True),
+    ("yellow_config.json", False, False),
+])
+def test_info_reports_piece_controls(tiny_gpt2, ghost_tokenizer, ghost_analyzer, config, switchable, has_genres):
+    """The controls a client may put in request.controls, read from the encoder config."""
+    import midigpt._core as _core
+    from types import SimpleNamespace
+    from pathlib import Path
+    from midigpt.attributes import AttributeAnalyzer
+    from midigpt.tokenizer import Tokenizer
+
+    cfg = _core.EncoderConfig.from_json((Path(__file__).resolve().parents[2] / "models" / config).read_text())
+    analyzer = AttributeAnalyzer.from_config(cfg)
+    engine = SimpleNamespace(_tokenizer=Tokenizer(cfg, analyzer), _analyzer=analyzer, _model=tiny_gpt2)
+    server = HttpServer({"m": ModelEntry(id="m", engine=_engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer), label="m")},
+                        default_model="m")
+    caps = server._capabilities(engine)
+    assert caps["switchable_velocity"] is switchable
+    assert caps["switchable_microtiming"] is switchable
+    assert bool(caps["genres"]) is has_genres
 
 
 # --------------------------------------------------------------------------- #
