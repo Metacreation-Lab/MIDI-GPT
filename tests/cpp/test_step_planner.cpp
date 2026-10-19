@@ -119,7 +119,7 @@ TEST_CASE("StepPlanner: ignored tracks excluded from steps") {
 TEST_CASE("StepPlanner: tracks_per_step=2 covers both tracks in a single step") {
     SelectionMask m;
     m.selected = {{true, true}, {true, true}};
-    m.autoregressive = {true, true};
+    m.autoregressive = {false, false};
     m.ignore = {false, false};
     EncoderConfig cfg; cfg.model_dim = 2;
     StepPlanner p(m, cfg, /*bps=*/0, /*tps=*/2);
@@ -130,6 +130,22 @@ TEST_CASE("StepPlanner: tracks_per_step=2 covers both tracks in a single step") 
     for (auto& s : steps) max_tracks_in_step =
         std::max<int>(max_tracks_in_step, s.track_indices.size());
     CHECK(max_tracks_in_step >= 2);
+}
+
+TEST_CASE("StepPlanner: AR tracks get a step each, whatever tracks_per_step") {
+    SelectionMask m;
+    m.selected = {{true, true}, {true, true}};
+    m.autoregressive = {true, true};
+    m.ignore = {false, false};
+    EncoderConfig cfg; cfg.model_dim = 2;
+    StepPlanner p(m, cfg, /*bps=*/0, /*tps=*/2);
+    auto steps = p.plan();
+    REQUIRE(steps.size() == 2);
+    for (auto& s : steps) {
+        std::set<int> gen_tracks;
+        for (auto& [t, b] : s.bars_to_generate) gen_tracks.insert(t);
+        CHECK(gen_tracks.size() == 1);
+    }
 }
 
 // ---------------------------------------------------------------------------

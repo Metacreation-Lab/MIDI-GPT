@@ -59,6 +59,8 @@ private:
     // records the agent's original position so result() can restore the
     // user-visible track order.
     int                ar_original_agent_idx_ = -1;
+    // AR step encoded with the agent track cut before its first target bar.
+    bool               ar_partial_ = false;
 
     // Bars OUTSIDE the step's window, saved per track (in original track
     // order) before the trim/shift mutations. result() splices them back

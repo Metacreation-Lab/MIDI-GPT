@@ -137,6 +137,7 @@ SessionState::SessionState(
         }
 
         if (agent_track >= 0) {
+            ar_partial_ = true;
             int first_gen_bar = step_.end_bar;
             for (const auto& [tr, br] : step_.bars_to_generate) {
                 if (tr == agent_track && br < first_gen_bar) {
@@ -221,13 +222,19 @@ SessionState::SessionState(
             return false;
         };
         while (pop_if(TokenType::PieceEnd) || pop_if(TokenType::TrackEnd)) {}
-        int N = static_cast<int>(step_.bars_to_generate.size());
-        for (int i = 0; i < N - 1; ++i) {
-            if (!pop_if(TokenType::BarEnd)) break;
-            if (!pop_if(TokenType::TimeSig)) break;
-            if (!pop_if(TokenType::Bar))     break;
+        // With partial encoding the agent track stops before its first target
+        // bar: there are no empty target bars to pop, and the prompt already
+        // ends on its last context bar's BarEnd (or its header). Popping more
+        // would reopen that context bar and let the model add notes to it.
+        if (!ar_partial_) {
+            int N = static_cast<int>(step_.bars_to_generate.size());
+            for (int i = 0; i < N - 1; ++i) {
+                if (!pop_if(TokenType::BarEnd)) break;
+                if (!pop_if(TokenType::TimeSig)) break;
+                if (!pop_if(TokenType::Bar))     break;
+            }
+            pop_if(TokenType::BarEnd);
         }
-        pop_if(TokenType::BarEnd);
     } else {
         // For infill: truncate at the first FILL_IN_START token
         // The model generates fill blocks from this point
