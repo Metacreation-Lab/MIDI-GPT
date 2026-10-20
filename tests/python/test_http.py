@@ -148,6 +148,9 @@ def test_generate_reports_generated_bars(tiny_gpt2, ghost_tokenizer, ghost_analy
     torch.manual_seed(0)
     client = _client(_engine(tiny_gpt2, ghost_tokenizer, ghost_analyzer))
     body = _generate_body(simple_score)
+    # keeps the random model's bars short: unbounded, its output can fill the 512-token context
+    # (it did on Linux's torch build) and the request fails before reporting anything
+    body["request"]["config"]["density_hard_limit"] = 4
     assert client.post("/generate", json=body).json()["generated_bars"] == {"0": [0, 1, 2, 3]}
     body["request"]["config"]["infill_probability"] = 0.5
     picked = client.post("/generate", json=body).json()["generated_bars"]["0"]
