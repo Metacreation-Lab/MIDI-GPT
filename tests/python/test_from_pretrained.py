@@ -3,7 +3,6 @@ used when the Hub can't be reached or refuses, and a gated repo with nothing cac
 
 from __future__ import annotations
 
-import httpx
 import huggingface_hub
 import pytest
 from huggingface_hub import HfApi
@@ -15,8 +14,11 @@ REPO = "Metacreation/MIDI-GPT"
 
 
 def _gated() -> GatedRepoError:
-    request = httpx.Request("GET", f"https://huggingface.co/api/models/{REPO}")
-    return GatedRepoError("401 gated", response=httpx.Response(401, request=request))
+    # built without __init__, whose response argument is an httpx or requests object depending on the
+    # huggingface_hub version (the wheel tests don't install httpx)
+    exc = GatedRepoError.__new__(GatedRepoError)
+    Exception.__init__(exc, "401 gated")
+    return exc
 
 
 @pytest.fixture
@@ -64,7 +66,7 @@ def test_gated_without_cache_says_what_to_do(hub, monkeypatch):
         InferenceEngine.from_pretrained("yellow_medium")
 
 
-@pytest.mark.parametrize("exc", [_gated(), httpx.ConnectError("offline")])
+@pytest.mark.parametrize("exc", [_gated(), ConnectionError("offline")])
 def test_uses_the_cached_checkpoint_when_the_hub_fails(hub, monkeypatch, exc):
     d = hub["cache"]("yellow_medium-step1000.safetensors", "yellow_medium-final.safetensors",
                      "prism_medium-final.safetensors")
@@ -79,17 +81,17 @@ def test_cached_fallback_prefers_the_main_revision(hub, monkeypatch, tmp_path):
     refs = tmp_path / f"models--{REPO.replace('/', '--')}" / "refs"
     refs.mkdir()
     (refs / "main").write_text("current")
-    _hub_raises(monkeypatch, httpx.ConnectError("offline"))
+    _hub_raises(monkeypatch, ConnectionError("offline"))
     assert InferenceEngine.from_pretrained("yellow_medium") == str(current / "yellow_medium-final.safetensors")
 
 
 def test_cached_fallback_picks_the_highest_step(hub, monkeypatch):
     d = hub["cache"]("prism_medium-step900.safetensors", "prism_medium-step12000.safetensors")
-    _hub_raises(monkeypatch, httpx.ConnectError("offline"))
+    _hub_raises(monkeypatch, ConnectionError("offline"))
     assert InferenceEngine.from_pretrained("prism_medium") == str(d / "prism_medium-step12000.safetensors")
 
 
 def test_other_errors_without_cache_are_raised_unchanged(hub, monkeypatch):
-    _hub_raises(monkeypatch, httpx.ConnectError("offline"))
-    with pytest.raises(httpx.ConnectError):
+    _hub_raises(monkeypatch, ConnectionError("offline"))
+    with pytest.raises(ConnectionError):
         InferenceEngine.from_pretrained("yellow_medium")
