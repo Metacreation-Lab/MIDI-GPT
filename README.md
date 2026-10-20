@@ -4,7 +4,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/midigpt)](https://pypi.org/project/midigpt/)
 [![Python](https://img.shields.io/pypi/pyversions/midigpt)](https://pypi.org/project/midigpt/)
-[![CI](https://img.shields.io/github/actions/workflow/status/Metacreation-Lab/MIDI-GPT/wheels.yml?branch=main&label=CI)](https://github.com/Metacreation-Lab/MIDI-GPT/actions/workflows/wheels.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/Metacreation-Lab/MIDI-GPT/wheels.yml?event=push&label=CI)](https://github.com/Metacreation-Lab/MIDI-GPT/actions/workflows/wheels.yml)
 [![Docs](https://img.shields.io/badge/docs-online-blue)](https://metacreation-lab.github.io/MIDI-GPT/)
 [![Code license: MIT](https://img.shields.io/github/license/Metacreation-Lab/MIDI-GPT?label=code%20license)](LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2501.17011-b31b1b)](https://arxiv.org/abs/2501.17011)
