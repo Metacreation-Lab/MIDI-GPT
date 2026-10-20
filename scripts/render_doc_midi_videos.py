@@ -2,9 +2,9 @@
 """Render MIDI-GPT documentation examples to MP4 piano-roll videos.
 
 This is intentionally repo-local and independent of the old transition demo
-pipeline.  It consumes generated MIDI files from docs/assets/midi, renders a
-simple synthesized audio track, and encodes an MP4 with a piano-roll
-visualization for each example.
+pipeline.  It renders the examples listed in docs/assets/midi/examples.json
+(written by scripts/gen_doc_examples.py): a synthesized audio track and an MP4
+with a piano-roll visualization for each one.
 
 Each track is rendered in its own horizontal lane. Generated tracks are
 highlighted in gold; context tracks use distinct palette colors.
@@ -27,198 +27,18 @@ import symusic
 from PIL import Image, ImageDraw, ImageFont
 
 
-DEFAULT_EXAMPLES = [
-    # ── Californication: drums ─────────────────────────────────────────────
-    {
-        "id": "track_sampling_drums_calif_density1",
-        "task": "Track Sampling",
-        "title": "Californication: sparse drums",
-        "midi": "sampling_drums_calif_density1.mid",
-        "prompt": "prompt_californication.mid",
-        "controls": "note_density = 1",
-        "track_names": ["acoustic_guitar_steel", "electric_bass_finger", "drums"],
-        "generated_tracks": [2],
-    },
-    {
-        "id": "track_sampling_drums_calif_density3",
-        "task": "Track Sampling",
-        "title": "Californication: medium drums",
-        "midi": "sampling_drums_calif_density3.mid",
-        "prompt": "prompt_californication.mid",
-        "controls": "note_density = 3",
-        "track_names": ["acoustic_guitar_steel", "electric_bass_finger", "drums"],
-        "generated_tracks": [2],
-    },
-    {
-        "id": "track_sampling_drums_calif_density8",
-        "task": "Track Sampling",
-        "title": "Californication: dense drums",
-        "midi": "sampling_drums_calif_density8.mid",
-        "prompt": "prompt_californication.mid",
-        "controls": "note_density = 8",
-        "track_names": ["acoustic_guitar_steel", "electric_bass_finger", "drums"],
-        "generated_tracks": [2],
-    },
-    # ── Bach BWV 1052: cello ───────────────────────────────────────────────
-    {
-        "id": "track_sampling_cello_staccato",
-        "task": "Track Sampling",
-        "title": "Bach BWV 1052: staccato cello",
-        "midi": "sampling_cello_staccato.mid",
-        "prompt": "prompt_bach.mid",
-        "controls": "max_polyphony = 0, max_note_duration = 1",
-        "track_names": ["violin", "viola", "cello", "cello"],
-        "generated_tracks": [3],
-    },
-    {
-        "id": "track_sampling_cello_dur_16th",
-        "task": "Track Sampling",
-        "title": "Bach BWV 1052: cello 16th notes",
-        "midi": "sampling_cello_dur_16th.mid",
-        "prompt": "prompt_bach.mid",
-        "controls": "max_polyphony = 0, max_note_duration = 1",
-        "track_names": ["violin", "viola", "cello", "cello"],
-        "generated_tracks": [3],
-    },
-    {
-        "id": "track_sampling_cello_dur_8th",
-        "task": "Track Sampling",
-        "title": "Bach BWV 1052: cello 8th notes",
-        "midi": "sampling_cello_dur_8th.mid",
-        "prompt": "prompt_bach.mid",
-        "controls": "max_polyphony = 0, max_note_duration = 2",
-        "track_names": ["violin", "viola", "cello", "cello"],
-        "generated_tracks": [3],
-    },
-    {
-        "id": "track_sampling_cello_dur_4th",
-        "task": "Track Sampling",
-        "title": "Bach BWV 1052: cello quarter notes",
-        "midi": "sampling_cello_dur_4th.mid",
-        "prompt": "prompt_bach.mid",
-        "controls": "max_polyphony = 0, max_note_duration = 3",
-        "track_names": ["violin", "viola", "cello", "cello"],
-        "generated_tracks": [3],
-    },
-    {
-        "id": "track_sampling_cello_dur_half",
-        "task": "Track Sampling",
-        "title": "Bach BWV 1052: cello half notes",
-        "midi": "sampling_cello_dur_half.mid",
-        "prompt": "prompt_bach.mid",
-        "controls": "max_polyphony = 0, max_note_duration = 4",
-        "track_names": ["violin", "viola", "cello", "cello"],
-        "generated_tracks": [3],
-    },
-    {
-        "id": "track_sampling_cello_sustained",
-        "task": "Track Sampling",
-        "title": "Bach BWV 1052: sustained cello",
-        "midi": "sampling_cello_sustained.mid",
-        "prompt": "prompt_bach.mid",
-        "controls": "max_polyphony = 0, min_note_duration = 4",
-        "track_names": ["violin", "viola", "cello", "cello"],
-        "generated_tracks": [3],
-    },
-    # ── Black Magic Woman: guitar solo ─────────────────────────────────────
-    {
-        "id": "bmw_solo_resample1",
-        "task": "Track Sampling",
-        "title": "Black Magic Woman: guitar solo (1)",
-        "midi": "bmw_solo_resample1.mid",
-        "prompt": "prompt_bmw.mid",
-        "controls": "model-sampled controls",
-        "track_names": ["electric_bass_finger", "overdriven_guitar", "drums"],
-        "generated_tracks": [1],
-    },
-    {
-        "id": "bmw_solo_resample2",
-        "task": "Track Sampling",
-        "title": "Black Magic Woman: guitar solo (2)",
-        "midi": "bmw_solo_resample2.mid",
-        "prompt": "prompt_bmw.mid",
-        "controls": "model-sampled controls",
-        "track_names": ["electric_bass_finger", "overdriven_guitar", "drums"],
-        "generated_tracks": [1],
-    },
-    # ── SSBM All Star: bar infill harp ────────────────────────────────────
-    {
-        "id": "infill_allstar_dur_16th",
-        "task": "Bar Infilling",
-        "title": "SSBM All Star: harp 16th notes",
-        "midi": "infill_allstar_dur_16th.mid",
-        "prompt": "prompt_harp.mid",
-        "controls": "max_note_duration = 1",
-        "target_bars": [4, 5, 6, 7],
-        "track_names": ["tubular_bells", "string_ensemble_1", "orchestral_harp"],
-        "generated_tracks": [2],
-    },
-    {
-        "id": "infill_allstar_dur_8th",
-        "task": "Bar Infilling",
-        "title": "SSBM All Star: harp 8th notes",
-        "midi": "infill_allstar_dur_8th.mid",
-        "prompt": "prompt_harp.mid",
-        "controls": "max_note_duration = 2",
-        "target_bars": [4, 5, 6, 7],
-        "track_names": ["tubular_bells", "string_ensemble_1", "orchestral_harp"],
-        "generated_tracks": [2],
-    },
-    # ── SSBM All Star: AR harp (original examples) ────────────────────────
-    {
-        "id": "harp_monophonic",
-        "task": "Autoregressive Continuation",
-        "title": "SSBM All Star: rapid arpeggios",
-        "midi": "harp_monophonic.mid",
-        "prompt": "prompt_harp.mid",
-        "controls": "max_note_duration = 1",
-        "target_bars": [4, 5, 6, 7],
-        "track_names": ["tubular_bells", "string_ensemble_1", "orchestral_harp"],
-        "generated_tracks": [2],
-    },
-    {
-        "id": "harp_chordal",
-        "task": "Autoregressive Continuation",
-        "title": "SSBM All Star: slower arpeggios",
-        "midi": "harp_chordal.mid",
-        "prompt": "prompt_harp.mid",
-        "controls": "max_polyphony = 4",
-        "target_bars": [4, 5, 6, 7],
-        "track_names": ["tubular_bells", "string_ensemble_1", "orchestral_harp"],
-        "generated_tracks": [2],
-    },
-    # ── Joe Hisaishi Summer: multi-step composition ────────────────────────
-    {
-        "id": "summer_final",
-        "task": "Multi-Step Composition",
-        "title": "Summer: continuation + guitar + drums",
-        "midi": "summer_final.mid",
-        "prompt": "prompt_ar.mid",
-        "controls": "guitar: max_polyphony=0, max_note_duration=1  |  drums: note_density=9",
-        "target_bars": [4, 5, 6, 7],
-        "track_names": [
-            "acoustic_grand_piano",
-            "electric_bass_finger",
-            "synth_strings_1",
-            "acoustic_guitar_nylon",
-            "drums",
-        ],
-        "generated_tracks": [3, 4],
-    },
-]
-
-
 # ── Colors ────────────────────────────────────────────────────────────────────
 
+# Context colors; none close to GEN_COLOR, so a context track never looks generated
 TRACK_COLORS = [
     (51, 149, 255),
-    (255, 173, 51),
     (86, 205, 127),
-    (237, 92, 112),
     (169, 116, 255),
+    (237, 92, 112),
     (42, 194, 198),
-    (238, 217, 74),
     (244, 134, 193),
+    (140, 200, 255),
+    (160, 160, 175),
 ]
 GEN_COLOR: tuple[int, int, int] = (255, 200, 50)
 
@@ -711,6 +531,8 @@ def encode_video(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--midi-dir", type=Path, default=Path("docs/assets/midi"))
+    parser.add_argument("--examples", type=Path, default=None,
+                        help="Examples to render (default: <midi-dir>/examples.json)")
     parser.add_argument("--out-dir", type=Path, default=Path("docs/assets/video"))
     parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument("--fps", type=int, default=30)
@@ -728,10 +550,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    selected = DEFAULT_EXAMPLES
+    examples = json.loads((args.examples or args.midi_dir / "examples.json").read_text())
+    selected = examples
     if args.only:
         wanted = set(args.only)
-        selected = [ex for ex in DEFAULT_EXAMPLES if ex["id"] in wanted or ex["midi"] in wanted]
+        selected = [ex for ex in examples if ex["id"] in wanted or ex["midi"] in wanted]
     if not selected:
         raise SystemExit("No examples matched --only filters.")
     soundfont = None if args.soundfont == "none" else find_soundfont(args.soundfont)

@@ -1,318 +1,200 @@
-import os
+#!/usr/bin/env python3
+"""Generate the MIDI files for docs/examples.md.
+
+Every prompt is an 8-bar excerpt of a CC0 or public-domain piece in tests/midi/
+(see tests/midi/SOURCES.md). Writes the prompts and generations to
+docs/assets/midi/, and docs/assets/midi/examples.json, the list of examples that
+scripts/render_doc_midi_videos.py renders to video.
+
+    python scripts/gen_doc_examples.py [--model yellow_medium]
+"""
+
+from __future__ import annotations
+
+import argparse
 import copy
-import torch
-from midigpt import Score, Track, Bar, Note
-from midigpt.inference import InferenceEngine, GenerationRequest, InferenceConfig, TrackPrompt
+import json
+from pathlib import Path
 
-# Create output dir if not exists
-os.makedirs("docs/assets/midi", exist_ok=True)
+from midigpt import Bar, Score, Track
+from midigpt.inference import GenerationRequest, InferenceConfig, InferenceEngine, TrackPrompt
 
-# Set default seed
-SEED = 42
+REPO = Path(__file__).resolve().parents[1]
+SRC = REPO / "tests" / "midi"
+OUT = REPO / "docs" / "assets" / "midi"
+N_BARS = 8
+BARS = list(range(N_BARS))
+CONFIG = dict(model_dim=8, mask_mode="attention")
 
-print("Loading InferenceEngine...")
-engine = InferenceEngine.from_pretrained("yellow")
-
-def slice_score(score: Score, start_bar: int, num_bars: int) -> Score:
-    """Slice score to include start_bar to start_bar + num_bars."""
-    new_tracks = []
-    for track in score.tracks:
-        sliced_bars = [copy.deepcopy(b) for b in track.bars[start_bar : start_bar + num_bars]]
-        new_track = Track(
-            bars=sliced_bars,
-            instrument=track.instrument,
-            track_type=track.track_type,
-            attributes=dict(track.attributes)
-        )
-        new_tracks.append(new_track)
-    return Score(new_tracks, resolution=score.resolution, tempo=score.tempo)
-
-# --------------------------------------------------------------------------- #
-# Scenario 1: Track Sampling (Drums) — Hotel California (Rock/Pop)
-# --------------------------------------------------------------------------- #
-print("\n--- Scenario 1: Drum Track Sampling (Hotel California) ---")
-hotel_score = Score.from_midi("tmp/midi_examples/HotelCalifornia.mid")
-hotel_score = engine._tokenizer.normalize_input(hotel_score)
-hotel_slice = slice_score(hotel_score, 16, 8)
-
-# Context tracks: Guitar (0) and Bass (2)
-guitar_context = copy.deepcopy(hotel_slice.tracks[0])
-bass_context = copy.deepcopy(hotel_slice.tracks[2])
-
-# Target track: Drums (5)
-drums_target = copy.deepcopy(hotel_slice.tracks[5])
-drums_target.track_type = "drum"
-drums_target.instrument = 0
-for bar in drums_target.bars:
-    bar.notes = []
-
-score_for_drums = Score(
-    tracks=[guitar_context, bass_context, drums_target],
-    resolution=hotel_slice.resolution,
-    tempo=hotel_slice.tempo
-)
-
-# Save prompt
-prompt_drums_score = copy.deepcopy(score_for_drums)
-prompt_drums_score.to_midi("docs/assets/midi/prompt_sampling.mid")
-print("Saved prompt_sampling.mid")
-
-# 1. Sparse Drums
-print("Generating sparse drums...")
-req_sparse_drums = GenerationRequest(
-    tracks=[
-        TrackPrompt(id=0, bars=[], ignore=False),
-        TrackPrompt(id=1, bars=[], ignore=False),
-        TrackPrompt(id=2, bars=list(range(8)), ignore=False, attributes={"note_density": 1})
-    ],
-    config=InferenceConfig(model_dim=8, mask_mode="attention", seed=SEED, max_attempts=5, tracks_per_step=2)
-)
-res_sparse_drums = engine.session(score_for_drums, req_sparse_drums).run()
-res_sparse_drums.to_midi("docs/assets/midi/sampling_drums_sparse.mid")
-print("Saved sampling_drums_sparse.mid")
-
-# 2. Dense Drums
-print("Generating dense drums...")
-req_dense_drums = GenerationRequest(
-    tracks=[
-        TrackPrompt(id=0, bars=[], ignore=False),
-        TrackPrompt(id=1, bars=[], ignore=False),
-        TrackPrompt(id=2, bars=list(range(8)), ignore=False, attributes={"note_density": 8})
-    ],
-    config=InferenceConfig(model_dim=8, mask_mode="attention", seed=SEED, max_attempts=5, tracks_per_step=2)
-)
-res_dense_drums = engine.session(score_for_drums, req_dense_drums).run()
-res_dense_drums.to_midi("docs/assets/midi/sampling_drums_dense.mid")
-print("Saved sampling_drums_dense.mid")
+GM_NAMES = [
+    "acoustic_grand_piano", "bright_acoustic_piano", "electric_grand_piano", "honky_tonk_piano",
+    "electric_piano_1", "electric_piano_2", "harpsichord", "clavinet", "celesta", "glockenspiel",
+    "music_box", "vibraphone", "marimba", "xylophone", "tubular_bells", "dulcimer", "drawbar_organ",
+    "percussive_organ", "rock_organ", "church_organ", "reed_organ", "accordion", "harmonica",
+    "tango_accordion", "acoustic_guitar_nylon", "acoustic_guitar_steel", "electric_guitar_jazz",
+    "electric_guitar_clean", "electric_guitar_muted", "overdriven_guitar", "distortion_guitar",
+    "guitar_harmonics", "acoustic_bass", "electric_bass_finger", "electric_bass_pick", "fretless_bass",
+    "slap_bass_1", "slap_bass_2", "synth_bass_1", "synth_bass_2", "violin", "viola", "cello",
+    "contrabass", "tremolo_strings", "pizzicato_strings", "orchestral_harp", "timpani",
+    "string_ensemble_1", "string_ensemble_2", "synth_strings_1", "synth_strings_2", "choir_aahs",
+    "voice_oohs", "synth_voice", "orchestra_hit", "trumpet", "trombone", "tuba", "muted_trumpet",
+    "french_horn", "brass_section", "synth_brass_1", "synth_brass_2", "soprano_sax", "alto_sax",
+    "tenor_sax", "baritone_sax", "oboe", "english_horn", "bassoon", "clarinet", "piccolo", "flute",
+    "recorder", "pan_flute", "blown_bottle", "shakuhachi", "whistle", "ocarina", "lead_1_square",
+    "lead_2_sawtooth", "lead_3_calliope", "lead_4_chiff", "lead_5_charang", "lead_6_voice",
+    "lead_7_fifths", "lead_8_bass_lead", "pad_1_new_age", "pad_2_warm", "pad_3_polysynth",
+    "pad_4_choir", "pad_5_bowed", "pad_6_metallic", "pad_7_halo", "pad_8_sweep", "fx_1_rain",
+    "fx_2_soundtrack", "fx_3_crystal", "fx_4_atmosphere", "fx_5_brightness", "fx_6_goblins",
+    "fx_7_echoes", "fx_8_sci_fi", "sitar", "banjo", "shamisen", "koto", "kalimba", "bagpipe", "fiddle",
+    "shanai", "tinkle_bell", "agogo", "steel_drums", "woodblock", "taiko_drum", "melodic_tom",
+    "synth_drum", "reverse_cymbal", "guitar_fret_noise", "breath_noise", "seashore", "bird_tweet",
+    "telephone_ring", "helicopter", "applause", "gunshot",
+]
 
 
-# --------------------------------------------------------------------------- #
-# Scenario 2: Track Sampling (Bassline) — Bach Concerto (Classical)
-# --------------------------------------------------------------------------- #
-print("\n--- Scenario 2: Cello Bassline Track Sampling (Bach) ---")
-bach_score = Score.from_midi("tmp/midi_examples/bwv1052a.mid")
-bach_score = engine._tokenizer.normalize_input(bach_score)
-bach_slice = slice_score(bach_score, 12, 8)
-
-# Context tracks: Violin 1 (0), Violin 2 (1), Viola (2)
-violin1_context = copy.deepcopy(bach_slice.tracks[0])
-violin2_context = copy.deepcopy(bach_slice.tracks[1])
-viola_context = copy.deepcopy(bach_slice.tracks[2])
-
-# Target track: Cello (3)
-cello_target = copy.deepcopy(bach_slice.tracks[3])
-cello_target.track_type = "melodic"
-cello_target.instrument = 43
-for bar in cello_target.bars:
-    bar.notes = []
-
-score_for_cello = Score(
-    tracks=[violin1_context, violin2_context, viola_context, cello_target],
-    resolution=bach_slice.resolution,
-    tempo=bach_slice.tempo
-)
-
-# Save prompt
-prompt_cello_score = copy.deepcopy(score_for_cello)
-prompt_cello_score.to_midi("docs/assets/midi/prompt_bach.mid")
-print("Saved prompt_bach.mid")
-
-# 1. Staccato Cello Bassline (Seed 43)
-print("Generating staccato cello bassline...")
-req_staccato_cello = GenerationRequest(
-    tracks=[
-        TrackPrompt(id=0, bars=[], ignore=False),
-        TrackPrompt(id=1, bars=[], ignore=False),
-        TrackPrompt(id=2, bars=[], ignore=False),
-        TrackPrompt(id=3, bars=list(range(8)), ignore=False, attributes={"max_polyphony": 0, "max_note_duration": 1})
-    ],
-    config=InferenceConfig(model_dim=8, mask_mode="attention", seed=43, max_attempts=5, tracks_per_step=2)
-)
-res_staccato_cello = engine.session(score_for_cello, req_staccato_cello).run()
-res_staccato_cello.to_midi("docs/assets/midi/sampling_cello_staccato.mid")
-print("Saved sampling_cello_staccato.mid")
-
-# 2. Legato/Sustained Cello Bassline (Seed 42 + Autoregressive mode)
-print("Generating sustained cello bassline...")
-req_sustained_cello = GenerationRequest(
-    tracks=[
-        TrackPrompt(id=0, bars=[], ignore=False),
-        TrackPrompt(id=1, bars=[], ignore=False),
-        TrackPrompt(id=2, bars=[], ignore=False),
-        # Use autoregressive=True so min_note_duration=4 warning is bypassed and constraint is applied
-        TrackPrompt(id=3, bars=list(range(8)), autoregressive=True, ignore=False, attributes={"max_polyphony": 0, "min_note_duration": 4})
-    ],
-    config=InferenceConfig(model_dim=8, mask_mode="attention", seed=42, max_attempts=5, tracks_per_step=2)
-)
-res_sustained_cello = engine.session(score_for_cello, req_sustained_cello).run()
-res_sustained_cello.to_midi("docs/assets/midi/sampling_cello_sustained.mid")
-print("Saved sampling_cello_sustained.mid")
+def name(track: Track) -> str:
+    return "drums" if track.track_type == "drum" else GM_NAMES[track.instrument]
 
 
-# --------------------------------------------------------------------------- #
-# Scenario 3: Bar Infilling — Everything In Its Right Place (Electronic)
-# --------------------------------------------------------------------------- #
-print("\n--- Scenario 3: Keyboard Bar Infilling (Radiohead) ---")
-radiohead_score = Score.from_midi("tmp/midi_examples/EverythingIsInItsRightPlace.mid")
-radiohead_score = engine._tokenizer.normalize_input(radiohead_score)
-radiohead_slice = slice_score(radiohead_score, 16, 8) # bars 16-24
-
-# Keyboard is track 0. Bass is track 4. Drums is track 5.
-keyboard_track = copy.deepcopy(radiohead_slice.tracks[0])
-bass_context = copy.deepcopy(radiohead_slice.tracks[4])
-drums_context = copy.deepcopy(radiohead_slice.tracks[5])
-
-score_for_infill = Score(
-    tracks=[keyboard_track, bass_context, drums_context],
-    resolution=radiohead_slice.resolution,
-    tempo=radiohead_slice.tempo
-)
-
-# Clear middle bars 3 and 4 of the 8-bar slice to create the infill prompt
-infill_prompt = copy.deepcopy(score_for_infill)
-infill_prompt.tracks[0].bars[3].notes = []
-infill_prompt.tracks[0].bars[4].notes = []
-infill_prompt.to_midi("docs/assets/midi/prompt_infill.mid")
-print("Saved prompt_infill.mid")
-
-# 1. Sparse Infill (Seed 44)
-print("Generating sparse infill...")
-req_sparse_infill = GenerationRequest(
-    tracks=[
-        TrackPrompt(id=0, bars=[3, 4], autoregressive=False, attributes={"min_polyphony": 0, "max_polyphony": 2}),
-        TrackPrompt(id=1, bars=[], ignore=False),
-        TrackPrompt(id=2, bars=[], ignore=False)
-    ],
-    config=InferenceConfig(model_dim=8, mask_mode="attention", seed=44, max_attempts=5)
-)
-res_sparse_infill = engine.session(score_for_infill, req_sparse_infill).run()
-res_sparse_infill.to_midi("docs/assets/midi/infill_sparse.mid")
-print("Saved infill_sparse.mid")
-
-# 2. Chordal Infill (Seed 42)
-print("Generating chordal infill...")
-req_chordal_infill = GenerationRequest(
-    tracks=[
-        TrackPrompt(id=0, bars=[3, 4], autoregressive=False, attributes={"min_polyphony": 1, "max_polyphony": 8}),
-        TrackPrompt(id=1, bars=[], ignore=False),
-        TrackPrompt(id=2, bars=[], ignore=False)
-    ],
-    config=InferenceConfig(model_dim=8, mask_mode="attention", seed=42, max_attempts=5)
-)
-res_chordal_infill = engine.session(score_for_infill, req_chordal_infill).run()
-res_chordal_infill.to_midi("docs/assets/midi/infill_chordal.mid")
-print("Saved infill_chordal.mid")
+def excerpt(source: str, tracks: list[int], start: int | None = None) -> Score:
+    """8 bars of `tracks` from `source`, from bar `start`, or by default the densest 8 bars
+    of 4/4 in which every one of them plays."""
+    score = Score.from_midi(str(SRC / source))
+    length = min(len(score.tracks[t].bars) for t in tracks)
+    best = None if start is None else (0, start)
+    for start in range(length - N_BARS + 1) if best is None else ():
+        bars = [score.tracks[t].bars[b] for t in tracks for b in range(start, start + N_BARS)]
+        if all(b.notes and (b.ts_numerator, b.ts_denominator) == (4, 4) for b in bars):
+            density = sum(len(b.notes) for b in bars)
+            if best is None or density > best[0]:
+                best = (density, start)
+    if best is None:
+        raise SystemExit(f"{source}: no 8-bar 4/4 window where tracks {tracks} all play")
+    start = best[1]
+    print(f"  {source}: bars {start}-{start + N_BARS - 1}, tracks {tracks}")
+    return Score(
+        tracks=[Track(bars=copy.deepcopy(score.tracks[t].bars[start:start + N_BARS]),
+                      instrument=score.tracks[t].instrument, track_type=score.tracks[t].track_type)
+                for t in tracks],
+        resolution=score.resolution, tempo=score.tempo,
+    )
 
 
-# --------------------------------------------------------------------------- #
-# Scenario 4: Autoregressive Continuation — Summer (Film Soundtrack)
-# --------------------------------------------------------------------------- #
-print("\n--- Scenario 4: Piano Continuation (Summer) ---")
-summer_score = Score.from_midi("tmp/midi_examples/Summer.mid")
-summer_score = engine._tokenizer.normalize_input(summer_score)
-summer_slice = slice_score(summer_score, 13, 8)
-
-# Piano is track 0. Bass is track 1. Strings Synth is track 5.
-piano_track = copy.deepcopy(summer_slice.tracks[0])
-bass_context = copy.deepcopy(summer_slice.tracks[1])
-strings_context = copy.deepcopy(summer_slice.tracks[5])
-
-score_for_ar = Score(
-    tracks=[piano_track, bass_context, strings_context],
-    resolution=summer_slice.resolution,
-    tempo=summer_slice.tempo
-)
-
-# 4-bar seed prompt
-ar_prompt_score = copy.deepcopy(score_for_ar)
-for bar_idx in range(4, 8):
-    ar_prompt_score.tracks[0].bars[bar_idx].notes = []
-ar_prompt_score.to_midi("docs/assets/midi/prompt_ar.mid")
-print("Saved prompt_ar.mid")
-
-# 1. Melodic Lead Continuation (Seed 42)
-print("Generating melodic piano continuation...")
-req_monophonic_ar = GenerationRequest(
-    tracks=[
-        TrackPrompt(id=0, bars=[4, 5, 6, 7], autoregressive=True, attributes={"min_polyphony": 0, "max_polyphony": 4}),
-        TrackPrompt(id=1, bars=[], ignore=False),
-        TrackPrompt(id=2, bars=[], ignore=False)
-    ],
-    config=InferenceConfig(model_dim=8, mask_mode="attention", seed=42, max_attempts=5)
-)
-res_monophonic_ar = engine.session(score_for_ar, req_monophonic_ar).run()
-res_monophonic_ar.to_midi("docs/assets/midi/ar_monophonic.mid")
-print("Saved ar_monophonic.mid")
-
-# 2. Chordal Continuation (Seed 44)
-print("Generating chordal piano continuation...")
-req_chordal_ar = GenerationRequest(
-    tracks=[
-        TrackPrompt(id=0, bars=[4, 5, 6, 7], autoregressive=True, attributes={"min_polyphony": 2, "max_polyphony": 8}),
-        TrackPrompt(id=1, bars=[], ignore=False),
-        TrackPrompt(id=2, bars=[], ignore=False)
-    ],
-    config=InferenceConfig(model_dim=8, mask_mode="attention", seed=44, max_attempts=5)
-)
-res_chordal_ar = engine.session(score_for_ar, req_chordal_ar).run()
-res_chordal_ar.to_midi("docs/assets/midi/ar_chordal.mid")
-print("Saved ar_chordal.mid")
+def with_empty_track(score: Score, instrument: int = 0, track_type: str = "melodic") -> Score:
+    out = copy.deepcopy(score)
+    out.tracks.append(Track(bars=[Bar() for _ in range(N_BARS)], instrument=instrument, track_type=track_type))
+    return out
 
 
-# --------------------------------------------------------------------------- #
-# Scenario 5: Autoregressive Continuation — SSBM All Star (Video Game)
-# --------------------------------------------------------------------------- #
-print("\n--- Scenario 5: Harp Continuation (SSBM All Star Intro) ---")
-ssbm_score = Score.from_midi("tmp/midi_examples/SSBM_All_Star_Intro.mid")
-ssbm_score = engine._tokenizer.normalize_input(ssbm_score)
-ssbm_slice = slice_score(ssbm_score, 0, 8)
+def clear_bars(score: Score, track: int, bars: list[int]) -> Score:
+    out = copy.deepcopy(score)
+    for b in bars:
+        out.tracks[track].bars[b].notes = []
+    return out
 
-# Bells is track 1. Strings is track 2. Harp is track 4.
-bells_context = copy.deepcopy(ssbm_slice.tracks[1])
-strings_context = copy.deepcopy(ssbm_slice.tracks[2])
-harp_track = copy.deepcopy(ssbm_slice.tracks[4])
-harp_track.track_type = "melodic"
-harp_track.instrument = 46
 
-score_for_harp = Score(
-    tracks=[bells_context, strings_context, harp_track],
-    resolution=ssbm_slice.resolution,
-    tempo=ssbm_slice.tempo
-)
+def generate(engine, score: Score, targets: dict[int, dict], seed: int, autoregressive: bool = True) -> Score:
+    """Generate the bars in `targets` ({track: {"bars": [...], "attributes": {...}}}); the other tracks are context.
+    Autoregressive writes each target track from scratch; infill (autoregressive=False) fills bars in place."""
+    prompts = [
+        TrackPrompt(id=i, bars=targets[i]["bars"], autoregressive=autoregressive,
+                    attributes=targets[i].get("attributes", {}))
+        if i in targets else TrackPrompt(id=i, bars=[])
+        for i in range(len(score.tracks))
+    ]
+    session = engine.session(score, GenerationRequest(tracks=prompts, config=InferenceConfig(seed=seed, **CONFIG)))
+    result = session.run()
+    print(f"    seed={seed} model_dim={session._request.config.model_dim} dropped_context={session.dropped_context} "
+          f"notes={[sum(len(b.notes) for b in result.tracks[t].bars) for t in targets]}")
+    return result
 
-# 4-bar seed prompt
-harp_prompt_score = copy.deepcopy(score_for_harp)
-for bar_idx in range(4, 8):
-    harp_prompt_score.tracks[2].bars[bar_idx].notes = []
-harp_prompt_score.to_midi("docs/assets/midi/prompt_harp.mid")
-print("Saved prompt_harp.mid")
 
-# 1. Rapid Arpeggios (Max Note Duration = 1 (16th notes), Seed 42)
-print("Generating rapid arpeggios harp continuation...")
-req_sparse_harp = GenerationRequest(
-    tracks=[
-        TrackPrompt(id=0, bars=[], ignore=False),
-        TrackPrompt(id=1, bars=[], ignore=False),
-        TrackPrompt(id=2, bars=[4, 5, 6, 7], autoregressive=True, attributes={"max_note_duration": 1})
-    ],
-    config=InferenceConfig(model_dim=8, mask_mode="attention", seed=42, max_attempts=5)
-)
-res_sparse_harp = engine.session(score_for_harp, req_sparse_harp).run()
-res_sparse_harp.to_midi("docs/assets/midi/harp_monophonic.mid")
-print("Saved harp_monophonic.mid")
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--model", default="yellow_medium")
+    args = parser.parse_args()
+    engine = InferenceEngine.from_pretrained(args.model)
+    OUT.mkdir(parents=True, exist_ok=True)
+    examples: list[dict] = []
 
-# 2. Sustained Chords (Max Polyphony = 4, Seed 42)
-print("Generating sustained chords harp continuation...")
-req_dense_harp = GenerationRequest(
-    tracks=[
-        TrackPrompt(id=0, bars=[], ignore=False),
-        TrackPrompt(id=1, bars=[], ignore=False),
-        TrackPrompt(id=2, bars=[4, 5, 6, 7], autoregressive=True, attributes={"max_polyphony": 4})
-    ],
-    config=InferenceConfig(model_dim=8, mask_mode="attention", seed=42, max_attempts=5)
-)
-res_dense_harp = engine.session(score_for_harp, req_dense_harp).run()
-res_dense_harp.to_midi("docs/assets/midi/harp_chordal.mid")
-print("Saved harp_chordal.mid")
+    def save(score: Score, midi: str, **meta) -> None:
+        score.to_midi(str(OUT / midi))
+        if meta:
+            examples.append({"midi": midi, "track_names": [name(t) for t in score.tracks], **meta})
 
-print("\nAll 5 multi-track doc examples generated successfully!")
+    # 1. Track sampling: drums under guitar and bass ("Just Say No To Yes")
+    print("Example 1: drums")
+    band = excerpt("oga_just_say_no_to_yes.mid", [1, 7])          # distortion guitar, slap bass
+    save(band, "prompt_band.mid")
+    prompt = with_empty_track(band, track_type="drum")
+    for density in (1, 3, 8):
+        out = generate(engine, prompt, {2: {"bars": BARS, "attributes": {"note_density": density}}}, seed=density)
+        save(out, f"sampling_drums_density{density}.mid", id=f"track_sampling_drums_density{density}",
+             task="Track Sampling", title=f"Band: drums, note_density = {density}",
+             prompt="prompt_band.mid", controls=f"note_density = {density}", generated_tracks=[2])
+
+    # 2. Track sampling: a new cello part for a string quartet (Beethoven Op. 18 No. 4)
+    print("Example 2: cello")
+    quartet = excerpt("mutopia_beethoven_op18_4_1.mid", [0, 1, 2])  # violin I, violin II, viola
+    save(quartet, "prompt_quartet.mid")
+    prompt = with_empty_track(quartet, instrument=42)               # cello
+    cello = [("16th", {"max_note_duration": 1}), ("8th", {"max_note_duration": 2}),
+             ("4th", {"max_note_duration": 3}), ("half", {"max_note_duration": 4}),
+             ("sustained", {"min_note_duration": 4})]
+    for i, (label, attrs) in enumerate(cello):
+        attrs = {"max_polyphony": 0, **attrs}
+        out = generate(engine, prompt, {3: {"bars": BARS, "attributes": attrs}}, seed=10 + i)
+        midi = f"sampling_cello_{'dur_' if label != 'sustained' else ''}{label}.mid"
+        save(out, midi, id=f"track_sampling_cello_{'dur_' if label != 'sustained' else ''}{label}",
+             task="Track Sampling", title=f"Quartet: cello, {', '.join(f'{k} = {v}' for k, v in attrs.items())}",
+             prompt="prompt_quartet.mid", controls=", ".join(f"{k} = {v}" for k, v in attrs.items()),
+             generated_tracks=[3])
+
+    # 3. Resampling a guitar part with the model's own controls ("Savior of Humanity")
+    print("Example 3: guitar")
+    solo = excerpt("oga_savior_of_humanity.mid", [0, 7, 9])        # distortion guitar, synth bass, drums
+    save(solo, "prompt_solo.mid")
+    for n in (1, 2):
+        out = generate(engine, solo, {0: {"bars": BARS}}, seed=20 + n)
+        save(out, f"solo_resample{n}.mid", id=f"solo_resample{n}", task="Track Sampling",
+             title=f"Guitar resample {n} (model-sampled controls)", prompt="prompt_solo.mid",
+             controls="none (sampled by the model)", generated_tracks=[0])
+
+    # 4. Bar infilling: second violin, bars 4-7 (Eine kleine Nachtmusik). Its bars 0-3 are 16th notes, so
+    # max_note_duration 1 (16th) and 2 (8th) are both reachable: a track-level attribute covers the fixed bars too.
+    # It is a soft control on a 4-bar infill, so these seeds were picked as takes that follow it: the 16th one
+    # was 1 of 60 seeds tried (100-159), the 8th one 3 of the first 6.
+    print("Example 4: violin infill")
+    serenade = excerpt("mutopia_mozart_kv525_1.mid", [0, 1, 2, 3], start=19)  # violin I, violin II, viola, cello
+    prompt = clear_bars(serenade, 1, [4, 5, 6, 7])
+    save(prompt, "prompt_violin_infill.mid")
+    for label, dur, seed in (("16th", 1, 134), ("8th", 2, 102)):
+        out = generate(engine, prompt, {1: {"bars": [4, 5, 6, 7], "attributes": {"max_note_duration": dur}}},
+                       seed=seed, autoregressive=False)
+        save(out, f"violin_infill_{label}.mid", id=f"violin_infill_{label}", task="Bar Infilling",
+             title=f"Second violin infill, max_note_duration = {dur}", prompt="prompt_violin_infill.mid",
+             controls=f"max_note_duration = {dur}", target_bars=[4, 5, 6, 7], generated_tracks=[1])
+
+    # 5. Multi-step composition ("The Ritual")
+    print("Example 5: multi-step")
+    ritual = excerpt("oga_the_ritual.mid", [6, 1, 5])                # piano, bass, strings
+    step0 = ritual
+    for t in range(3):
+        step0 = clear_bars(step0, t, [4, 5, 6, 7])
+    save(step0, "prompt_multistep.mid")
+    step1 = generate(engine, step0, {t: {"bars": [4, 5, 6, 7]} for t in range(3)}, seed=41)
+    step2 = generate(engine, with_empty_track(step1, instrument=24),     # nylon guitar
+                     {3: {"bars": BARS, "attributes": {"max_polyphony": 0, "max_note_duration": 1}}}, seed=42)
+    step3 = generate(engine, with_empty_track(step2, track_type="drum"),
+                     {4: {"bars": BARS, "attributes": {"note_density": 9}}}, seed=43)
+    save(step3, "multistep_final.mid", id="multistep_final", task="Multi-Step Composition",
+         title="Continuation + guitar + drums", prompt="prompt_multistep.mid",
+         controls="guitar: max_polyphony = 0, max_note_duration = 1  |  drums: note_density = 9",
+         target_bars=[4, 5, 6, 7], generated_tracks=[3, 4])
+
+    (OUT / "examples.json").write_text(json.dumps(examples, indent=2) + "\n")
+    print(f"Wrote {len(examples)} examples to {OUT / 'examples.json'}")
+
+
+if __name__ == "__main__":
+    main()
