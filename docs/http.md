@@ -28,12 +28,22 @@ midigpt-http --pretrained my_model --hf-repo myorg/myrepo --port 8000
 
 ### Device selection
 
+The server runs on the **CPU unless you pass `--device`**, even on a machine with a GPU:
+
 ```bash
-midigpt-http --pretrained yellow_medium --device cuda   # explicit GPU
-midigpt-http --pretrained yellow_medium --device mps    # Apple Silicon
-midigpt-http --pretrained yellow_medium --device auto   # auto-detect (default)
-midigpt-http --pretrained yellow_medium --device cpu    # force CPU
+midigpt-http --pretrained yellow_medium --device cuda   # NVIDIA GPU
+midigpt-http --pretrained yellow_medium --device mps    # Apple Silicon GPU
+midigpt-http --pretrained yellow_medium --device auto   # CUDA if available, else MPS, else CPU
+midigpt-http --pretrained yellow_medium                 # CPU (the default)
 ```
+
+`--device cuda` (or `mps`) fails at startup if that device isn't available, rather than silently falling back to the CPU. For CUDA you need a CUDA build of PyTorch: on Linux the default `pip install torch` is one; on Windows it is CPU-only, so install PyTorch with the CUDA command from [pytorch.org](https://pytorch.org/get-started/locally/) before (or after) installing midigpt. Check with:
+
+```bash
+python -c "import torch; print(torch.cuda.is_available())"   # True: --device cuda will work
+```
+
+With `--config`, set `device:` at the top level or per model entry (`cuda`, `mps`, `auto` or `cpu`).
 
 ### Multiple models in one server
 
@@ -48,7 +58,7 @@ max_queue: 64            # server-wide across every model
 max_generation_seconds: 0
 hf_repo: Metacreation/MIDI-GPT   # default for pretrained entries
 hf_token: hf_...          # optional; default is HF_TOKEN / `hf auth login`
-device: cpu               # default device for every entry
+device: cuda              # default device for every entry (omit for CPU)
 max_parallel: 1           # default per-model concurrency
 default_model: yellow_medium     # defaults to the first entry's id if omitted
 
@@ -83,7 +93,7 @@ midigpt-http --config models.yaml
 | `--ckpt PATH` | — | Local `.safetensors`, `.pt` bundle, or checkpoint directory (mutually exclusive with `--config`/`--pretrained`) |
 | `--pretrained NAME` | — | Checkpoint filename prefix on HuggingFace (`yellow_medium`, `prism_medium`, `expressive_medium`, ...) |
 | `--hf-repo REPO` | `Metacreation/MIDI-GPT` | HuggingFace repo ID to download `--pretrained` from |
-| `--device DEVICE` | auto | `cpu`, `cuda`, `mps`, or `auto` |
+| `--device DEVICE` | CPU | `cuda`, `mps`, `cpu`, or `auto` (CUDA if available, else MPS, else CPU) |
 | `--host HOST` | `0.0.0.0` | Bind address |
 | `--port PORT` | `8000` | TCP port |
 | `--idle-timeout SECONDS` | `0` (off) | Shut down automatically after this many seconds of inactivity |

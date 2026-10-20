@@ -316,7 +316,7 @@ curl -s -X POST http://localhost:8000/generate \
   }' | jq .score
 ```
 
-Use `--device cuda`, `--device mps`, or `--device auto` (default) to select the compute device.
+The server runs on the CPU by default. Add `--device cuda` for an NVIDIA GPU (with a CUDA build of PyTorch), `--device mps` for Apple Silicon, or `--device auto` to pick CUDA, then MPS, then CPU. See [docs/http.md](docs/http.md#device-selection).
 
 ---
 

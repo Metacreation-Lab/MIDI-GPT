@@ -717,9 +717,9 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--device",
-        default=None,
+        default="cpu",
         metavar="DEVICE",
-        help='Compute device: "cpu", "cuda", "mps", or "auto" (default: auto-detect)',
+        help='Compute device: "cuda", "mps", "cpu", or "auto" (CUDA, then MPS, then CPU)',
     )
     p.add_argument("--host", default="0.0.0.0", help="Host/IP to bind")
     p.add_argument("--port", type=int, default=8000, help="TCP port to listen on")
@@ -839,14 +839,14 @@ def _build_models_from_config(cfg: dict) -> tuple[dict[str, ModelEntry], str]:
             path = Path(ckpt)
             if not path.exists():
                 raise SystemExit(f"model {mid!r}: checkpoint not found: {ckpt}")
-            log.info("Loading model %r from checkpoint: %s (device=%s)", mid, ckpt, device or "auto")
+            log.info("Loading model %r from checkpoint: %s (device=%s)", mid, ckpt, device or "cpu")
             engine = InferenceEngine.from_checkpoint(str(path), device=device)
             label = ckpt
         else:
             hf_repo = spec.get("hf_repo", default_hf_repo)
             log.info(
                 "Loading model %r pretrained=%s from %s (device=%s)",
-                mid, pretrained, hf_repo, device or "auto",
+                mid, pretrained, hf_repo, device or "cpu",
             )
             engine = _from_pretrained(pretrained, hf_repo=hf_repo, device=device,
                                       token=spec.get("hf_token", default_hf_token))
@@ -877,14 +877,14 @@ def _load_single_model(args: argparse.Namespace) -> ModelEntry:
         path = Path(args.ckpt)
         if not path.exists():
             raise SystemExit(f"Checkpoint not found: {args.ckpt}")
-        log.info("Loading checkpoint: %s (device=%s)", args.ckpt, args.device or "auto")
+        log.info("Loading checkpoint: %s (device=%s)", args.ckpt, args.device or "cpu")
         engine = InferenceEngine.from_checkpoint(str(path), device=args.device)
         label = args.ckpt
         model_id = path.stem
     else:
         log.info(
             "Loading pretrained: %s from %s (device=%s)",
-            args.pretrained, args.hf_repo, args.device or "auto",
+            args.pretrained, args.hf_repo, args.device or "cpu",
         )
         engine = _from_pretrained(args.pretrained, hf_repo=args.hf_repo, device=args.device)
         label = f"{args.hf_repo}/{args.pretrained}"

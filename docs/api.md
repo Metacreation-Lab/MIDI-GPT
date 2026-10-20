@@ -84,7 +84,7 @@ def from_pretrained(
 ) -> InferenceEngine
 ```
 
-`name` is the checkpoint filename prefix on the repo, e.g. `yellow_medium`, `prism_medium`, `expressive_medium`. The actual filename is resolved dynamically — prefers `<name>-final.safetensors`, falls back to the highest-step snapshot. Downloads and caches via `huggingface_hub`; when the Hub can't be reached or refuses the download, a cached copy is used (with a warning). `device`: `"cpu"`, `"cuda"`, `"mps"`, or `None`/`"auto"` to auto-detect.
+`name` is the checkpoint filename prefix on the repo, e.g. `yellow_medium`, `prism_medium`, `expressive_medium`. The actual filename is resolved dynamically — prefers `<name>-final.safetensors`, falls back to the highest-step snapshot. Downloads and caches via `huggingface_hub`; when the Hub can't be reached or refuses the download, a cached copy is used (with a warning). `device`: `"cuda"`, `"mps"`, `"cpu"`, or `"auto"` (CUDA if available, else MPS, else CPU). The default, `None`, loads the model on the CPU.
 
 `token` is a Hugging Face access token, for a gated repo (see [Models — access tokens](models.md#access-tokens)). When `None`, the token from `HF_TOKEN` or `hf auth login` is used. A gated repo with no access and nothing cached raises `PermissionError`, saying how to get access.
 
@@ -106,7 +106,12 @@ def from_checkpoint(
 ) -> InferenceEngine
 ```
 
-Load from a local `.safetensors` file, packed `.pt` bundle, or a legacy checkpoint directory.
+Load from a local `.safetensors` file, packed `.pt` bundle, or a legacy checkpoint directory. `device` works as in `from_pretrained`: `"cuda"`, `"mps"`, `"cpu"` or `"auto"`, and the CPU when omitted.
+
+```python
+engine = InferenceEngine.from_pretrained("yellow_medium", device="cuda")   # NVIDIA GPU
+engine = InferenceEngine.from_pretrained("yellow_medium", device="auto")   # CUDA, else MPS, else CPU
+```
 
 ### `InferenceEngine.session`
 
