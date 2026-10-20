@@ -98,7 +98,8 @@ def attention_from_last(model, tokens, spans=()) -> np.ndarray | None:
             x, _, w = blk(x, past_kv=None, return_attn_weights=want, key_mask=km)
             if want:
                 acc += w[0, :, -1, :].float().mean(0)
-    return acc.cpu().numpy()
+    # tolist(), not .numpy(): torch < 2.3 (the last builds for Intel Macs) can't hand tensors to NumPy 2
+    return np.asarray(acc.cpu().tolist(), dtype=np.float32)
 
 
 def rank_by_attention(attention: np.ndarray, track_of_token, candidates, costs) -> list[int]:
