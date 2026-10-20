@@ -425,8 +425,10 @@ class _RhythmForcer:
         # (opening bar_idx=0, which is already where __init__ starts) would
         # incorrectly fire a reset too, and if a bar's opening is inherited
         # from context rather than sampled, its Bar token never appears in
-        # this loop at all.
-        if tname == "BarEnd":
+        # this loop at all. In infill each target bar is its own
+        # FillInStart ... FillInEnd block with no BarEnd, so FillInEnd ends a
+        # bar too.
+        if tname in ("BarEnd", "FillInEnd"):
             self.reset()
         elif tname == "NoteOnset":
             # Count on NoteOnset, not NoteDuration: drum tracks emit no
@@ -565,7 +567,7 @@ class _VariationForcer:
         # reasons, which matter MORE here since each bar has a distinct
         # reference (a fixed shared schedule like _RhythmForcer's would mask
         # the bug; per-bar reference values expose it immediately).
-        if tname == "BarEnd":
+        if tname in ("BarEnd", "FillInEnd"):
             self.reset_bar()
         elif tname == self.count_on:
             self.note_idx += 1
@@ -1320,7 +1322,8 @@ class SamplingSession:
         raise RuntimeError(
             f"Max attempts ({cfg.max_attempts}) reached, no acceptable candidate "
             f"found. Rejection reasons: {reason_summary}. "
-            f"Last candidate had {self._note_count(last_candidate, step)} notes in "
+            f"Last candidate had "
+            f"{self._note_count(last_candidate, step) if last_candidate is not None else 0} notes in "
             f"generated bars. "
             f"(Hints: vary retries with temperature_escalation > 1, raise "
             f"max_attempts, disable the failing check, or relax top_p/mask_p "
