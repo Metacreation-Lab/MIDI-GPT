@@ -11,6 +11,8 @@ section above `[Unreleased]` before tagging.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-19
+
 ### Changed
 - **Breaking — single-model server id:** `midigpt-http --pretrained NAME` now serves the model as `NAME`, and `--ckpt PATH` as the checkpoint's file name, instead of `"default"`, so `/models` and `/info` say which model is loaded. Clients that send `"model": "default"` get a 400; omit `model` to use the server's default model. ([#9](https://github.com/Metacreation-Lab/MIDI-GPT/issues/9))
 - **Step planner:** a new Python planner replaces the C++ grid planner. Windows are placed on the target bars instead of a grid from bar 0: an autoregressive step keeps up to `model_dim − bars_per_step` bars of the track's own history and slides only when generation reaches the window's edge, and infill bars are taken in chunks with a window centred on each. `model_dim`, `bars_per_step` and `tracks_per_step` also take `"auto"`. `config.plan_only` returns the plan without generating. ([#26](https://github.com/Metacreation-Lab/MIDI-GPT/pull/26))
