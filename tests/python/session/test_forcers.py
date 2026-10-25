@@ -9,9 +9,9 @@ import torch
 from midigpt.inference.session import _RhythmForcer, _VariationForcer
 
 # A toy vocabulary: [0, 48) TimeAbsolutePos, [48, 176) NoteOnset, [176, 208) VelocityLevel,
-# [208, 336) NoteDuration, 336 BarEnd.
-POS, ONSET, VEL, DUR, BAREND = (0, 48), (48, 176), (176, 208), (208, 336), 336
-VOCAB = 337
+# [208, 336) NoteDuration, 336 BarEnd, 337 FillInEnd.
+POS, ONSET, VEL, DUR, BAREND, FILLEND = (0, 48), (48, 176), (176, 208), (208, 336), 336, 337
+VOCAB = 338
 
 
 def legal():
@@ -94,3 +94,45 @@ def test_variation_forcer_moves_to_the_next_bar_after_a_fill_in():
     m = legal()
     f.apply(m)
     assert bool(m[ONSET[0] + 67]) and int(m[ONSET[0] : ONSET[1]].sum()) == 1  # second bar's pitch
+
+
+def test_variation_forcer_moves_to_a_late_first_onset():
+    # the bar's first note is on beat 2 (tick 12): a TimeAbsolutePos to it comes first, then that note
+    bars = [[(12, [(60, 3)]), (24, [(64, 3)])]]
+    f = _VariationForcer("full", 0.0, bars, POS, ONSET, DUR, VEL, BAREND)
+    m = legal()
+    f.apply(m)
+    assert not onset_open(m) and int(m[POS[0] : POS[1]].sum()) == 1 and bool(m[POS[0] + 12])
+    f.advance("TimeAbsolutePos")
+    m = legal()
+    f.apply(m)
+    assert bool(m[ONSET[0] + 60]) and int(m[ONSET[0] : ONSET[1]].sum()) == 1  # still the first group
+    f.advance("NoteOnset")
+    f.advance("NoteDuration")
+    m = legal()
+    f.apply(m)
+    assert bool(m[POS[0] + 24]) and int(m[POS[0] : POS[1]].sum()) == 1  # then on to the second
+
+
+def test_forcers_keep_a_fill_in_open_until_the_schedule_is_done():
+    # an infill bar closes with FillInEnd: blocked like BarEnd while notes remain, open after the last one
+    r = _RhythmForcer([(0, 1), (12, 1)], POS, ONSET, VEL, BAREND, fill_end_id=FILLEND)
+    v = _VariationForcer("pitch", 0.0, [[(0, [(60, 3)]), (12, [(62, 3)])]], POS, ONSET, DUR, VEL, BAREND,
+                         fill_end_id=FILLEND)
+    for f, count_on in ((r, "NoteOnset"), (v, "NoteDuration")):
+        m = legal()
+        f.apply(m)
+        assert not bool(m[FILLEND]) and not bool(m[BAREND])
+        f.advance("NoteOnset")
+        if count_on == "NoteDuration":
+            f.advance("NoteDuration")
+        m = legal()
+        f.apply(m)
+        assert not bool(m[FILLEND])  # moving to tick 12, not closing the bar
+        f.advance("TimeAbsolutePos")
+        f.advance("NoteOnset")
+        if count_on == "NoteDuration":
+            f.advance("NoteDuration")
+        m = legal()
+        f.apply(m)
+        assert bool(m[FILLEND])  # schedule done

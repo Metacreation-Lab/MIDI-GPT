@@ -372,12 +372,15 @@ class _RhythmForcer:
     """
 
     def __init__(self, schedule: list[tuple[int, int]], pos_range: tuple[int, int],
-                 onset_range: tuple[int, int], vel_range: tuple[int, int] | None, barend_id: int):
+                 onset_range: tuple[int, int], vel_range: tuple[int, int] | None, barend_id: int,
+                 fill_end_id: int | None = None):
         self.schedule = schedule  # [(tick, polyphony), ...], sorted, schedule[0][0] == 0
         self.pos_lo, self.pos_hi = pos_range
         self.onset_lo, self.onset_hi = onset_range
         self.vel_range = vel_range  # None if this checkpoint has no VelocityLevel domain
         self.barend_id = barend_id
+        # what closes a bar: BarEnd, and in infill FillInEnd (each target bar is its own fill-in block)
+        self.end_ids = [barend_id] if fill_end_id is None else [barend_id, fill_end_id]
         self.group_idx = 0
         self.notes_in_group = 0
 
@@ -398,7 +401,7 @@ class _RhythmForcer:
             # Still filling this onset point — force another NoteOnset
             # (optionally preceded by a VelocityLevel restate, left alone).
             mask_buf[self.pos_lo:self.pos_hi] = False
-            mask_buf[self.barend_id] = False
+            mask_buf[self.end_ids] = False
             return
         # This onset point is full — force a move, never another chord note.
         mask_buf[self.onset_lo:self.onset_hi] = False
@@ -411,7 +414,7 @@ class _RhythmForcer:
             # here — narrow to it only if it's already True.
             still_legal = bool(mask_buf[target_id])
             mask_buf[self.pos_lo:self.pos_hi] = False
-            mask_buf[self.barend_id] = False
+            mask_buf[self.end_ids] = False
             if still_legal:
                 mask_buf[target_id] = True
         else:
@@ -465,7 +468,7 @@ class _VariationForcer:
     def __init__(self, mode: str, amount: float, bars_schedule: list,
                  pos_range: tuple[int, int], onset_range: tuple[int, int],
                  dur_range: tuple[int, int] | None, vel_range: tuple[int, int] | None,
-                 barend_id: int, count_on_onset: bool = False):
+                 barend_id: int, count_on_onset: bool = False, fill_end_id: int | None = None):
         # Notes are counted on NoteDuration (a note's duration is forced
         # from the same reference note as its pitch), except on drum
         # tracks, which emit no NoteDuration: there each note is counted
@@ -484,10 +487,19 @@ class _VariationForcer:
         self.dur_range = dur_range
         self.vel_range = vel_range
         self.barend_id = barend_id
+        self.end_ids = [barend_id] if fill_end_id is None else [barend_id, fill_end_id]   # see _RhythmForcer
         self.bar_idx = 0
         self.group_idx = 0
         self.note_idx = 0
+        self._lead = self._starts_late()
         self._roll_note()
+
+    def _starts_late(self) -> bool:
+        # A note on the downbeat needs no position token; a bar whose first
+        # notes come later opens with a TimeAbsolutePos to them, which moves
+        # to the first group rather than past it.
+        bar = self._current_bar()
+        return bool(bar) and bar[0][0] > 0
 
     def _current_bar(self):
         return self.bars_schedule[self.bar_idx] if self.bar_idx < len(self.bars_schedule) else []
@@ -520,6 +532,7 @@ class _VariationForcer:
         self.bar_idx += 1
         self.group_idx = 0
         self.note_idx = 0
+        self._lead = self._starts_late()
         self._roll_note()
 
     def apply(self, mask_buf):
@@ -532,10 +545,22 @@ class _VariationForcer:
                 mask_buf[self.vel_range[0]:self.vel_range[1]] = False
             return
         tick, notes = group
+        if self._lead:
+            # Before the bar's first note, which isn't on the downbeat: move to it.
+            target_id = self.pos_lo + tick
+            if tick < self.pos_hi - self.pos_lo and bool(mask_buf[target_id]):
+                mask_buf[self.onset_lo:self.onset_hi] = False
+                if self.vel_range is not None:
+                    mask_buf[self.vel_range[0]:self.vel_range[1]] = False
+                mask_buf[self.pos_lo:self.pos_hi] = False
+                mask_buf[self.end_ids] = False
+                mask_buf[target_id] = True
+                return
+            self._lead = False   # not legal here: let the first note fall where the grammar allows
         if self.note_idx < len(notes):
             # Still filling this onset point — force another NoteOnset.
             mask_buf[self.pos_lo:self.pos_hi] = False
-            mask_buf[self.barend_id] = False
+            mask_buf[self.end_ids] = False
             pitch, duration = notes[self.note_idx]
             if self._force_pitch:
                 self._narrow(mask_buf, (self.onset_lo, self.onset_hi), pitch)
@@ -555,7 +580,7 @@ class _VariationForcer:
             target_id = self.pos_lo + target_tick
             still_legal = bool(mask_buf[target_id]) if 0 <= target_tick < (self.pos_hi - self.pos_lo) else False
             mask_buf[self.pos_lo:self.pos_hi] = False
-            mask_buf[self.barend_id] = False
+            mask_buf[self.end_ids] = False
             if still_legal:
                 mask_buf[target_id] = True
         else:
@@ -569,6 +594,8 @@ class _VariationForcer:
         # the bug; per-bar reference values expose it immediately).
         if tname in ("BarEnd", "FillInEnd"):
             self.reset_bar()
+        elif tname == "TimeAbsolutePos" and self._lead:
+            self._lead = False
         elif tname == self.count_on:
             self.note_idx += 1
             self._roll_note()
@@ -1812,8 +1839,10 @@ class SamplingSession:
             _barend_range = _tok_range(_core.TokenType.BarEnd)
             _onset_range = _tok_range(_core.TokenType.NoteOnset)
             _vel_range_any = _tok_range(_core.TokenType.VelocityLevel)
+            _fill_end = _tok_range(_core.TokenType.FillInEnd)
             _rhythm_forcer = _RhythmForcer(
-                _rhythm_schedule, _rhythm_range, _onset_range, _vel_range_any, _barend_range[0]
+                _rhythm_schedule, _rhythm_range, _onset_range, _vel_range_any, _barend_range[0],
+                fill_end_id=_fill_end[0] if _fill_end else None,
             )
 
         # Variation/remix (controls["remix"]) — forces the reference score's
@@ -1829,10 +1858,12 @@ class SamplingSession:
             _onset_range_r = _tok_range(_core.TokenType.NoteOnset)
             _dur_range_r = _tok_range(_core.TokenType.NoteDuration)
             _vel_range_r = _tok_range(_core.TokenType.VelocityLevel)
+            _fill_end_r = _tok_range(_core.TokenType.FillInEnd)
             _variation_forcer = _VariationForcer(
                 _remix_mode, _remix_amount, _remix_bars,
                 _pos_range_r, _onset_range_r, _dur_range_r, _vel_range_r, _barend_range_r[0],
                 count_on_onset=self._step_is_drums(score, step),
+                fill_end_id=_fill_end_r[0] if _fill_end_r else None,
             )
 
         # Baseline for the note_sink diff: decode BEFORE any tokens are
@@ -2306,8 +2337,10 @@ class SamplingSession:
             _barend_range = _tok_range(_core.TokenType.BarEnd)
             _onset_range = _tok_range(_core.TokenType.NoteOnset)
             _vel_range_any = _tok_range(_core.TokenType.VelocityLevel)
+            _fill_end = _tok_range(_core.TokenType.FillInEnd)
             _rhythm_forcers = [
-                _RhythmForcer(_rhythm_schedule, _rhythm_range, _onset_range, _vel_range_any, _barend_range[0])
+                _RhythmForcer(_rhythm_schedule, _rhythm_range, _onset_range, _vel_range_any, _barend_range[0],
+                              fill_end_id=_fill_end[0] if _fill_end else None)
                 for _ in range(B)
             ]
 
@@ -2323,11 +2356,13 @@ class SamplingSession:
             _onset_range_r = _tok_range(_core.TokenType.NoteOnset)
             _dur_range_r = _tok_range(_core.TokenType.NoteDuration)
             _vel_range_r = _tok_range(_core.TokenType.VelocityLevel)
+            _fill_end_r = _tok_range(_core.TokenType.FillInEnd)
             _variation_forcers = [
                 _VariationForcer(
                     _remix_mode, _remix_amount, _remix_bars,
                     _pos_range_r, _onset_range_r, _dur_range_r, _vel_range_r, _barend_range_r[0],
                     count_on_onset=self._step_is_drums(score, step),
+                    fill_end_id=_fill_end_r[0] if _fill_end_r else None,
                 )
                 for _ in range(B)
             ]
