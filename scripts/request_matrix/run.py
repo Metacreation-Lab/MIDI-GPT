@@ -118,7 +118,7 @@ class Runner:
         r["_out"] = out
         return r
 
-    def shrink(self, case, seed, sig, budget=24):
+    def shrink(self, case, seed, sig, budget=12):
         """The case with as many axes back at their defaults as keep the same failure."""
         cur = dict(case)
         for k in AXES:
@@ -146,7 +146,7 @@ def main():
     ap.add_argument("--seeds", type=int, default=2, help="covering arrays to run (the first one has the risky combinations)")
     ap.add_argument("--limit", type=int, default=0, help="run only this many cases (smoke test)")
     ap.add_argument("--device", default="auto")
-    ap.add_argument("--timeout", type=float, default=300.0, help="seconds before a generation is cancelled")
+    ap.add_argument("--timeout", type=float, default=120.0, help="seconds before a generation is cancelled")
     a = ap.parse_args()
 
     os.environ.setdefault("TQDM_DISABLE", "1")
@@ -191,7 +191,8 @@ def main():
                     json.dump({"id": c["id"], "model": a.model, "case": c["case"], "seed": seed, "result": r,
                                "score": score, "request": request}, ff, default=str)
                 sig = r.get("signature", r["outcome"])
-                if c["expect"] == "ok" and shrunk.get(sig, 0) < 2:
+                # a timeout costs the whole limit per try: not worth shrinking
+                if c["expect"] == "ok" and r["outcome"] != "timeout" and shrunk.get(sig, 0) < 2:
                     shrunk[sig] = shrunk.get(sig, 0) + 1
                     r["shrunk"] = runner.shrink(c["case"], seed, sig)
             elif r["outcome"] == "ok" and c["case"]["takes"] == 1 and n % 8 == 0:

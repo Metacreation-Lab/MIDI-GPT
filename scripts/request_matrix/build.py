@@ -121,7 +121,7 @@ def _target_bars(case, nb):
     shape = case["bars"]
     if case["mode"] == "ar_full":
         return list(range(nb))
-    if case["mode"] in ("ar_partial",):
+    if case["mode"] == "ar_partial" and shape != "separate":
         return [nb - 1] if shape == "one" else list(range(nb // 2, nb))
     if shape == "one":
         return [nb // 2]
@@ -291,6 +291,8 @@ def _probe(name, req, score):
     elif name == "remix_amount_over_one":
         tgt["controls"] = {"remix": {"amount": 1.5}}
         req["config"]["tracks_per_step"] = 1
+    elif name == "bar_attribute_on_yellow":
+        tgt["bar_attributes"] = {tgt["bars"][0]: {"bar_note_density": 0}}
     elif name == "unknown_genre":
         req["controls"] = {"genre": "no_such_genre"}
 

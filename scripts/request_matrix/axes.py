@@ -31,7 +31,7 @@ AXES: dict[str, list] = {
     "bars_per_step": ["auto", 1, 2, 4],
     "tracks_per_step": ["auto", 1, 2],
     "context": ["auto", "all", "listed"],
-    "mask_mode": ["attention", "token", "attention_approx", "attention_skip", "remove"],
+    "mask_mode": ["attention", "attention_approx", "attention_skip", "remove"],
     "prob": [1.0, 0.5, 0.1],                                     # infill_probability
     "takes": [1, 3],                                             # num_candidates
     "batch_attempts": [False, True],
@@ -102,7 +102,7 @@ def risky() -> list[dict]:
         out.append({"prob": prob, "mode": "mixed"})
     out.append({"targets": 3, "tracks_per_step": "auto", "length": 32, "piece": "wide", "context": "auto"})
     out.append({"context": "listed", "ignore": "half", "targets": 3})
-    for mm in ("attention", "attention_approx", "attention_skip", "token", "remove"):
+    for mm in ("attention", "attention_approx", "attention_skip", "remove"):
         out.append({"mask_mode": mm, "mode": "ar_partial", "mask_bars": "some"})
         out.append({"mask_mode": mm, "bars": "separate", "prob": 0.5})
     out.append({"takes": 3, "batch_attempts": True, "checks": "one_attempt"})
@@ -127,7 +127,8 @@ PROBES = [
     ("remix_two_tracks_per_step", {"control": "remix_pitch_1", "tracks_per_step": 2, "targets": 2}),
     ("genre_on_yellow", {"model": "yellow_medium", "piece_controls": "genre"}),
     ("velocity_off_on_prism", {"model": "prism_medium", "piece_controls": "velocity_off"}),
-    ("bar_attribute_on_yellow", {"model": "yellow_medium", "attributes": "bar"}),
+    ("bar_attribute_on_yellow", {"probe": "bar_attribute_on_yellow", "model": "yellow_medium"}),
+    ("token_mask_mode", {"mask_mode": "token"}),   # no current checkpoint has a MaskBar domain
     ("ar_separate_bars", {"mode": "ar_partial", "bars": "separate"}),
     # malformed payloads, built by build.py's probe hooks
     ("rhythm_not_from_zero", {"probe": "rhythm_not_from_zero"}),
