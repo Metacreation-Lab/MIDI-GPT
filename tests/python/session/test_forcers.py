@@ -136,3 +136,20 @@ def test_forcers_keep_a_fill_in_open_until_the_schedule_is_done():
         m = legal()
         f.apply(m)
         assert bool(m[FILLEND])  # schedule done
+
+
+def test_forcers_block_microtiming_when_no_note_may_follow():
+    # Delta -> Delta is legal; with notes blocked (moving on, schedule done) and velocity off, a Delta could only
+    # be followed by another: the forcers block it there, and leave it open before a note that is due
+    DELTA, DDIR = (338, 344), (344, 346)
+    vocab = 346
+    for f in (_RhythmForcer([(0, 1), (12, 1)], POS, ONSET, VEL, BAREND, delta_ranges=(DELTA, DDIR)),
+              _VariationForcer("pitch", 0.0, [[(0, [(36, 1)]), (12, [(38, 1)])]], POS, ONSET, DUR, VEL, BAREND,
+                               count_on_onset=True, delta_ranges=(DELTA, DDIR))):
+        m = torch.ones(vocab, dtype=torch.bool)
+        f.apply(m)
+        assert bool(m[DELTA[0]])  # a note is due: its microtiming may come first
+        f.advance("NoteOnset")
+        m = torch.ones(vocab, dtype=torch.bool)
+        f.apply(m)
+        assert not bool(m[DELTA[0] : DELTA[1]].any()) and not bool(m[DDIR[0] : DDIR[1]].any())

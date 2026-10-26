@@ -373,7 +373,7 @@ class _RhythmForcer:
 
     def __init__(self, schedule: list[tuple[int, int]], pos_range: tuple[int, int],
                  onset_range: tuple[int, int], vel_range: tuple[int, int] | None, barend_id: int,
-                 fill_end_id: int | None = None):
+                 fill_end_id: int | None = None, delta_ranges: tuple = ()):
         self.schedule = schedule  # [(tick, polyphony), ...], sorted, schedule[0][0] == 0
         self.pos_lo, self.pos_hi = pos_range
         self.onset_lo, self.onset_hi = onset_range
@@ -381,6 +381,9 @@ class _RhythmForcer:
         self.barend_id = barend_id
         # what closes a bar: BarEnd, and in infill FillInEnd (each target bar is its own fill-in block)
         self.end_ids = [barend_id] if fill_end_id is None else [barend_id, fill_end_id]
+        # microtiming (Delta, DeltaDirection) only ever leads to a note: blocked wherever notes are, or with velocity
+        # off the model could only loop on Delta (Delta -> Delta is legal, offsets add up)
+        self.delta_ranges = [r for r in delta_ranges if r is not None]
         self.group_idx = 0
         self.notes_in_group = 0
 
@@ -395,6 +398,8 @@ class _RhythmForcer:
             mask_buf[self.pos_lo:self.pos_hi] = False
             if self.vel_range is not None:
                 mask_buf[self.vel_range[0]:self.vel_range[1]] = False
+            for lo, hi in self.delta_ranges:
+                mask_buf[lo:hi] = False
             return
         required = self.schedule[self.group_idx][1]
         if self.notes_in_group < required:
@@ -407,6 +412,8 @@ class _RhythmForcer:
         mask_buf[self.onset_lo:self.onset_hi] = False
         if self.vel_range is not None:
             mask_buf[self.vel_range[0]:self.vel_range[1]] = False
+        for lo, hi in self.delta_ranges:
+            mask_buf[lo:hi] = False
         if self.group_idx + 1 < len(self.schedule):
             target_tick = self.schedule[self.group_idx + 1][0]
             target_id = self.pos_lo + target_tick
@@ -468,7 +475,8 @@ class _VariationForcer:
     def __init__(self, mode: str, amount: float, bars_schedule: list,
                  pos_range: tuple[int, int], onset_range: tuple[int, int],
                  dur_range: tuple[int, int] | None, vel_range: tuple[int, int] | None,
-                 barend_id: int, count_on_onset: bool = False, fill_end_id: int | None = None):
+                 barend_id: int, count_on_onset: bool = False, fill_end_id: int | None = None,
+                 delta_ranges: tuple = ()):
         # Notes are counted on NoteDuration (a note's duration is forced
         # from the same reference note as its pitch), except on drum
         # tracks, which emit no NoteDuration: there each note is counted
@@ -488,6 +496,7 @@ class _VariationForcer:
         self.vel_range = vel_range
         self.barend_id = barend_id
         self.end_ids = [barend_id] if fill_end_id is None else [barend_id, fill_end_id]   # see _RhythmForcer
+        self.delta_ranges = [r for r in delta_ranges if r is not None]   # see _RhythmForcer
         self.bar_idx = 0
         self.group_idx = 0
         self.note_idx = 0
@@ -543,6 +552,8 @@ class _VariationForcer:
             mask_buf[self.pos_lo:self.pos_hi] = False
             if self.vel_range is not None:
                 mask_buf[self.vel_range[0]:self.vel_range[1]] = False
+            for lo, hi in self.delta_ranges:
+                mask_buf[lo:hi] = False
             return
         tick, notes = group
         if self._lead:
@@ -552,6 +563,8 @@ class _VariationForcer:
                 mask_buf[self.onset_lo:self.onset_hi] = False
                 if self.vel_range is not None:
                     mask_buf[self.vel_range[0]:self.vel_range[1]] = False
+                for lo, hi in self.delta_ranges:
+                    mask_buf[lo:hi] = False
                 mask_buf[self.pos_lo:self.pos_hi] = False
                 mask_buf[self.end_ids] = False
                 mask_buf[target_id] = True
@@ -574,6 +587,8 @@ class _VariationForcer:
         mask_buf[self.onset_lo:self.onset_hi] = False
         if self.vel_range is not None:
             mask_buf[self.vel_range[0]:self.vel_range[1]] = False
+        for lo, hi in self.delta_ranges:
+            mask_buf[lo:hi] = False
         bar = self._current_bar()
         if self.group_idx + 1 < len(bar):
             target_tick = bar[self.group_idx + 1][0]
@@ -1850,6 +1865,7 @@ class SamplingSession:
             _rhythm_forcer = _RhythmForcer(
                 _rhythm_schedule, _rhythm_range, _onset_range, _vel_range_any, _barend_range[0],
                 fill_end_id=_fill_end[0] if _fill_end else None,
+                delta_ranges=(_tok_range(_core.TokenType.Delta), _tok_range(_core.TokenType.DeltaDirection)),
             )
 
         # Variation/remix (controls["remix"]) — forces the reference score's
@@ -1871,6 +1887,7 @@ class SamplingSession:
                 _pos_range_r, _onset_range_r, _dur_range_r, _vel_range_r, _barend_range_r[0],
                 count_on_onset=self._step_is_drums(score, step),
                 fill_end_id=_fill_end_r[0] if _fill_end_r else None,
+                delta_ranges=(_tok_range(_core.TokenType.Delta), _tok_range(_core.TokenType.DeltaDirection)),
             )
 
         # Baseline for the note_sink diff: decode BEFORE any tokens are
@@ -2347,7 +2364,8 @@ class SamplingSession:
             _fill_end = _tok_range(_core.TokenType.FillInEnd)
             _rhythm_forcers = [
                 _RhythmForcer(_rhythm_schedule, _rhythm_range, _onset_range, _vel_range_any, _barend_range[0],
-                              fill_end_id=_fill_end[0] if _fill_end else None)
+                              fill_end_id=_fill_end[0] if _fill_end else None,
+                              delta_ranges=(_tok_range(_core.TokenType.Delta), _tok_range(_core.TokenType.DeltaDirection)))
                 for _ in range(B)
             ]
 
@@ -2370,6 +2388,7 @@ class SamplingSession:
                     _pos_range_r, _onset_range_r, _dur_range_r, _vel_range_r, _barend_range_r[0],
                     count_on_onset=self._step_is_drums(score, step),
                     fill_end_id=_fill_end_r[0] if _fill_end_r else None,
+                    delta_ranges=(_tok_range(_core.TokenType.Delta), _tok_range(_core.TokenType.DeltaDirection)),
                 )
                 for _ in range(B)
             ]
