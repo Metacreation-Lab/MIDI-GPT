@@ -11,6 +11,35 @@ section above `[Unreleased]` before tagging.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-26
+
+### Changed
+- **Faster generation:** each attention layer's KV cache grows in place instead of being copied with `torch.cat` on every token, so decoding keeps its speed as the window fills. `expressive_medium` on CPU, 1000 → 3000 tokens: 9.9 → 35.5 tok/s for one row, 4.0 → 21.8 tok/s for three (takes, batched attempts). ([#29](https://github.com/Metacreation-Lab/MIDI-GPT/issues/29), [#30](https://github.com/Metacreation-Lab/MIDI-GPT/pull/30))
+- **Streaming** decodes the step at most every 250 ms instead of after every note, and GPT-2's GELU is one fused op: a streamed 32-bar request runs 23.1 → 30.4 tok/s. The fused GELU rounds slightly differently, so a fixed seed can give different notes than 0.4.0. ([#30](https://github.com/Metacreation-Lab/MIDI-GPT/pull/30))
+- **`mask_mode` defaults to `"auto"`:** `"token"` when the checkpoint has `MaskBar`, else `"attention"`. The old default, `"token"`, is supported by no released checkpoint, so a request that didn't set `mask_mode` was refused. ([#28](https://github.com/Metacreation-Lab/MIDI-GPT/pull/28))
+- **Remix amount** is the share of the reference notes resampled: `round(amount × notes)`, at least one. An amount of 0 is refused, like a request with no bars. ([#28](https://github.com/Metacreation-Lab/MIDI-GPT/pull/28))
+- **Polyphony and density limits win over remix and exact rhythm:** under a limit the forcers play fewer notes than the reference, never other ones. ([#28](https://github.com/Metacreation-Lab/MIDI-GPT/pull/28))
+
+### Added
+- **Request matrix** (`scripts/request_matrix/`): runs every pairwise combination of the generation request options, plus the risky combinations in full, on the released checkpoints, checks each reply and shrinks failures to a replayable request. The fixes below were found with it: 312 of 689 requests succeeded on 0.4.0; on 0.4.1 every request succeeds or is correctly refused, apart from novelty-check rejections. ([#31](https://github.com/Metacreation-Lab/MIDI-GPT/pull/31))
+
+### Fixed
+All in [#28](https://github.com/Metacreation-Lab/MIDI-GPT/pull/28) unless noted.
+- **Remix and exact rhythm over several infill bars:** the forcers only moved to the next bar on `BarEnd`, which infill bars don't have, so the second bar started with the first bar's used-up schedule (no legal token, or runs to the context limit).
+- **A late first onset:** a reference bar starting after the downbeat had its first notes moved to beat 1, in infill and AR bars.
+- **Infill bars closed early** while reference notes remained, dropping the rest of the schedule.
+- **Microtiming loops:** where a forcer blocked notes it left `Delta` open, and the model could write thousands of them. The grammar now only lets a `Delta` lead to its note.
+- **Remix ignored the seed:** the same seed gave a different remix. Each attempt (and each batched row) now uses its own seed.
+- **Hard limits left no legal token:** at the cap, the polyphony and density limits blocked notes but not velocity or microtiming, and their counts carried from one infill bar into the next.
+- **Meters with half beats** (5/8, 7/8, 9/8, 13/16) were cut to whole beats by the grammar and the decoder.
+- **Generated bars changed meter:** a generated bar could write another time signature than the piece's (6/4 in a 6/8 piece). It now keeps the piece's meter.
+- **`mask_mode: "remove"`** dropped a masked bar entirely, shifting the rest of the track one bar earlier; it is now an empty bar.
+- **`mask_k` / `mask_p`** could remove `BarEnd`, `FillInEnd`, `TrackEnd` or `TimeSig`; they now only remove note content.
+- **A cancelled batch** (`batch_attempts`) crashed with `'list' object has no attribute 'notes'`.
+- **An AR track without bars** is the whole track; before, validation accepted it but nothing was generated.
+- **The error when every attempt failed** hid the real error behind `'NoneType' object has no attribute 'tracks'`.
+- **Streaming:** drum-only steps and requests with `batch_attempts` streamed no notes. ([#30](https://github.com/Metacreation-Lab/MIDI-GPT/pull/30))
+
 ## [0.4.0] - 2026-10-19
 
 ### Changed
