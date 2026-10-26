@@ -66,10 +66,10 @@ def test_each_mask_mode_is_deterministic_with_seed(
     assert n1 == n2
 
 
-def test_token_mode_is_default(simple_score):
-    """The default mask_mode should be `token`."""
+def test_auto_mode_is_default(simple_score):
+    """The default mask_mode is `auto`: validation makes it `token` or `attention` for the checkpoint."""
     req = GenerationRequest(tracks=[TrackPrompt(id=0, bars=[0])])
-    assert req.config.mask_mode == "token"
+    assert req.config.mask_mode == "auto"
 
 
 @pytest.mark.parametrize("mode", ("attention", "attention_approx", "attention_skip"))

@@ -232,7 +232,10 @@ def validate_request(
     # Bar masking is universal; the encoder chooses *how* to represent a
     # masked bar based on cfg.mask_mode. Only "token" mode needs the MaskBar
     # vocab entry — attention* / remove modes work on any encoder.
-    mask_mode = getattr(cfg, "mask_mode", "token")
+    mask_mode = getattr(cfg, "mask_mode", "auto")
+    if mask_mode == "auto":   # none of the released checkpoints has MaskBar, so this is "attention" for them
+        mask_mode = "token" if _supports_mask_bar(cfg_dict) else "attention"
+        cfg = replace(cfg, mask_mode=mask_mode)
     if mask_mode == "token" and not _supports_mask_bar(cfg_dict):
         raise RequestValidationError(
             "config.mask_mode='token' requires the encoder vocab to include "
@@ -428,6 +431,9 @@ def validate_request(
             raise RequestValidationError(f"track_id={tp.id}: ignored tracks must not specify bars")
 
         nb_track = len(score.tracks[tp.id].bars)
+        if tp.autoregressive and not tp.bars:
+            # no bars on an AR track means the whole track; the planner only plans the bars it is given
+            tp.bars = list(range(nb_track))
         for b in tp.bars:
             if b < 0 or b >= nb_track:
                 raise RequestValidationError(

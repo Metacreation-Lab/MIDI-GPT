@@ -83,7 +83,7 @@ nothing exotic is on by default.
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `mask_mode` | str | `"token"` | One of `"token"`, `"attention"`, `"attention_approx"`, `"attention_skip"`, `"remove"`. Controls how unfilled future bars are represented in the context window. |
+| `mask_mode` | str | `"auto"` | One of `"auto"` (`"token"` when the checkpoint has `MaskBar`, else `"attention"`), `"token"`, `"attention"`, `"attention_approx"`, `"attention_skip"`, `"remove"`. Controls how unfilled future bars are represented in the context window. |
 
 Detail per mode:
 
@@ -333,9 +333,8 @@ plans only what is left, keeping the steps already done.
 
 ## 8. Common usage patterns
 
-In all of these, `bars` lists the bars to generate (for AR, in order), and
-the config needs a `mask_mode` other than `"token"` with the released
-checkpoints.
+In all of these, `bars` lists the bars to generate (for AR, in order; an AR
+track with no bars generates the whole track).
 
 ### Full-AR generation, free attributes
 

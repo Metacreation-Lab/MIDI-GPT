@@ -260,12 +260,13 @@ class InferenceConfig:
     # Mask mode selector: one of "token", "attention", "attention_approx",
     # "attention_skip", or "remove". Controls how future bars are represented
     # in the context and how the model attends to them.
+    #   "auto"             : "token" when the checkpoint has a MaskBar token, else "attention"
     #   "token"            : encoder emits MaskBar token (requires vocab support)
     #   "attention"        : span masks + exact KV-buffer attention masking
     #   "attention_approx" : span masks + prefill attention masking
     #   "attention_skip"   : span masks + skip masked positions in attention
-    #   "remove"           : future bars omitted entirely from token stream
-    mask_mode: str = "token"
+    #   "remove"           : future bars' content left out of the token stream (each stays an empty bar)
+    mask_mode: str = "auto"
     # Global hard cap on simultaneous note onsets. 0 = no cap. Applied as an
     # extra PolyphonyConstraint on the constraint graph for every step.
     polyphony_hard_limit: int = 0

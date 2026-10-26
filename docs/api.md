@@ -203,7 +203,7 @@ Controls the step planner and sampling pipeline.
 | `budget_margin` | float | 1.25 | Safety factor on the estimated output tokens |
 | `plan_only` | bool | false | Return the plan (windows and the bars each step writes) without generating; `/generate` answers `{"status": "planned", "model_dim", "plan": [...], "dropped_context"}` (see [HTTP Server](http.md)), and `SamplingSession.plan_summary()` returns the same plan |
 | `shuffle` | bool | false | Run the infill steps in random order, seeded by the request seed; AR steps keep their order, each continuing the last |
-| `mask_mode` | str | `"token"` | How to represent future bars: `"token"`, `"attention"`, `"attention_approx"`, `"attention_skip"`, `"remove"` |
+| `mask_mode` | str | `"auto"` | How to represent future bars: `"auto"` (`"token"` when the checkpoint has `MaskBar`, else `"attention"`), `"token"`, `"attention"`, `"attention_approx"`, `"attention_skip"`, `"remove"` |
 
 ### Sampling
 

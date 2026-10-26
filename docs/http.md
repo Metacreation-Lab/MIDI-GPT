@@ -376,7 +376,7 @@ curl -s -X POST http://localhost:8000/generate \
   }'
 ```
 
-The response `score` field contains the filled-in notes in the same JSON shape. `mask_mode` defaults to `"token"`, which needs a `MaskBar` token that none of the released checkpoints has (`capabilities.supports_token_mask` in `/info`), so set one of the attention modes.
+The response `score` field contains the filled-in notes in the same JSON shape. `mask_mode` defaults to `"auto"`: `"token"` when the checkpoint has a `MaskBar` token (`capabilities.supports_token_mask` in `/info`), else `"attention"`, which is what every released checkpoint gets.
 
 ---
 
