@@ -22,24 +22,10 @@ import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from axes import AXES, DEFAULTS, MODELS, PROBES, risky, violates
+from axes import AXES, DEFAULTS, MODELS, violates
 from build import build, load_pieces
+from cases import all_cases, shard_cases
 from checks import check, same_result
-from covering import covering_array
-
-
-def all_cases(seeds: int) -> list[dict]:
-    cases = []
-    for s in range(seeds):
-        for i, c in enumerate(covering_array(AXES, violates, risky() if s == 0 else (), seed=s)):
-            cases.append({"id": f"s{s}-{i:04d}", "case": c, "expect": "ok"})
-    for name, over in PROBES:
-        for m in MODELS:
-            if "model" in over and over["model"] != m:
-                continue
-            c = {**DEFAULTS, **over, "model": m}
-            cases.append({"id": f"probe-{name}-{m}", "case": c, "expect": "rejected"})
-    return cases
 
 
 def signature(exc: BaseException) -> str:
@@ -155,8 +141,7 @@ def main():
     from midigpt.inference import InferenceEngine
 
     os.makedirs(os.path.join(a.out, "failures"), exist_ok=True)
-    cases = [c for c in all_cases(a.seeds) if c["case"]["model"] == a.model]
-    cases = [c for i, c in enumerate(cases) if i % a.shards == a.shard]
+    cases = shard_cases(all_cases(a.seeds), a.model, a.shard, a.shards)
     if a.limit:
         cases = cases[: a.limit]
     print(f"{a.model}: {len(cases)} cases (shard {a.shard}/{a.shards})", flush=True)

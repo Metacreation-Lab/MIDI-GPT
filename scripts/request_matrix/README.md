@@ -15,13 +15,16 @@ hundred requests per model.
 | `covering.py` | the covering array (greedy, deterministic for a seed) |
 | `build.py` | picks GigaMIDI test pieces by kind (4/4 with and without drums, 3/4, 6/8, sparse, wide) and builds each request |
 | `checks.py` | what a reply must satisfy: only the asked bars change, masks and remix are obeyed, bar lengths, no runaway generation |
+| `cases.py` | the case list: the covering arrays and the probes, the same for every shard |
 | `run.py` | runs one model's cases (optionally a shard), shrinks failures to the fewest non-default options |
 | `report.py` | groups failures by signature across shards |
+| `status.py` | how far a run is: cases done per shard, outcomes so far, time left (pulls the results with `--pull`) |
 | `cluster.sh` | one shard on an Alliance GPU node |
 
 ```bash
 python scripts/request_matrix/run.py --data <GigaMIDI test split, or a folder of .mid> --model prism_medium \
     --out runs/matrix --limit 10            # a few cases
+python scripts/request_matrix/status.py runs/matrix --pull user@cluster:<run dir>   # while it runs
 python scripts/request_matrix/report.py runs/matrix --md runs/matrix/report.md
 ```
 
