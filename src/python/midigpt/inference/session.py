@@ -482,7 +482,7 @@ class _VariationForcer:
                  pos_range: tuple[int, int], onset_range: tuple[int, int],
                  dur_range: tuple[int, int] | None, vel_range: tuple[int, int] | None,
                  barend_id: int, count_on_onset: bool = False, fill_end_id: int | None = None,
-                 delta_ranges: tuple = ()):
+                 delta_ranges: tuple = (), seed: int | None = None):
         # Notes are counted on NoteDuration (a note's duration is forced
         # from the same reference note as its pitch), except on drum
         # tracks, which emit no NoteDuration: there each note is counted
@@ -507,6 +507,8 @@ class _VariationForcer:
         self.group_idx = 0
         self.note_idx = 0
         self._lead = self._starts_late()
+        # which notes are resampled follows the attempt's seed, so a fixed seed repeats a remix
+        self._rng = random.Random(seed) if seed is not None and seed >= 0 else random.Random()
         self._resampled = self._pick_resampled()
         self._roll_note()
 
@@ -532,7 +534,7 @@ class _VariationForcer:
         if self.amount <= 0 or not notes:
             return set()
         k = min(len(notes), max(1, round(self.amount * len(notes))))
-        return set(random.sample(notes, k))
+        return set(self._rng.sample(notes, k))
 
     def _roll_note(self):
         # True = force the reference value; False = leave open for resampling.
@@ -1945,6 +1947,7 @@ class SamplingSession:
                 count_on_onset=self._step_is_drums(score, step),
                 fill_end_id=_fill_end_r[0] if _fill_end_r else None,
                 delta_ranges=(_tok_range(_core.TokenType.Delta), _tok_range(_core.TokenType.DeltaDirection)),
+                seed=seed,
             )
 
         # Baseline for the note_sink diff: decode BEFORE any tokens are
@@ -2451,8 +2454,9 @@ class SamplingSession:
                     count_on_onset=self._step_is_drums(score, step),
                     fill_end_id=_fill_end_r[0] if _fill_end_r else None,
                     delta_ranges=(_tok_range(_core.TokenType.Delta), _tok_range(_core.TokenType.DeltaDirection)),
+                    seed=seeds[i],
                 )
-                for _ in range(B)
+                for i in range(B)
             ]
 
         # Independent RNG stream per row, seeded once — NOT re-seeded every

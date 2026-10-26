@@ -232,3 +232,9 @@ def test_variation_forcer_leaves_an_empty_reference_bar_alone():
     m = legal()
     f.apply(m)
     assert not bool(m[POS[0] : POS[1]].any())   # the next bar's schedule applies again
+
+
+def test_variation_forcer_picks_the_same_notes_for_the_same_seed():
+    bars = [[(g * 6, [(60 + g, 3)]) for g in range(8)]]
+    picks = [_VariationForcer("pitch", 0.5, bars, POS, ONSET, DUR, VEL, BAREND, seed=s)._resampled for s in (7, 7, 8)]
+    assert picks[0] == picks[1] and len(picks[0]) == 4
