@@ -27,7 +27,6 @@ Packed checkpoint format (format_version 1):
 
 from __future__ import annotations
 
-import math
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -74,7 +73,35 @@ class Conv1D(nn.Module):
 
 
 def gelu_new(x: torch.Tensor) -> torch.Tensor:
-    return 0.5 * x * (1.0 + torch.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * x.pow(3))))
+    # 0.5 * x * (1 + tanh(sqrt(2 / pi) * (x + 0.044715 * x^3))), GPT-2's GELU, as one fused op
+    return F.gelu(x, approximate="tanh")
+
+
+def _append_kv(past: torch.Tensor, new: torch.Tensor, max_len: int) -> torch.Tensor:
+    """past (B, H, L, D) followed by new (B, H, T, D), as a view of length L + T over a buffer with room to spare.
+
+    Concatenating every token copied the whole cache in every layer, so a token's cost grew with the context.
+    When past is already a view into such a buffer with room for T more positions, new is written into that room
+    in place; otherwise a buffer twice the needed length (at most the model's context, max_len) is allocated and
+    filled. Callers see the same tensors as before (shape[2] is the length).
+
+    In place is safe because a cache only grows along one line: each sampling step owns its cache (_KVRunner)
+    and never goes back to an earlier one while a later one grows from it.
+    """
+    B, H, L, D = past.shape
+    T = new.shape[2]
+    s = past.stride()
+    room = s[1] // D if past.dim() == 4 and s[3] == 1 and s[2] == D and s[1] % D == 0 else 0
+    if (room >= L + T and s[0] == H * s[1] and new.shape[0] == B
+            and past.storage_offset() + B * s[0] <= past.untyped_storage().nbytes() // past.element_size()):
+        grown = past.as_strided((B, H, L + T, D), s, past.storage_offset())
+        grown[:, :, L:] = new
+        return grown
+    cap = max(L + T, min(max_len, 2 * (L + T)))
+    buf = new.new_empty(new.shape[0], H, cap, D)
+    buf[:, :, :L] = past
+    buf[:, :, L:L + T] = new
+    return buf[:, :, :L + T]
 
 
 class GPT2Attention(nn.Module):
@@ -82,6 +109,7 @@ class GPT2Attention(nn.Module):
         super().__init__()
         self.n_head = cfg.n_head
         self.head_dim = cfg.head_dim
+        self.max_len = cfg.n_positions
         self.c_attn = Conv1D(cfg.n_embd, 3 * cfg.n_embd)
         self.c_proj = Conv1D(cfg.n_embd, cfg.n_embd)
 
@@ -106,8 +134,8 @@ class GPT2Attention(nn.Module):
         k = self._split_heads(k)
         v = self._split_heads(v)
         if past_kv is not None and past_kv[0].shape[2] > 0:
-            k = torch.cat([past_kv[0], k], dim=2)
-            v = torch.cat([past_kv[1], v], dim=2)
+            k = _append_kv(past_kv[0], k, self.max_len)
+            v = _append_kv(past_kv[1], v, self.max_len)
         present = (k, v)
 
         T_q, T_k = q.shape[2], k.shape[2]

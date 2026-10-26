@@ -250,6 +250,9 @@ class _BatchNotEligible(Exception):
 
 # Tokens between progress_sink calls.
 PROGRESS_EVERY = 32
+# Least time between two decodes for note_sink: each decodes the whole step so far, so decoding after every note
+# cost a share of the generation that grew with its length. The step's end sends whatever is left.
+STREAM_EVERY_S = 0.25   # the Live device forwards progress every 200 ms
 
 
 class GenerationCancelled(Exception):
@@ -1282,7 +1285,9 @@ class SamplingSession:
         import torch
         _device_is_mps = next(self._engine._model.parameters()).device.type == "mps"
 
-        if getattr(cfg, "batch_attempts", False) and cfg.max_attempts > 1:
+        # Batched attempts run in _sample_step_batch, which streams nothing: a streamed generation (note_sink)
+        # runs its attempts one after the other instead.
+        if getattr(cfg, "batch_attempts", False) and cfg.max_attempts > 1 and self.note_sink is None:
             temperatures = [
                 cfg.temperature * (cfg.temperature_escalation**i) for i in range(cfg.max_attempts)
             ]
@@ -1960,6 +1965,7 @@ class SamplingSession:
             self._restore_window(score, self._engine._tokenizer.normalize_output(from_cpp(state.result())), step)
             if self.note_sink is not None else None
         )
+        _last_stream_t = time.perf_counter()
         kv = _KVRunner(self._engine._model, self._engine._initial_kv)
         with torch.no_grad():
             while (
@@ -2155,7 +2161,9 @@ class SamplingSession:
                 # pitch/position/velocity ourselves — reuses the same
                 # decode path a natural completion uses, so it can't drift
                 # out of sync with what the final result will actually say.
-                if self.note_sink is not None and tname == "NoteDuration":
+                # NoteOnset too: a drum note has no NoteDuration, so drum-only steps streamed nothing.
+                if (self.note_sink is not None and tname in ("NoteDuration", "NoteOnset")
+                        and time.perf_counter() - _last_stream_t >= STREAM_EVERY_S):
                     partial = self._restore_window(
                         score, self._engine._tokenizer.normalize_output(from_cpp(state.result())), step
                     )
@@ -2163,6 +2171,7 @@ class SamplingSession:
                     if new_notes:
                         self.note_sink(new_notes)
                     _last_streamed_partial = partial
+                    _last_stream_t = time.perf_counter()
 
         # Loop exited either because state.complete() (natural stop — the
         # grammar reached a valid end, e.g. all requested bars filled) or
@@ -2189,6 +2198,10 @@ class SamplingSession:
         )
         if self.enable_profiling:
             self.decode_time += time.perf_counter() - t_dec
+        if self.note_sink is not None:   # whatever was generated since the last decode
+            new_notes = self._diff_notes(_last_streamed_partial, result)
+            if new_notes:
+                self.note_sink(new_notes)
 
         # Bar summaries from the decoded result (all tracks, all bars)
         if _tlogger is not None:
