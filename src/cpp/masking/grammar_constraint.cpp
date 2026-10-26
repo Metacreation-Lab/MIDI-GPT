@@ -22,7 +22,7 @@ void GrammarConstraint::step(int token, const tokenizer::Vocabulary& vocab) {
         case TokenType::TimeSig:
             if (vocab.config().time_signatures) {
                 auto [num, den] = vocab.config().time_signatures->decode(value);
-                beat_length_ = 4 * num / den;
+                beat_length_ = 4.0 * num / den;
             }
             break;
         case TokenType::BarEnd:
@@ -242,9 +242,11 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             break;
 
         case TokenType::VelocityLevel:
-            // orig: VelocityLevel -> {NoteOnset, Delta}
+            // VelocityLevel -> {NoteOnset, Delta, DeltaDirection}: the encoder writes a negative offset as
+            // DeltaDirection Delta after the velocity, so an early note where the velocity changes needs it.
             allow(TokenType::NoteOnset);
             allow(TokenType::NotePitch);
+            allow(TokenType::DeltaDirection);
             allow(TokenType::Delta);
             break;
 
@@ -253,14 +255,11 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             break;
 
         case TokenType::Delta:
-            // orig: Delta -> {Delta, DeltaDirection, NoteOnset, FillInEnd}
-            allow(TokenType::Delta);
-            allow(TokenType::DeltaDirection);
+            // A Delta is the microtiming of the note right after it: the encoder writes at most one per note, and
+            // its note always follows. Allowing Delta -> Delta let the model stack offsets (the decoder sums them
+            // for the note), putting notes bars away; Delta -> FillInEnd left an offset with no note.
             allow(TokenType::NoteOnset);
             allow(TokenType::NotePitch);
-            if (in_infill_) {
-                if (!require_notes_ || has_notes_in_block_) allow(TokenType::FillInEnd);
-            }
             break;
 
         case TokenType::NoteOnset:
@@ -330,11 +329,13 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             break;
     }
 
-    // TimeAbsolutePos: enforce monotonicity and bar boundary
-    if (in_bar_ && vocab.has(TokenType::TimeAbsolutePos)) {
+    // TimeAbsolutePos: enforce monotonicity and bar boundary, in a bar and in an infill block (which has no Bar
+    // token, and could otherwise put notes past the bar's end). In a fill-in the bar length is the last TimeSig
+    // seen in the prompt: exact for a piece in one meter.
+    if ((in_bar_ || in_infill_) && vocab.has(TokenType::TimeAbsolutePos)) {
         auto [tap_start, tap_end] = vocab.range(TokenType::TimeAbsolutePos);
         if (tap_start != -1) {
-            int bar_ticks = beat_length_ * vocab.config().resolution;
+            int bar_ticks = static_cast<int>(beat_length_ * vocab.config().resolution + 0.5);
             for (int i = tap_start; i < tap_end; ++i) {
                 auto [_, pos] = vocab.decode(i);
                 if (pos <= timestep_ || pos >= bar_ticks) {

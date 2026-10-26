@@ -11,7 +11,7 @@ def test_inference_config_defaults():
     cfg = InferenceConfig()
     assert cfg.temperature == 1.0
     assert cfg.seed == -1
-    assert cfg.mask_mode == "token"
+    assert cfg.mask_mode == "auto"
     assert cfg.polyphony_hard_limit == 0
     assert cfg.density_hard_limit == 0
     assert cfg.top_p == 1.0

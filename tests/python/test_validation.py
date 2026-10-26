@@ -292,6 +292,27 @@ def test_mask_mode_token_without_vocab_support_raises(
         validate_request(req, simple_score, unsupported_cfg, analyzer=ghost_analyzer)
 
 
+@pytest.mark.parametrize("supported, resolved", [(False, "attention"), (True, "token")])
+def test_mask_mode_auto_is_the_default_and_resolves_to_what_the_checkpoint_has(
+    simple_score, ghost_config_json, ghost_analyzer, supported, resolved
+):
+    """A request that doesn't set mask_mode must not be refused: "auto" (the default) becomes "token" with a
+    MaskBar token and "attention" without one, which is every released checkpoint."""
+    assert InferenceConfig().mask_mode == "auto"
+    cfg = _config_with_mask_bar_support(ghost_config_json, supported)
+    req = GenerationRequest(tracks=[TrackPrompt(id=0, bars=[0, 1, 2, 3], autoregressive=True)],
+                            config=InferenceConfig(model_dim=4))
+    out = validate_request(req, simple_score, cfg, analyzer=ghost_analyzer)
+    assert out.config.mask_mode == resolved
+
+
+def test_ar_track_without_bars_is_the_whole_track(simple_score, ghost_config, ghost_analyzer):
+    """An AR track with no bars means the whole track: validation lists them, so the planner plans them."""
+    req = _ar_request(bars=[])
+    out = validate_request(req, simple_score, ghost_config, analyzer=ghost_analyzer)
+    assert out.tracks[0].bars == list(range(len(simple_score.tracks[0].bars)))
+
+
 def test_mask_mode_token_with_vocab_support_passes_without_masked_bars(
     simple_score,
     ghost_config_json,
@@ -313,3 +334,12 @@ def test_mask_mode_token_with_vocab_support_passes_without_masked_bars(
     assert isinstance(out, GenerationRequest)
     assert out.config.mask_mode == "token"
     assert all(tp.mask_bars == [] for tp in out.tracks)
+
+
+@pytest.mark.parametrize("amount", [0, 0.0, -0.1, 1.5])
+def test_remix_amount_must_change_something(simple_score, ghost_config, ghost_analyzer, amount):
+    """remix.amount 0 resamples nothing (the reply would be the reference itself): refused like nothing to generate."""
+    req = GenerationRequest(tracks=[TrackPrompt(id=0, bars=[1, 2], controls={"remix": {"amount": amount}})],
+                            config=InferenceConfig(model_dim=4, tracks_per_step=1))
+    with pytest.raises(RequestValidationError, match=r"remix"):
+        validate_request(req, simple_score, ghost_config, analyzer=ghost_analyzer)

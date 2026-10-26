@@ -215,8 +215,10 @@ def validate_remix(remix: dict[str, Any]) -> None:
     amount = remix.get("amount")
     if amount is None:
         raise ValueError("remix: 'amount' is required")
-    if not (0.0 <= float(amount) <= 1.0):
-        raise ValueError(f"remix.amount must be in [0, 1] (got {amount})")
+    if not (0.0 < float(amount) <= 1.0):
+        # 0 resamples nothing: the reply would be the reference itself, which the novelty check then rejects on
+        # every attempt. Refused like a request with nothing to generate.
+        raise ValueError(f"remix.amount must be in (0, 1] (got {amount}); 0 changes nothing")
     mode = remix.get("mode", "pitch")
     if mode not in ("pitch", "full"):
         raise ValueError(f"remix.mode must be 'pitch' or 'full' (got {mode!r})")
@@ -260,12 +262,13 @@ class InferenceConfig:
     # Mask mode selector: one of "token", "attention", "attention_approx",
     # "attention_skip", or "remove". Controls how future bars are represented
     # in the context and how the model attends to them.
+    #   "auto"             : "token" when the checkpoint has a MaskBar token, else "attention"
     #   "token"            : encoder emits MaskBar token (requires vocab support)
     #   "attention"        : span masks + exact KV-buffer attention masking
     #   "attention_approx" : span masks + prefill attention masking
     #   "attention_skip"   : span masks + skip masked positions in attention
-    #   "remove"           : future bars omitted entirely from token stream
-    mask_mode: str = "token"
+    #   "remove"           : future bars' content left out of the token stream (each stays an empty bar)
+    mask_mode: str = "auto"
     # Global hard cap on simultaneous note onsets. 0 = no cap. Applied as an
     # extra PolyphonyConstraint on the constraint graph for every step.
     polyphony_hard_limit: int = 0

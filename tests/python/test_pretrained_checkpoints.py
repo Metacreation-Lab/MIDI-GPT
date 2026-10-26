@@ -110,7 +110,7 @@ def test_prism_infill_with_pitch_class_set(prism_engine, real_score):
 def test_prism_rejects_mask_token_mode(prism_engine, real_score):
     tracks = [TrackPrompt(id=0, bars=[14, 15], autoregressive=True)]
     tracks += [TrackPrompt(id=i, bars=[], ignore=True) for i in range(1, len(real_score.tracks))]
-    request = GenerationRequest(tracks=tracks, config=InferenceConfig(model_dim=4))  # default mask_mode="token"
+    request = GenerationRequest(tracks=tracks, config=InferenceConfig(model_dim=4, mask_mode="token"))
     with pytest.raises(Exception):
         prism_engine.session(real_score, request)
 
@@ -150,6 +150,6 @@ def test_expressive_infill_with_switchable_controls_off(expressive_engine, real_
 def test_expressive_rejects_mask_token_mode(expressive_engine, real_score):
     tracks = [TrackPrompt(id=0, bars=[14, 15], autoregressive=True)]
     tracks += [TrackPrompt(id=i, bars=[], ignore=True) for i in range(1, len(real_score.tracks))]
-    request = GenerationRequest(tracks=tracks, config=InferenceConfig(model_dim=4))  # default mask_mode="token"
+    request = GenerationRequest(tracks=tracks, config=InferenceConfig(model_dim=4, mask_mode="token"))
     with pytest.raises(Exception):
         expressive_engine.session(real_score, request)

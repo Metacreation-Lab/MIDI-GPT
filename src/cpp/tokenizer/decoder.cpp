@@ -67,7 +67,7 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
     };
     int delta_direction = 1;
     int delta_total = 0;
-    int beat_length = 4;
+    double beat_length = 4;   // beats per bar: 3.5 in 7/8, so not an int
     int track_count = 0;
     int current_bar_idx = -1;  // -1 = before first bar in current track
     int last_token = -1;
@@ -131,7 +131,7 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
         case TokenType::TimeSig: {
             if (vocab_.config().time_signatures) {
                 auto [num, den] = vocab_.config().time_signatures->decode(value);
-                beat_length = 4 * num / den;
+                beat_length = 4.0 * num / den;
                 if (current_bar) {
                     current_bar->ts_numerator = num;
                     current_bar->ts_denominator = den;
@@ -142,7 +142,7 @@ Score Decoder::decode(const std::vector<int>& tokens) const {
 
         case TokenType::BarEnd: {
             if (current_bar) {
-                int bar_ticks = beat_length * score.resolution;
+                int bar_ticks = static_cast<int>(beat_length * score.resolution + 0.5);
                 current_bar->beat_length = beat_length;
                 current_time = bar_ticks;
             }

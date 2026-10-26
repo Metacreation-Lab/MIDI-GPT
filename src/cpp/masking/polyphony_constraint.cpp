@@ -4,7 +4,8 @@ namespace midigpt::masking {
 
 void PolyphonyConstraint::step(int token, const tokenizer::Vocabulary& vocab) {
     TokenType type = vocab.get_type(token);
-    if (type == TokenType::Bar || type == TokenType::BarEnd) {
+    if (type == TokenType::Bar || type == TokenType::BarEnd ||
+        type == TokenType::FillInStart || type == TokenType::FillInEnd) {
         onset_count_ = 0;
     } else if (type == TokenType::TimeAbsolutePos) {
         onset_count_ = 0;
@@ -26,6 +27,12 @@ void PolyphonyConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabu
             for (int i = ps; i < pe; ++i) {
                 mask[i] = true;
             }
+        }
+        // A velocity or microtiming token can only be followed by a note, which is blocked here: leaving them open
+        // let the model walk into a state with no legal token.
+        for (TokenType t : {TokenType::VelocityLevel, TokenType::DeltaDirection, TokenType::Delta}) {
+            auto [s, e] = vocab.range(t);
+            if (s != -1) for (int i = s; i < e; ++i) mask[i] = true;
         }
     }
 }

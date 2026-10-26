@@ -35,7 +35,7 @@ private:
     int max_tracks_ = -1;
     int exact_bars_ = -1;   // -1 = no constraint, else require exactly N Bars per track
     int timestep_ = -1;
-    int beat_length_ = 4;
+    double beat_length_ = 4;   // beats per bar: 3.5 in 7/8, so not an int
     bool is_drum_ = false;
     bool in_bar_ = false;
     bool in_infill_ = false;

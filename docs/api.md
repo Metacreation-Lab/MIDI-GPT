@@ -176,7 +176,7 @@ Check a checkpoint's `supports_*` capabilities (`GET /info` — see [HTTP Server
 | `time_signature` | int | Index into `encoder_config.time_signatures` |
 | `pitch_mask` | dict | Restrict/shape which pitches this track's `NoteOnset` tokens may sample. Hard allow-set (pick one): `{"pitches": [60, 62, 64]}` (exact MIDI pitches), `{"scale": "major", "root": 0}` (preset name + pitch class 0–11), or `{"pitch_classes": [0, 2, 4, 5, 7, 9, 11]}` (any octave). Optional soft reweight layered on top: `"shape": {"type": "uniform", "min": 48, "max": 72}` or `"shape": {"type": "normal", "mean": 60, "std": 8}` |
 | `rhythm_mask` | dict | Restrict/shape which within-bar tick this track's `TimeAbsolutePos` tokens may land on. Mutually exclusive (pick one): `"positions"` — hard exact rhythm, forces the onset grid and polyphony exactly (`[{"pos": 0, "polyphony": 1}, {"pos": 24, "polyphony": 2}]`; first entry must be `pos=0`; requires `config.tracks_per_step == 1`, and `"auto"` becomes 1), or `"grid"` — soft grid-granularity bias (`{"unit": "eighth", "strength": 0.8}`; `unit`: whole/half/quarter/eighth/sixteenth/quarter_triplet/eighth_triplet/sixteenth_triplet; `strength` 1.0 = hard-quantize, 0.0 = no bias) |
-| `remix` | dict | Regenerate this track's bars as a partial variation of content already on `score` for those bars, instead of generating fresh. The onset schedule (which ticks have notes, how many per tick) is always reproduced exactly from the reference — only note-level values are eligible for resampling. `{"amount": 0.3, "mode": "pitch"}`: `amount` is the fraction of eligible note-attributes resampled (0–1); `mode: "pitch"` — only pitch is eligible, duration stays exact ("vary notes, keep the rhythm"); `mode: "full"` — pitch and duration are each independently eligible. Velocity is always left to free sampling in both modes |
+| `remix` | dict | Regenerate this track's bars as a partial variation of content already on `score` for those bars, instead of generating fresh. The onset schedule (which ticks have notes, how many per tick) is always reproduced exactly from the reference — only note-level values are eligible for resampling. `{"amount": 0.3, "mode": "pitch"}`: `amount` is the share of the reference notes resampled, in (0, 1]: `round(amount × notes)` of them, at least one, chosen at random (0 would change nothing and is refused); `mode: "pitch"` — only pitch is eligible, duration stays exact ("vary notes, keep the rhythm"); `mode: "full"` — pitch and duration are each independently eligible. Velocity is always left to free sampling in both modes |
 
 ---
 
@@ -203,7 +203,7 @@ Controls the step planner and sampling pipeline.
 | `budget_margin` | float | 1.25 | Safety factor on the estimated output tokens |
 | `plan_only` | bool | false | Return the plan (windows and the bars each step writes) without generating; `/generate` answers `{"status": "planned", "model_dim", "plan": [...], "dropped_context"}` (see [HTTP Server](http.md)), and `SamplingSession.plan_summary()` returns the same plan |
 | `shuffle` | bool | false | Run the infill steps in random order, seeded by the request seed; AR steps keep their order, each continuing the last |
-| `mask_mode` | str | `"token"` | How to represent future bars: `"token"`, `"attention"`, `"attention_approx"`, `"attention_skip"`, `"remove"` |
+| `mask_mode` | str | `"auto"` | How to represent future bars: `"auto"` (`"token"` when the checkpoint has `MaskBar`, else `"attention"`), `"token"`, `"attention"`, `"attention_approx"`, `"attention_skip"`, `"remove"` |
 
 ### Sampling
 

@@ -112,7 +112,7 @@ request = GenerationRequest(
         temperature=1.0,
         top_p=0.95,
         model_dim=8,    # context window in bars — must be in the model's num_bars_map
-        mask_mode="attention",  # the default "token" needs a MaskBar token; no released model has one
+        mask_mode="attention",  # the default, "auto", is "attention" on every released model
     ),
 )
 
@@ -213,6 +213,7 @@ Control how bars-to-be-generated appear in the context window:
 | `"attention_approx"` | Single prefill mask + KV surgery; faster than `"attention"` |
 | `"attention_skip"` | Future tokens filtered from input; `position_ids` passed explicitly |
 | `"remove"` | Future bars omitted entirely from the token stream |
+| `"auto"` (default) | `"token"` when the checkpoint has a `MaskBar` token, else `"attention"` |
 | `"token"` | Encoder emits a `MaskBar` token (requires vocab support) |
 
-Set via `InferenceConfig(mask_mode="attention")`. The `"attention"` family works on all currently-released models; `"token"` requires the encoder vocab to include a `MaskBar` domain — no released checkpoint has this yet.
+Set via `InferenceConfig(mask_mode="attention")`; the default, `"auto"`, picks `"token"` when the checkpoint supports it and `"attention"` otherwise. The `"attention"` family works on all currently-released models; `"token"` requires the encoder vocab to include a `MaskBar` domain — no released checkpoint has this yet.

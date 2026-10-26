@@ -372,12 +372,18 @@ class _RhythmForcer:
     """
 
     def __init__(self, schedule: list[tuple[int, int]], pos_range: tuple[int, int],
-                 onset_range: tuple[int, int], vel_range: tuple[int, int] | None, barend_id: int):
+                 onset_range: tuple[int, int], vel_range: tuple[int, int] | None, barend_id: int,
+                 fill_end_id: int | None = None, delta_ranges: tuple = ()):
         self.schedule = schedule  # [(tick, polyphony), ...], sorted, schedule[0][0] == 0
         self.pos_lo, self.pos_hi = pos_range
         self.onset_lo, self.onset_hi = onset_range
         self.vel_range = vel_range  # None if this checkpoint has no VelocityLevel domain
         self.barend_id = barend_id
+        # what closes a bar: BarEnd, and in infill FillInEnd (each target bar is its own fill-in block)
+        self.end_ids = [barend_id] if fill_end_id is None else [barend_id, fill_end_id]
+        # microtiming (Delta, DeltaDirection) is part of the next note: blocked wherever notes are, or the model
+        # could write an offset with no note allowed after it
+        self.delta_ranges = [r for r in delta_ranges if r is not None]
         self.group_idx = 0
         self.notes_in_group = 0
 
@@ -392,18 +398,23 @@ class _RhythmForcer:
             mask_buf[self.pos_lo:self.pos_hi] = False
             if self.vel_range is not None:
                 mask_buf[self.vel_range[0]:self.vel_range[1]] = False
+            for lo, hi in self.delta_ranges:
+                mask_buf[lo:hi] = False
             return
         required = self.schedule[self.group_idx][1]
-        if self.notes_in_group < required:
+        # A polyphony or density limit can block the notes still due here: the limit wins, the onset counts as full.
+        if self.notes_in_group < required and bool(mask_buf[self.onset_lo:self.onset_hi].any()):
             # Still filling this onset point — force another NoteOnset
             # (optionally preceded by a VelocityLevel restate, left alone).
             mask_buf[self.pos_lo:self.pos_hi] = False
-            mask_buf[self.barend_id] = False
+            mask_buf[self.end_ids] = False
             return
         # This onset point is full — force a move, never another chord note.
         mask_buf[self.onset_lo:self.onset_hi] = False
         if self.vel_range is not None:
             mask_buf[self.vel_range[0]:self.vel_range[1]] = False
+        for lo, hi in self.delta_ranges:
+            mask_buf[lo:hi] = False
         if self.group_idx + 1 < len(self.schedule):
             target_tick = self.schedule[self.group_idx + 1][0]
             target_id = self.pos_lo + target_tick
@@ -411,9 +422,10 @@ class _RhythmForcer:
             # here — narrow to it only if it's already True.
             still_legal = bool(mask_buf[target_id])
             mask_buf[self.pos_lo:self.pos_hi] = False
-            mask_buf[self.barend_id] = False
             if still_legal:
+                mask_buf[self.end_ids] = False
                 mask_buf[target_id] = True
+            # else: the next onset isn't legal (a density limit reached): let the bar end rather than block everything
         else:
             # Last scheduled onset point — only BarEnd should remain.
             mask_buf[self.pos_lo:self.pos_hi] = False
@@ -425,8 +437,10 @@ class _RhythmForcer:
         # (opening bar_idx=0, which is already where __init__ starts) would
         # incorrectly fire a reset too, and if a bar's opening is inherited
         # from context rather than sampled, its Bar token never appears in
-        # this loop at all.
-        if tname == "BarEnd":
+        # this loop at all. In infill each target bar is its own
+        # FillInStart ... FillInEnd block with no BarEnd, so FillInEnd ends a
+        # bar too.
+        if tname in ("BarEnd", "FillInEnd"):
             self.reset()
         elif tname == "NoteOnset":
             # Count on NoteOnset, not NoteDuration: drum tracks emit no
@@ -450,9 +464,13 @@ class _VariationForcer:
     the reference, exactly like a _RhythmForcer built from that same
     reference — see that class's docstring for the underlying grammar and
     the narrow-only/never-widen safety philosophy, both fully reused here.
-    On top of the schedule, each reference note's pitch (and, in "full"
-    mode, duration) is independently rolled once per note: kept forced to
-    the reference value, or left open for the model to resample freely
+    On top of the schedule, round(amount * N) of the N reference notes, at
+    least one, chosen at random (the way infill_probability picks bars), have
+    their pitch (and, in "full" mode, duration) left open for the model to
+    resample; the others are forced to the reference value. Rolling each
+    note on its own made a small amount change nothing at all
+    (a reply identical to the reference, which the novelty check refuses).
+    A resampled value is left open for the model to resample freely
     (subject to whatever other masks — e.g. controls["pitch_mask"] — are
     also active). Velocity is always left to free sampling in both modes:
     this checkpoint exposes no raw-velocity -> VelocityLevel-token
@@ -463,7 +481,8 @@ class _VariationForcer:
     def __init__(self, mode: str, amount: float, bars_schedule: list,
                  pos_range: tuple[int, int], onset_range: tuple[int, int],
                  dur_range: tuple[int, int] | None, vel_range: tuple[int, int] | None,
-                 barend_id: int, count_on_onset: bool = False):
+                 barend_id: int, count_on_onset: bool = False, fill_end_id: int | None = None,
+                 delta_ranges: tuple = (), seed: int | None = None):
         # Notes are counted on NoteDuration (a note's duration is forced
         # from the same reference note as its pitch), except on drum
         # tracks, which emit no NoteDuration: there each note is counted
@@ -482,10 +501,23 @@ class _VariationForcer:
         self.dur_range = dur_range
         self.vel_range = vel_range
         self.barend_id = barend_id
+        self.end_ids = [barend_id] if fill_end_id is None else [barend_id, fill_end_id]   # see _RhythmForcer
+        self.delta_ranges = [r for r in delta_ranges if r is not None]   # see _RhythmForcer
         self.bar_idx = 0
         self.group_idx = 0
         self.note_idx = 0
+        self._lead = self._starts_late()
+        # which notes are resampled follows the attempt's seed, so a fixed seed repeats a remix
+        self._rng = random.Random(seed) if seed is not None and seed >= 0 else random.Random()
+        self._resampled = self._pick_resampled()
         self._roll_note()
+
+    def _starts_late(self) -> bool:
+        # A note on the downbeat needs no position token; a bar whose first
+        # notes come later opens with a TimeAbsolutePos to them, which moves
+        # to the first group rather than past it.
+        bar = self._current_bar()
+        return bool(bar) and bar[0][0] > 0
 
     def _current_bar(self):
         return self.bars_schedule[self.bar_idx] if self.bar_idx < len(self.bars_schedule) else []
@@ -494,9 +526,19 @@ class _VariationForcer:
         bar = self._current_bar()
         return bar[self.group_idx] if self.group_idx < len(bar) else None
 
+    def _pick_resampled(self):
+        """{(bar, group, note)} whose values are left open: round(amount * N) of the N reference notes, at least one
+        (none at amount 0, which validation refuses in a request)."""
+        notes = [(b, g, n) for b, bar in enumerate(self.bars_schedule)
+                 for g, (_tick, group) in enumerate(bar) for n in range(len(group))]
+        if self.amount <= 0 or not notes:
+            return set()
+        k = min(len(notes), max(1, round(self.amount * len(notes))))
+        return set(self._rng.sample(notes, k))
+
     def _roll_note(self):
         # True = force the reference value; False = leave open for resampling.
-        keep = random.random() >= self.amount
+        keep = (self.bar_idx, self.group_idx, self.note_idx) not in self._resampled
         self._force_pitch = keep
         self._force_duration = True if self.mode == "pitch" else keep
 
@@ -518,9 +560,14 @@ class _VariationForcer:
         self.bar_idx += 1
         self.group_idx = 0
         self.note_idx = 0
+        self._lead = self._starts_late()
         self._roll_note()
 
     def apply(self, mask_buf):
+        if self.bar_idx < len(self.bars_schedule) and not self.bars_schedule[self.bar_idx]:
+            # An empty reference bar has no notes to vary: the model writes it like any generated bar. Treating it
+            # as a finished schedule blocked every note, while a bar needs one before it can end.
+            return
         group = self._current_group()
         if group is None:
             # Reference bar's schedule exhausted — no more notes, no more moves.
@@ -528,12 +575,31 @@ class _VariationForcer:
             mask_buf[self.pos_lo:self.pos_hi] = False
             if self.vel_range is not None:
                 mask_buf[self.vel_range[0]:self.vel_range[1]] = False
+            for lo, hi in self.delta_ranges:
+                mask_buf[lo:hi] = False
             return
         tick, notes = group
-        if self.note_idx < len(notes):
+        if self._lead:
+            # Before the bar's first note, which isn't on the downbeat: move to it.
+            target_id = self.pos_lo + tick
+            if tick < self.pos_hi - self.pos_lo and bool(mask_buf[target_id]):
+                mask_buf[self.onset_lo:self.onset_hi] = False
+                if self.vel_range is not None:
+                    mask_buf[self.vel_range[0]:self.vel_range[1]] = False
+                for lo, hi in self.delta_ranges:
+                    mask_buf[lo:hi] = False
+                mask_buf[self.pos_lo:self.pos_hi] = False
+                mask_buf[self.end_ids] = False
+                mask_buf[target_id] = True
+                return
+            if not bool(mask_buf[self.onset_lo:self.onset_hi].any()) and not bool(mask_buf[self.pos_lo:self.pos_hi].any()):
+                return   # the bar's opening tokens (Bar, TimeSig, attributes) come first: wait for them
+            self._lead = False   # notes allowed but not that position: let the first note fall where the grammar allows
+        # A polyphony or density limit can block the notes still due here: the limit wins, the onset counts as full.
+        if self.note_idx < len(notes) and bool(mask_buf[self.onset_lo:self.onset_hi].any()):
             # Still filling this onset point — force another NoteOnset.
             mask_buf[self.pos_lo:self.pos_hi] = False
-            mask_buf[self.barend_id] = False
+            mask_buf[self.end_ids] = False
             pitch, duration = notes[self.note_idx]
             if self._force_pitch:
                 self._narrow(mask_buf, (self.onset_lo, self.onset_hi), pitch)
@@ -547,15 +613,18 @@ class _VariationForcer:
         mask_buf[self.onset_lo:self.onset_hi] = False
         if self.vel_range is not None:
             mask_buf[self.vel_range[0]:self.vel_range[1]] = False
+        for lo, hi in self.delta_ranges:
+            mask_buf[lo:hi] = False
         bar = self._current_bar()
         if self.group_idx + 1 < len(bar):
             target_tick = bar[self.group_idx + 1][0]
             target_id = self.pos_lo + target_tick
             still_legal = bool(mask_buf[target_id]) if 0 <= target_tick < (self.pos_hi - self.pos_lo) else False
             mask_buf[self.pos_lo:self.pos_hi] = False
-            mask_buf[self.barend_id] = False
             if still_legal:
+                mask_buf[self.end_ids] = False
                 mask_buf[target_id] = True
+            # else: the next onset isn't legal (a density limit reached): let the bar end rather than block everything
         else:
             mask_buf[self.pos_lo:self.pos_hi] = False
 
@@ -565,14 +634,47 @@ class _VariationForcer:
         # reasons, which matter MORE here since each bar has a distinct
         # reference (a fixed shared schedule like _RhythmForcer's would mask
         # the bug; per-bar reference values expose it immediately).
-        if tname == "BarEnd":
+        if tname in ("BarEnd", "FillInEnd"):
             self.reset_bar()
+        elif tname == "TimeAbsolutePos" and self._lead:
+            self._lead = False
         elif tname == self.count_on:
             self.note_idx += 1
             self._roll_note()
         elif tname == "TimeAbsolutePos":
             self.group_idx += 1
             self.note_idx = 0
+            self._roll_note()
+
+
+class _MeterKeeper:
+    """Holds generated bars to the piece's meter. A generated bar (AR) writes its own TimeSig, and the model can
+    pick another meter than the piece's (6/4 in a 6/8 piece) or leave it out (the decoder then reads 4/4): either
+    way positions follow that meter and notes land past the bar. Wherever a TimeSig is legal only the piece's is;
+    after a Bar, notes, positions and the bar's end wait for it (bar attributes, which come first, don't)."""
+
+    def __init__(self, ts_range: tuple[int, int], ts_value: int, content_ranges: list, end_ids: list):
+        self.ts_lo, self.ts_hi = ts_range
+        self.ts_id = self.ts_lo + ts_value
+        self.content_ranges = [r for r in content_ranges if r is not None]
+        self.end_ids = end_ids
+        self.awaiting = False
+
+    def apply(self, mask_buf):
+        if not bool(mask_buf[self.ts_id]):
+            return
+        mask_buf[self.ts_lo:self.ts_hi] = False
+        mask_buf[self.ts_id] = True
+        if self.awaiting:
+            for lo, hi in self.content_ranges:
+                mask_buf[lo:hi] = False
+            mask_buf[self.end_ids] = False
+
+    def advance(self, tname: str):
+        if tname == "Bar":
+            self.awaiting = True
+        elif tname == "TimeSig":
+            self.awaiting = False
 
 
 def _sample_infill_bars(request: GenerationRequest, seed: int) -> GenerationRequest:
@@ -1190,6 +1292,13 @@ class SamplingSession:
             ]
             try:
                 batch_results = self._sample_step_batch(score, step, temperatures, seeds)
+            except GenerationCancelled as exc:
+                # the batch carries one result per attempt; a cancelled step carries one score, as the sequential
+                # path's does (run() and the server read it as a Score)
+                partial = exc.partial
+                if isinstance(partial, list):
+                    partial = next((c for c, *_ in partial if c is not None), None)
+                raise GenerationCancelled(partial, exc.gen_count) from None
             except _BatchNotEligible as exc:
                 log.info(
                     "batch_attempts requested but not eligible (%s); falling back to sequential",
@@ -1320,7 +1429,8 @@ class SamplingSession:
         raise RuntimeError(
             f"Max attempts ({cfg.max_attempts}) reached, no acceptable candidate "
             f"found. Rejection reasons: {reason_summary}. "
-            f"Last candidate had {self._note_count(last_candidate, step)} notes in "
+            f"Last candidate had "
+            f"{self._note_count(last_candidate, step) if last_candidate is not None else 0} notes in "
             f"generated bars. "
             f"(Hints: vary retries with temperature_escalation > 1, raise "
             f"max_attempts, disable the failing check, or relax top_p/mask_p "
@@ -1809,8 +1919,11 @@ class SamplingSession:
             _barend_range = _tok_range(_core.TokenType.BarEnd)
             _onset_range = _tok_range(_core.TokenType.NoteOnset)
             _vel_range_any = _tok_range(_core.TokenType.VelocityLevel)
+            _fill_end = _tok_range(_core.TokenType.FillInEnd)
             _rhythm_forcer = _RhythmForcer(
-                _rhythm_schedule, _rhythm_range, _onset_range, _vel_range_any, _barend_range[0]
+                _rhythm_schedule, _rhythm_range, _onset_range, _vel_range_any, _barend_range[0],
+                fill_end_id=_fill_end[0] if _fill_end else None,
+                delta_ranges=(_tok_range(_core.TokenType.Delta), _tok_range(_core.TokenType.DeltaDirection)),
             )
 
         # Variation/remix (controls["remix"]) — forces the reference score's
@@ -1818,6 +1931,7 @@ class SamplingSession:
         # independently resampling p% of note-level values. Mutually
         # exclusive with rhythm_mask on the same track (validation.py), so
         # at most one of _rhythm_forcer / _variation_forcer is ever active.
+        _meter = self._meter_keeper(_tok_range)
         _remix_mode, _remix_amount, _remix_bars = self._build_remix_schedule(score, step)
         _variation_forcer = None
         if _remix_bars is not None:
@@ -1826,10 +1940,14 @@ class SamplingSession:
             _onset_range_r = _tok_range(_core.TokenType.NoteOnset)
             _dur_range_r = _tok_range(_core.TokenType.NoteDuration)
             _vel_range_r = _tok_range(_core.TokenType.VelocityLevel)
+            _fill_end_r = _tok_range(_core.TokenType.FillInEnd)
             _variation_forcer = _VariationForcer(
                 _remix_mode, _remix_amount, _remix_bars,
                 _pos_range_r, _onset_range_r, _dur_range_r, _vel_range_r, _barend_range_r[0],
                 count_on_onset=self._step_is_drums(score, step),
+                fill_end_id=_fill_end_r[0] if _fill_end_r else None,
+                delta_ranges=(_tok_range(_core.TokenType.Delta), _tok_range(_core.TokenType.DeltaDirection)),
+                seed=seed,
             )
 
         # Baseline for the note_sink diff: decode BEFORE any tokens are
@@ -1921,6 +2039,8 @@ class SamplingSession:
                     _rhythm_forcer.apply(mask_buf)
                 if _variation_forcer is not None:
                     _variation_forcer.apply(mask_buf)
+                if _meter is not None:
+                    _meter.apply(mask_buf)
 
                 n_legal = int(mask_buf.sum().item())
                 if n_legal == 0:
@@ -1983,6 +2103,8 @@ class SamplingSession:
                     _rhythm_forcer.advance(tname)
                 if _variation_forcer is not None:
                     _variation_forcer.advance(tname)
+                if _meter is not None:
+                    _meter.advance(tname)
 
                 # Log this token (T=1 raw probs, grammar mask, model top-5)
                 if _tlogger is not None:
@@ -2303,8 +2425,11 @@ class SamplingSession:
             _barend_range = _tok_range(_core.TokenType.BarEnd)
             _onset_range = _tok_range(_core.TokenType.NoteOnset)
             _vel_range_any = _tok_range(_core.TokenType.VelocityLevel)
+            _fill_end = _tok_range(_core.TokenType.FillInEnd)
             _rhythm_forcers = [
-                _RhythmForcer(_rhythm_schedule, _rhythm_range, _onset_range, _vel_range_any, _barend_range[0])
+                _RhythmForcer(_rhythm_schedule, _rhythm_range, _onset_range, _vel_range_any, _barend_range[0],
+                              fill_end_id=_fill_end[0] if _fill_end else None,
+                              delta_ranges=(_tok_range(_core.TokenType.Delta), _tok_range(_core.TokenType.DeltaDirection)))
                 for _ in range(B)
             ]
 
@@ -2312,6 +2437,7 @@ class SamplingSession:
         # _VariationForcer PER ROW (each row rolls its own force/resample
         # decisions independently — that's the entire point of a batch of
         # candidates for the same remix request).
+        _meters = [self._meter_keeper(_tok_range) for _ in range(B)]
         _remix_mode, _remix_amount, _remix_bars = self._build_remix_schedule(score, step)
         _variation_forcers = [None] * B
         if _remix_bars is not None:
@@ -2320,13 +2446,17 @@ class SamplingSession:
             _onset_range_r = _tok_range(_core.TokenType.NoteOnset)
             _dur_range_r = _tok_range(_core.TokenType.NoteDuration)
             _vel_range_r = _tok_range(_core.TokenType.VelocityLevel)
+            _fill_end_r = _tok_range(_core.TokenType.FillInEnd)
             _variation_forcers = [
                 _VariationForcer(
                     _remix_mode, _remix_amount, _remix_bars,
                     _pos_range_r, _onset_range_r, _dur_range_r, _vel_range_r, _barend_range_r[0],
                     count_on_onset=self._step_is_drums(score, step),
+                    fill_end_id=_fill_end_r[0] if _fill_end_r else None,
+                    delta_ranges=(_tok_range(_core.TokenType.Delta), _tok_range(_core.TokenType.DeltaDirection)),
+                    seed=seeds[i],
                 )
-                for _ in range(B)
+                for i in range(B)
             ]
 
         # Independent RNG stream per row, seeded once — NOT re-seeded every
@@ -2393,6 +2523,8 @@ class SamplingSession:
                         _rhythm_forcers[i].apply(mask_buf)
                     if _variation_forcers[i] is not None:
                         _variation_forcers[i].apply(mask_buf)
+                    if _meters[i] is not None:
+                        _meters[i].apply(mask_buf)
 
                     n_legal = int(mask_buf.sum().item())
                     if n_legal == 0:
@@ -2440,7 +2572,8 @@ class SamplingSession:
                         else torch.multinomial(probs, 1).item()
                     )
 
-                    if _rhythm_forcers[i] is not None or _variation_forcers[i] is not None or _tlogger is not None:
+                    if (_rhythm_forcers[i] is not None or _variation_forcers[i] is not None or _meters[i] is not None
+                            or _tlogger is not None):
                         try:
                             tname = self._engine._tokenizer._vocab.get_type(token).name
                             _, tval = self._engine._tokenizer._vocab.decode(token)
@@ -2456,6 +2589,8 @@ class SamplingSession:
                             _rhythm_forcers[i].advance(tname)
                         if _variation_forcers[i] is not None:
                             _variation_forcers[i].advance(tname)
+                        if _meters[i] is not None:
+                            _meters[i].advance(tname)
 
                     states[i].advance(token)
                     last_tokens[i] = token
@@ -2691,6 +2826,62 @@ class SamplingSession:
             "tracks": tracks,
         }
 
+    def _meter_keeper(self, tok_range) -> "_MeterKeeper | None":
+        """A _MeterKeeper for this request, or None: when the score has one meter and the request locks none."""
+        if any("time_signature" in (tp.controls or {})
+               or any("time_signature" in (d or {}) for d in (tp.bar_controls or {}).values())
+               for tp in self._request.tracks):
+            return None
+        meters = {(b.ts_numerator, b.ts_denominator) for t in self._score.tracks for b in t.bars}
+        ts_range = tok_range(_core.TokenType.TimeSig)
+        if len(meters) != 1 or ts_range is None:
+            return None
+        value = self._time_signature_index(*next(iter(meters)))
+        if value is None or not (0 <= value < ts_range[1] - ts_range[0]):
+            return None
+        content = [tok_range(getattr(_core.TokenType, t)) for t in
+                   ("TimeAbsolutePos", "NoteOnset", "NotePitch", "NoteDuration", "VelocityLevel", "Delta", "DeltaDirection")
+                   if hasattr(_core.TokenType, t)]
+        ends = [r[0] for r in (tok_range(_core.TokenType.BarEnd), tok_range(_core.TokenType.FillInEnd)) if r]
+        return _MeterKeeper(ts_range, value, content, ends)
+
+    def _time_signature_index(self, num: int, den: int) -> "int | None":
+        """The TimeSig token value for num/den in this checkpoint, or None when it has no such meter."""
+        if not hasattr(self, "_ts_indices"):
+            import json as _json
+
+            entries = _json.loads(self._engine._tokenizer._vocab.config().to_json()).get("time_signatures") or []
+            self._ts_indices = {}
+            for i, e in enumerate(entries):
+                if isinstance(e, str) and "/" in e:
+                    n, d = e.split("/")
+                elif isinstance(e, (list, tuple)) and len(e) == 2:
+                    n, d = e
+                else:
+                    continue
+                self._ts_indices[(int(n), int(d))] = i
+        return self._ts_indices.get((int(num), int(den)))
+
+    def _mask_droppable(self, probs):
+        """Which token ids mask_k / mask_p may remove: note content (position, pitch, duration, velocity,
+        microtiming), not structure or attributes."""
+        cached = getattr(self, "_droppable", None)
+        if cached is not None and cached.numel() == probs.numel() and cached.device == probs.device:
+            return cached
+        import torch
+
+        vocab = self._engine._tokenizer._vocab
+        m = torch.zeros(probs.numel(), dtype=torch.bool, device=probs.device)
+        for tt in ("TimeAbsolutePos", "NoteOnset", "NotePitch", "NoteDuration", "VelocityLevel", "Delta", "DeltaDirection"):
+            t = getattr(_core.TokenType, tt, None)
+            if t is None:
+                continue
+            lo, hi = vocab.range(t)
+            if lo >= 0:
+                m[lo:min(hi, m.numel())] = True
+        self._droppable = m
+        return m
+
     def _apply_sampling_filters(self, probs):
         """Apply top_k → top_p → mask_k → mask_p in that fixed order.
 
@@ -2750,10 +2941,14 @@ class SamplingSession:
         cumsum2 = torch.cumsum(sorted_probs2, dim=0)
         survivors_n = int(keep.sum().item())
 
+        # mask_k / mask_p push the model off its likeliest notes, never off the structure: dropping a likely BarEnd,
+        # FillInEnd or TrackEnd let bars and tracks run on past their end.
+        droppable = self._mask_droppable(probs)
+
         # mask_k: remove the top mask_k highest-prob (within survivors) tokens
         if 0 < mask_k < survivors_n:
             drop = sorted_idx2[:mask_k]
-            keep[drop] = False
+            keep[drop[droppable[drop]]] = False
 
         # mask_p: remove most-likely tokens summing (cumulative) to ≥ mask_p
         if 0.0 < mask_p < 1.0 and survivors_n > 0:
@@ -2761,7 +2956,7 @@ class SamplingSession:
             drop_rank = min(drop_rank, survivors_n - 1)  # never empty the pool
             if drop_rank > 0:
                 drop = sorted_idx2[:drop_rank]
-                keep[drop] = False
+                keep[drop[droppable[drop]]] = False
 
         filtered = probs * keep.to(probs.dtype)
         total = float(filtered.sum().item())
