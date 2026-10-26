@@ -174,3 +174,16 @@ def test_forcers_give_way_to_a_limit():
         m[POS[0] : POS[1]] = False   # the density limit: no more notes or moves
         f.apply(m)
         assert bool(m[BAREND]) or bool(m[FILLEND])   # the bar can end
+
+
+def test_variation_forcer_waits_for_the_bar_opening_before_a_late_first_onset():
+    # in AR the bar opens with Bar and TimeSig before any position is legal: the late first onset still applies
+    bars = [[(12, [(60, 3)])]]
+    f = _VariationForcer("full", 0.0, bars, POS, ONSET, DUR, VEL, BAREND)
+    m = legal()
+    m[POS[0] : POS[1]] = False
+    m[ONSET[0] : ONSET[1]] = False   # only the bar's opening tokens are legal here
+    f.apply(m)
+    m = legal()
+    f.apply(m)
+    assert not onset_open(m) and int(m[POS[0] : POS[1]].sum()) == 1 and bool(m[POS[0] + 12])

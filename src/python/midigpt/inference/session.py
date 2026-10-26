@@ -571,7 +571,9 @@ class _VariationForcer:
                 mask_buf[self.end_ids] = False
                 mask_buf[target_id] = True
                 return
-            self._lead = False   # not legal here: let the first note fall where the grammar allows
+            if not bool(mask_buf[self.onset_lo:self.onset_hi].any()) and not bool(mask_buf[self.pos_lo:self.pos_hi].any()):
+                return   # the bar's opening tokens (Bar, TimeSig, attributes) come first: wait for them
+            self._lead = False   # notes allowed but not that position: let the first note fall where the grammar allows
         # A polyphony or density limit can block the notes still due here: the limit wins, the onset counts as full.
         if self.note_idx < len(notes) and bool(mask_buf[self.onset_lo:self.onset_hi].any()):
             # Still filling this onset point — force another NoteOnset.
