@@ -625,6 +625,36 @@ class _VariationForcer:
             self.note_idx = 0
 
 
+class _MeterKeeper:
+    """Holds generated bars to the piece's meter. A generated bar (AR) writes its own TimeSig, and the model can
+    pick another meter than the piece's (6/4 in a 6/8 piece) or leave it out (the decoder then reads 4/4): either
+    way positions follow that meter and notes land past the bar. Wherever a TimeSig is legal only the piece's is;
+    after a Bar, notes, positions and the bar's end wait for it (bar attributes, which come first, don't)."""
+
+    def __init__(self, ts_range: tuple[int, int], ts_value: int, content_ranges: list, end_ids: list):
+        self.ts_lo, self.ts_hi = ts_range
+        self.ts_id = self.ts_lo + ts_value
+        self.content_ranges = [r for r in content_ranges if r is not None]
+        self.end_ids = end_ids
+        self.awaiting = False
+
+    def apply(self, mask_buf):
+        if not bool(mask_buf[self.ts_id]):
+            return
+        mask_buf[self.ts_lo:self.ts_hi] = False
+        mask_buf[self.ts_id] = True
+        if self.awaiting:
+            for lo, hi in self.content_ranges:
+                mask_buf[lo:hi] = False
+            mask_buf[self.end_ids] = False
+
+    def advance(self, tname: str):
+        if tname == "Bar":
+            self.awaiting = True
+        elif tname == "TimeSig":
+            self.awaiting = False
+
+
 def _sample_infill_bars(request: GenerationRequest, seed: int) -> GenerationRequest:
     """Keep round(p * N) of the N infill (track, bar) targets, at least one,
     chosen uniformly at random with `seed` (p = config.infill_probability).
@@ -1879,6 +1909,7 @@ class SamplingSession:
         # independently resampling p% of note-level values. Mutually
         # exclusive with rhythm_mask on the same track (validation.py), so
         # at most one of _rhythm_forcer / _variation_forcer is ever active.
+        _meter = self._meter_keeper(_tok_range)
         _remix_mode, _remix_amount, _remix_bars = self._build_remix_schedule(score, step)
         _variation_forcer = None
         if _remix_bars is not None:
@@ -1985,6 +2016,8 @@ class SamplingSession:
                     _rhythm_forcer.apply(mask_buf)
                 if _variation_forcer is not None:
                     _variation_forcer.apply(mask_buf)
+                if _meter is not None:
+                    _meter.apply(mask_buf)
 
                 n_legal = int(mask_buf.sum().item())
                 if n_legal == 0:
@@ -2047,6 +2080,8 @@ class SamplingSession:
                     _rhythm_forcer.advance(tname)
                 if _variation_forcer is not None:
                     _variation_forcer.advance(tname)
+                if _meter is not None:
+                    _meter.advance(tname)
 
                 # Log this token (T=1 raw probs, grammar mask, model top-5)
                 if _tlogger is not None:
@@ -2379,6 +2414,7 @@ class SamplingSession:
         # _VariationForcer PER ROW (each row rolls its own force/resample
         # decisions independently — that's the entire point of a batch of
         # candidates for the same remix request).
+        _meters = [self._meter_keeper(_tok_range) for _ in range(B)]
         _remix_mode, _remix_amount, _remix_bars = self._build_remix_schedule(score, step)
         _variation_forcers = [None] * B
         if _remix_bars is not None:
@@ -2463,6 +2499,8 @@ class SamplingSession:
                         _rhythm_forcers[i].apply(mask_buf)
                     if _variation_forcers[i] is not None:
                         _variation_forcers[i].apply(mask_buf)
+                    if _meters[i] is not None:
+                        _meters[i].apply(mask_buf)
 
                     n_legal = int(mask_buf.sum().item())
                     if n_legal == 0:
@@ -2510,7 +2548,8 @@ class SamplingSession:
                         else torch.multinomial(probs, 1).item()
                     )
 
-                    if _rhythm_forcers[i] is not None or _variation_forcers[i] is not None or _tlogger is not None:
+                    if (_rhythm_forcers[i] is not None or _variation_forcers[i] is not None or _meters[i] is not None
+                            or _tlogger is not None):
                         try:
                             tname = self._engine._tokenizer._vocab.get_type(token).name
                             _, tval = self._engine._tokenizer._vocab.decode(token)
@@ -2526,6 +2565,8 @@ class SamplingSession:
                             _rhythm_forcers[i].advance(tname)
                         if _variation_forcers[i] is not None:
                             _variation_forcers[i].advance(tname)
+                        if _meters[i] is not None:
+                            _meters[i].advance(tname)
 
                     states[i].advance(token)
                     last_tokens[i] = token
@@ -2760,6 +2801,42 @@ class SamplingSession:
             "end_bar": int(step.end_bar),
             "tracks": tracks,
         }
+
+    def _meter_keeper(self, tok_range) -> "_MeterKeeper | None":
+        """A _MeterKeeper for this request, or None: when the score has one meter and the request locks none."""
+        if any("time_signature" in (tp.controls or {})
+               or any("time_signature" in (d or {}) for d in (tp.bar_controls or {}).values())
+               for tp in self._request.tracks):
+            return None
+        meters = {(b.ts_numerator, b.ts_denominator) for t in self._score.tracks for b in t.bars}
+        ts_range = tok_range(_core.TokenType.TimeSig)
+        if len(meters) != 1 or ts_range is None:
+            return None
+        value = self._time_signature_index(*next(iter(meters)))
+        if value is None or not (0 <= value < ts_range[1] - ts_range[0]):
+            return None
+        content = [tok_range(getattr(_core.TokenType, t)) for t in
+                   ("TimeAbsolutePos", "NoteOnset", "NotePitch", "NoteDuration", "VelocityLevel", "Delta", "DeltaDirection")
+                   if hasattr(_core.TokenType, t)]
+        ends = [r[0] for r in (tok_range(_core.TokenType.BarEnd), tok_range(_core.TokenType.FillInEnd)) if r]
+        return _MeterKeeper(ts_range, value, content, ends)
+
+    def _time_signature_index(self, num: int, den: int) -> "int | None":
+        """The TimeSig token value for num/den in this checkpoint, or None when it has no such meter."""
+        if not hasattr(self, "_ts_indices"):
+            import json as _json
+
+            entries = _json.loads(self._engine._tokenizer._vocab.config().to_json()).get("time_signatures") or []
+            self._ts_indices = {}
+            for i, e in enumerate(entries):
+                if isinstance(e, str) and "/" in e:
+                    n, d = e.split("/")
+                elif isinstance(e, (list, tuple)) and len(e) == 2:
+                    n, d = e
+                else:
+                    continue
+                self._ts_indices[(int(n), int(d))] = i
+        return self._ts_indices.get((int(num), int(den)))
 
     def _mask_droppable(self, probs):
         """Which token ids mask_k / mask_p may remove: note content (position, pitch, duration, velocity,

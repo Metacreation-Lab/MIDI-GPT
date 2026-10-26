@@ -330,8 +330,10 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             break;
     }
 
-    // TimeAbsolutePos: enforce monotonicity and bar boundary
-    if (in_bar_ && vocab.has(TokenType::TimeAbsolutePos)) {
+    // TimeAbsolutePos: enforce monotonicity and bar boundary, in a bar and in an infill block (which has no Bar
+    // token, and could otherwise put notes past the bar's end). In a fill-in the bar length is the last TimeSig
+    // seen in the prompt: exact for a piece in one meter.
+    if ((in_bar_ || in_infill_) && vocab.has(TokenType::TimeAbsolutePos)) {
         auto [tap_start, tap_end] = vocab.range(TokenType::TimeAbsolutePos);
         if (tap_start != -1) {
             int bar_ticks = static_cast<int>(beat_length_ * vocab.config().resolution + 0.5);

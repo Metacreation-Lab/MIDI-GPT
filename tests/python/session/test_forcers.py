@@ -187,3 +187,20 @@ def test_variation_forcer_waits_for_the_bar_opening_before_a_late_first_onset():
     m = legal()
     f.apply(m)
     assert not onset_open(m) and int(m[POS[0] : POS[1]].sum()) == 1 and bool(m[POS[0] + 12])
+
+
+def test_meter_keeper_holds_a_generated_bar_to_the_piece_meter():
+    from midigpt.inference.session import _MeterKeeper
+
+    TS = (338, 374)   # 36 meters; the piece is in value 19
+    vocab = 374
+    k = _MeterKeeper(TS, 19, [POS, ONSET, VEL, DUR], [BAREND, FILLEND])
+    k.advance("Bar")
+    m = torch.ones(vocab, dtype=torch.bool)
+    k.apply(m)
+    assert int(m[TS[0] : TS[1]].sum()) == 1 and bool(m[TS[0] + 19])   # only the piece's meter
+    assert not onset_open(m) and not bool(m[POS[0] : POS[1]].any()) and not bool(m[BAREND])   # and it comes first
+    k.advance("TimeSig")
+    m = torch.ones(vocab, dtype=torch.bool)
+    k.apply(m)
+    assert onset_open(m) and int(m[TS[0] : TS[1]].sum()) == 1   # notes once it is written
