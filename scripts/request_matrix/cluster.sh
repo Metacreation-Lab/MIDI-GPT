@@ -14,6 +14,9 @@ mkdir -p "$SCRATCH/.venvs" "$M/runs/$STAMP"
         rm -rf "$V"; python -m venv "$V"; . "$V/bin/activate"
         pip install --upgrade pip
         pip install torch numpy tqdm huggingface_hub safetensors
+        # symusic and its submodules, unpacked once beside the source, so the build doesn't depend on GitHub and
+        # GitLab answering (a clone of Eigen from GitLab failed the build twice)
+        [ -d "$M/deps/symusic-src" ] && export CMAKE_ARGS="-DFETCHCONTENT_SOURCE_DIR_SYMUSIC=$M/deps/symusic-src"
         pip install "$SRC"
         echo "$STAMP" > "$V/.ok"
     fi
