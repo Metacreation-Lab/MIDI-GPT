@@ -105,6 +105,8 @@ def check(case, req, score_in, out, sess, streamed) -> list[tuple[str, str, str]
         if rx:
             for b in bars:
                 ref, got = tin.bars[b], tout.bars[b]
+                if not ref.notes:
+                    continue   # an empty reference bar has nothing to vary: written like any generated bar
                 ro, go = set(_onsets(ref, rin)), set(_onsets(got, rout))
                 if (not go <= ro) if limited else (ro != go):
                     f.append(("violation", "remix_onsets", f"track {t} bar {b}: onsets {sorted(_onsets(got, rout))} "
