@@ -4,7 +4,8 @@ namespace midigpt::masking {
 
 void DensityConstraint::step(int token, const tokenizer::Vocabulary& vocab) {
     TokenType type = vocab.get_type(token);
-    if (type == TokenType::Bar || type == TokenType::BarEnd) {
+    if (type == TokenType::Bar || type == TokenType::BarEnd ||
+        type == TokenType::FillInStart || type == TokenType::FillInEnd) {   // an infill bar is one fill-in block
         note_count_ = 0;
     } else if (type == TokenType::NoteOnset || type == TokenType::NotePitch) {
         note_count_++;

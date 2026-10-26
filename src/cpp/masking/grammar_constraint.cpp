@@ -22,7 +22,7 @@ void GrammarConstraint::step(int token, const tokenizer::Vocabulary& vocab) {
         case TokenType::TimeSig:
             if (vocab.config().time_signatures) {
                 auto [num, den] = vocab.config().time_signatures->decode(value);
-                beat_length_ = 4 * num / den;
+                beat_length_ = 4.0 * num / den;
             }
             break;
         case TokenType::BarEnd:
@@ -334,7 +334,7 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
     if (in_bar_ && vocab.has(TokenType::TimeAbsolutePos)) {
         auto [tap_start, tap_end] = vocab.range(TokenType::TimeAbsolutePos);
         if (tap_start != -1) {
-            int bar_ticks = beat_length_ * vocab.config().resolution;
+            int bar_ticks = static_cast<int>(beat_length_ * vocab.config().resolution + 0.5);
             for (int i = tap_start; i < tap_end; ++i) {
                 auto [_, pos] = vocab.decode(i);
                 if (pos <= timestep_ || pos >= bar_ticks) {
