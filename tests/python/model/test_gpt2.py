@@ -300,3 +300,34 @@ def test_tiny_gpt2_handles_real_midi_token_sequence(
             step_logits.append(lg)
         stepwise = torch.cat(step_logits, dim=1)
     assert torch.allclose(stepwise, full_logits, atol=1e-5, rtol=1e-5)
+
+
+@pytest.mark.parametrize("batch", [1, 3])
+def test_incremental_decode_matches_a_full_forward(tiny_gpt2, batch):
+    """Tokens fed one at a time through the growing KV cache give the logits a single full forward gives
+    (several buffer growths along the way: 40 tokens from a 5-token prefill)."""
+    torch.manual_seed(1)
+    ids = torch.randint(0, tiny_gpt2.cfg.vocab_size, (batch, 45))
+    with torch.no_grad():
+        full, _ = tiny_gpt2(ids)
+        logits, kv = tiny_gpt2(ids[:, :5], tiny_gpt2.make_empty_kv())
+        steps = [logits]
+        for t in range(5, ids.shape[1]):
+            logits, kv = tiny_gpt2(ids[:, t:t + 1], kv)
+            steps.append(logits)
+    inc = torch.cat(steps, dim=1)
+    assert tiny_gpt2.kv_length(kv) == ids.shape[1]
+    assert torch.allclose(inc, full, atol=1e-5), (inc - full).abs().max()
+
+
+def test_kv_cache_is_written_in_place_between_growths(tiny_gpt2):
+    """Decoding writes into the cache's spare room: the buffer is reallocated a few times as it doubles, not
+    once per token."""
+    ids = torch.randint(0, tiny_gpt2.cfg.vocab_size, (1, 200))
+    buffers = set()
+    with torch.no_grad():
+        _, kv = tiny_gpt2(ids[:, :8], tiny_gpt2.make_empty_kv())
+        for t in range(8, ids.shape[1]):
+            _, kv = tiny_gpt2(ids[:, t:t + 1], kv)
+            buffers.add(kv[0][0].untyped_storage().data_ptr())
+    assert len(buffers) <= 6, len(buffers)   # 9 -> 18 -> 36 -> 72 -> 144 -> 288: five growths for 192 tokens

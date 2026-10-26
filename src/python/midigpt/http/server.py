@@ -639,12 +639,12 @@ class HttpServer:
                     finally:
                         self._cancel_events.pop(request_id, None)
                         # Release cached-but-unused MPS buffers between requests.
-                        # The KV cache grows via torch.cat every token (new tensor
-                        # each time, old one freed) — over many requests this can
-                        # fragment MPS's caching allocator and cause the *next*
-                        # request's allocations to stall waiting on the driver,
-                        # even though total system memory is fine. Cheap no-op on
-                        # CPU/CUDA-only installs.
+                        # Each step's KV cache is a few buffers of different sizes
+                        # (it doubles as it grows), freed when the step ends — over
+                        # many requests this can fragment MPS's caching allocator and
+                        # cause the *next* request's allocations to stall waiting on
+                        # the driver, even though total system memory is fine. Cheap
+                        # no-op on CPU/CUDA-only installs.
                         import torch
                         if torch.backends.mps.is_available():
                             await loop.run_in_executor(None, torch.mps.empty_cache)
