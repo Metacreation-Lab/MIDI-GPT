@@ -110,10 +110,10 @@ def check(case, req, score_in, out, sess, streamed) -> list[tuple[str, str, str]
                     f.append(("violation", "remix_onsets", f"track {t} bar {b}: onsets {sorted(_onsets(got, rout))} "
                                                            f"!= reference {sorted(_onsets(ref, rin))}"))
                     break
-                rn, gn = _notes(ref, rin), _notes(got, rout)
-                if float(rx["amount"]) == 0.0 and ((gn - rn) if limited else (rn != gn)):
-                    f.append(("violation", "remix_amount_0", f"track {t} bar {b}: amount 0 changed pitches"))
-                    break
+            # any amount resamples at least one note, and the novelty check retries an identical reply
+            if bars and req["config"].get("novelty_check", True) and \
+                    all(_notes(tin.bars[b], rin) == _notes(tout.bars[b], rout) for b in bars):
+                f.append(("warning", "remix_unchanged", f"track {t}: the remix is identical to the reference"))
 
         cfg = req["config"]
         if cfg.get("polyphony_hard_limit"):

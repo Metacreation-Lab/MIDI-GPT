@@ -13,7 +13,7 @@ YELLOW = {"yellow_small", "yellow_medium"}
 GENRE_MODELS = {"prism_medium", "expressive_medium"}
 SWITCHABLE = {"expressive_medium"}
 
-REMIX = {"remix_pitch_1", "remix_pitch_half", "remix_full_1", "remix_full_0"}
+REMIX = {"remix_pitch_1", "remix_pitch_half", "remix_full_1", "remix_full_tiny"}
 ONE_TRACK_PER_STEP = REMIX | {"rhythm_positions"}
 
 AXES: dict[str, list] = {
@@ -39,7 +39,7 @@ AXES: dict[str, list] = {
     "limits": ["none", "poly", "density", "both"],               # polyphony / density hard limits
     "sampling": ["default", "top_p", "top_k", "mask_p", "hot", "cold"],
     "checks": ["default", "off", "one_attempt"],
-    "control": ["none", "remix_pitch_1", "remix_pitch_half", "remix_full_1", "remix_full_0",
+    "control": ["none", "remix_pitch_1", "remix_pitch_half", "remix_full_1", "remix_full_tiny",
                 "rhythm_positions", "rhythm_grid", "pitch_scale", "pitch_classes", "pitch_list",
                 "pitch_shape", "scale_and_grid"],
     "attributes": ["none", "track", "bar", "both", "extremes"],
@@ -115,7 +115,7 @@ def risky() -> list[dict]:
             out.append({"piece": piece, "control": ctl})
     out.append({"limits": "both", "target_kind": "drum"})
     out.append({"limits": "both", "control": "rhythm_positions"})
-    out.append({"checks": "off", "sampling": "cold", "control": "remix_full_0"})
+    out.append({"checks": "default", "sampling": "cold", "control": "remix_full_tiny"})   # one note changed, still new
     out.append({"stream": True, "mode": "mixed", "context": "auto"})
     return [dict(r, model=m) for r in out for m in MODELS]
 
@@ -139,5 +139,6 @@ PROBES = [
     ("bar_out_of_range", {"probe": "bar_out_of_range"}),
     ("unknown_control", {"probe": "unknown_control"}),
     ("remix_amount_over_one", {"probe": "remix_amount_over_one"}),
+    ("remix_amount_zero", {"probe": "remix_amount_zero"}),   # changes nothing: refused like nothing to generate
     ("unknown_genre", {"probe": "unknown_genre", "model": "prism_medium"}),
 ]

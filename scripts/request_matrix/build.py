@@ -142,7 +142,7 @@ def _bar_positions(bar) -> list[dict]:
 def _control(name, bar):
     if name.startswith("remix_"):
         _, mode, amt = name.split("_")
-        return {"remix": {"mode": mode, "amount": {"1": 1.0, "half": 0.5, "0": 0.0}[amt]}}
+        return {"remix": {"mode": mode, "amount": {"1": 1.0, "half": 0.5, "tiny": 0.0001}[amt]}}
     return {
         "none": {},
         "rhythm_positions": {"rhythm_mask": {"positions": _bar_positions(bar)}},
@@ -288,6 +288,9 @@ def _probe(name, req, score):
         tgt["bars"] = tgt["bars"] + [nb + 3]
     elif name == "unknown_control":
         tgt["controls"] = {"swing": 0.5}
+    elif name == "remix_amount_zero":
+        tgt["controls"] = {"remix": {"amount": 0}}
+        req["config"]["tracks_per_step"] = 1
     elif name == "remix_amount_over_one":
         tgt["controls"] = {"remix": {"amount": 1.5}}
         req["config"]["tracks_per_step"] = 1
