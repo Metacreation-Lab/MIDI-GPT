@@ -209,8 +209,17 @@ EncodeResult Encoder::encode_full(const Score& score,
             // be a span-masked future bar, we close the span at end-of-bar.
             int span_start = static_cast<int>(tokens.size());
 
-            // Remove mode: skip future bars entirely — no tokens emitted.
+            // Remove mode: none of a future bar's content is emitted. The bar itself still is, empty: skipping it
+            // moved every later bar of the track one bar earlier (a masked bar 1 put bar 3 where bar 2 was).
             if (bar.future && opts.remove_future_bars) {
+                if (vocab_.has(TokenType::Bar)) tokens.push_back(vocab_.encode(TokenType::Bar, 0));
+                if (vocab_.has(TokenType::TimeSig)) {
+                    int mapped_ts = config.time_signatures
+                        ? config.time_signatures->encode(bar.ts_numerator, bar.ts_denominator)
+                        : 0;
+                    tokens.push_back(clamp_encode(TokenType::TimeSig, mapped_ts));
+                }
+                if (vocab_.has(TokenType::BarEnd)) tokens.push_back(vocab_.encode(TokenType::BarEnd, 0));
                 continue;
             }
 
