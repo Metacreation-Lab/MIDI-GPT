@@ -402,7 +402,8 @@ class _RhythmForcer:
                 mask_buf[lo:hi] = False
             return
         required = self.schedule[self.group_idx][1]
-        if self.notes_in_group < required:
+        # A polyphony or density limit can block the notes still due here: the limit wins, the onset counts as full.
+        if self.notes_in_group < required and bool(mask_buf[self.onset_lo:self.onset_hi].any()):
             # Still filling this onset point — force another NoteOnset
             # (optionally preceded by a VelocityLevel restate, left alone).
             mask_buf[self.pos_lo:self.pos_hi] = False
@@ -421,9 +422,10 @@ class _RhythmForcer:
             # here — narrow to it only if it's already True.
             still_legal = bool(mask_buf[target_id])
             mask_buf[self.pos_lo:self.pos_hi] = False
-            mask_buf[self.end_ids] = False
             if still_legal:
+                mask_buf[self.end_ids] = False
                 mask_buf[target_id] = True
+            # else: the next onset isn't legal (a density limit reached): let the bar end rather than block everything
         else:
             # Last scheduled onset point — only BarEnd should remain.
             mask_buf[self.pos_lo:self.pos_hi] = False
@@ -570,7 +572,8 @@ class _VariationForcer:
                 mask_buf[target_id] = True
                 return
             self._lead = False   # not legal here: let the first note fall where the grammar allows
-        if self.note_idx < len(notes):
+        # A polyphony or density limit can block the notes still due here: the limit wins, the onset counts as full.
+        if self.note_idx < len(notes) and bool(mask_buf[self.onset_lo:self.onset_hi].any()):
             # Still filling this onset point — force another NoteOnset.
             mask_buf[self.pos_lo:self.pos_hi] = False
             mask_buf[self.end_ids] = False
@@ -595,9 +598,10 @@ class _VariationForcer:
             target_id = self.pos_lo + target_tick
             still_legal = bool(mask_buf[target_id]) if 0 <= target_tick < (self.pos_hi - self.pos_lo) else False
             mask_buf[self.pos_lo:self.pos_hi] = False
-            mask_buf[self.end_ids] = False
             if still_legal:
+                mask_buf[self.end_ids] = False
                 mask_buf[target_id] = True
+            # else: the next onset isn't legal (a density limit reached): let the bar end rather than block everything
         else:
             mask_buf[self.pos_lo:self.pos_hi] = False
 

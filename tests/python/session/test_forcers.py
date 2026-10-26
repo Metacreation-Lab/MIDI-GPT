@@ -153,3 +153,24 @@ def test_forcers_block_microtiming_when_no_note_may_follow():
         m = torch.ones(vocab, dtype=torch.bool)
         f.apply(m)
         assert not bool(m[DELTA[0] : DELTA[1]].any()) and not bool(m[DDIR[0] : DDIR[1]].any())
+
+
+def test_forcers_give_way_to_a_limit():
+    # a chord of 3 under a polyphony limit, then a bar full under a density limit: the forcer moves on, then lets
+    # the bar end, instead of leaving no legal token
+    for f in (_RhythmForcer([(0, 3), (12, 1)], POS, ONSET, VEL, BAREND, fill_end_id=FILLEND),
+              _VariationForcer("pitch", 0.0, [[(0, [(60, 3), (64, 3), (67, 3)]), (12, [(62, 3)])]],
+                               POS, ONSET, DUR, VEL, BAREND, fill_end_id=FILLEND)):
+        f.advance("NoteOnset")
+        f.advance("NoteDuration")
+        f.advance("NoteOnset")
+        f.advance("NoteDuration")
+        m = legal()
+        m[ONSET[0] : ONSET[1]] = False   # the polyphony limit: no third note
+        f.apply(m)
+        assert bool(m[POS[0] + 12]) and bool(m.any())   # move to the next onset
+        m = legal()
+        m[ONSET[0] : ONSET[1]] = False
+        m[POS[0] : POS[1]] = False   # the density limit: no more notes or moves
+        f.apply(m)
+        assert bool(m[BAREND]) or bool(m[FILLEND])   # the bar can end
