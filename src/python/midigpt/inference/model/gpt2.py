@@ -27,7 +27,6 @@ Packed checkpoint format (format_version 1):
 
 from __future__ import annotations
 
-import math
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -74,7 +73,8 @@ class Conv1D(nn.Module):
 
 
 def gelu_new(x: torch.Tensor) -> torch.Tensor:
-    return 0.5 * x * (1.0 + torch.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * x.pow(3))))
+    # 0.5 * x * (1 + tanh(sqrt(2 / pi) * (x + 0.044715 * x^3))), GPT-2's GELU, as one fused op
+    return F.gelu(x, approximate="tanh")
 
 
 def _append_kv(past: torch.Tensor, new: torch.Tensor, max_len: int) -> torch.Tensor:
