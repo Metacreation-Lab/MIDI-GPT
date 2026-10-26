@@ -1219,6 +1219,13 @@ class SamplingSession:
             ]
             try:
                 batch_results = self._sample_step_batch(score, step, temperatures, seeds)
+            except GenerationCancelled as exc:
+                # the batch carries one result per attempt; a cancelled step carries one score, as the sequential
+                # path's does (run() and the server read it as a Score)
+                partial = exc.partial
+                if isinstance(partial, list):
+                    partial = next((c for c, *_ in partial if c is not None), None)
+                raise GenerationCancelled(partial, exc.gen_count) from None
             except _BatchNotEligible as exc:
                 log.info(
                     "batch_attempts requested but not eligible (%s); falling back to sequential",
@@ -2729,6 +2736,26 @@ class SamplingSession:
             "tracks": tracks,
         }
 
+    def _mask_droppable(self, probs):
+        """Which token ids mask_k / mask_p may remove: note content (position, pitch, duration, velocity,
+        microtiming), not structure or attributes."""
+        cached = getattr(self, "_droppable", None)
+        if cached is not None and cached.numel() == probs.numel() and cached.device == probs.device:
+            return cached
+        import torch
+
+        vocab = self._engine._tokenizer._vocab
+        m = torch.zeros(probs.numel(), dtype=torch.bool, device=probs.device)
+        for tt in ("TimeAbsolutePos", "NoteOnset", "NotePitch", "NoteDuration", "VelocityLevel", "Delta", "DeltaDirection"):
+            t = getattr(_core.TokenType, tt, None)
+            if t is None:
+                continue
+            lo, hi = vocab.range(t)
+            if lo >= 0:
+                m[lo:min(hi, m.numel())] = True
+        self._droppable = m
+        return m
+
     def _apply_sampling_filters(self, probs):
         """Apply top_k → top_p → mask_k → mask_p in that fixed order.
 
@@ -2788,10 +2815,14 @@ class SamplingSession:
         cumsum2 = torch.cumsum(sorted_probs2, dim=0)
         survivors_n = int(keep.sum().item())
 
+        # mask_k / mask_p push the model off its likeliest notes, never off the structure: dropping a likely BarEnd,
+        # FillInEnd or TrackEnd let bars and tracks run on past their end.
+        droppable = self._mask_droppable(probs)
+
         # mask_k: remove the top mask_k highest-prob (within survivors) tokens
         if 0 < mask_k < survivors_n:
             drop = sorted_idx2[:mask_k]
-            keep[drop] = False
+            keep[drop[droppable[drop]]] = False
 
         # mask_p: remove most-likely tokens summing (cumulative) to ≥ mask_p
         if 0.0 < mask_p < 1.0 and survivors_n > 0:
@@ -2799,7 +2830,7 @@ class SamplingSession:
             drop_rank = min(drop_rank, survivors_n - 1)  # never empty the pool
             if drop_rank > 0:
                 drop = sorted_idx2[:drop_rank]
-                keep[drop] = False
+                keep[drop[droppable[drop]]] = False
 
         filtered = probs * keep.to(probs.dtype)
         total = float(filtered.sum().item())
