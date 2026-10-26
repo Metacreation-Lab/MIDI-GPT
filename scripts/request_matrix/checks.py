@@ -100,14 +100,18 @@ def check(case, req, score_in, out, sess, streamed) -> list[tuple[str, str, str]
             if off:
                 f.append(("violation", "rhythm_grid", f"track {t}: onsets {sorted(set(off))[:8]} off the {rm['grid']['unit']} grid"))
         rx = ctl.get("remix")
+        # under a polyphony or density limit the limit wins: fewer notes than the reference, never other ones
+        limited = bool(req["config"].get("polyphony_hard_limit") or req["config"].get("density_hard_limit"))
         if rx:
             for b in bars:
                 ref, got = tin.bars[b], tout.bars[b]
-                if set(_onsets(ref, rin)) != set(_onsets(got, rout)):
+                ro, go = set(_onsets(ref, rin)), set(_onsets(got, rout))
+                if (not go <= ro) if limited else (ro != go):
                     f.append(("violation", "remix_onsets", f"track {t} bar {b}: onsets {sorted(_onsets(got, rout))} "
                                                            f"!= reference {sorted(_onsets(ref, rin))}"))
                     break
-                if float(rx["amount"]) == 0.0 and _notes(ref, rin) != _notes(got, rout):
+                rn, gn = _notes(ref, rin), _notes(got, rout)
+                if float(rx["amount"]) == 0.0 and ((gn - rn) if limited else (rn != gn)):
                     f.append(("violation", "remix_amount_0", f"track {t} bar {b}: amount 0 changed pitches"))
                     break
 
@@ -130,8 +134,9 @@ def check(case, req, score_in, out, sess, streamed) -> list[tuple[str, str, str]
     if getattr(sess, "truncated", False):
         f.append(("warning", "truncated", f"ran into the context limit ({sess.gen_count} tokens)"))
     n_bars = sum(len(b) for b in gen.values()) or 1
-    if sess.gen_count / n_bars > 600:
-        f.append(("violation", "runaway", f"{sess.gen_count} tokens for {n_bars} bars"))
+    takes = max(1, int(req["config"].get("num_candidates", 1)))   # gen_count adds up every take
+    if sess.gen_count / takes / n_bars > 600:
+        f.append(("violation", "runaway", f"{sess.gen_count} tokens for {n_bars} bars x {takes} takes"))
     if streamed is not None:
         total = sum(len(out.tracks[t].bars[b].notes) for t in gen for b in gen[t])
         if total and not streamed:
