@@ -464,9 +464,13 @@ class _VariationForcer:
     the reference, exactly like a _RhythmForcer built from that same
     reference — see that class's docstring for the underlying grammar and
     the narrow-only/never-widen safety philosophy, both fully reused here.
-    On top of the schedule, each reference note's pitch (and, in "full"
-    mode, duration) is independently rolled once per note: kept forced to
-    the reference value, or left open for the model to resample freely
+    On top of the schedule, round(amount * N) of the N reference notes, at
+    least one, chosen at random (the way infill_probability picks bars), have
+    their pitch (and, in "full" mode, duration) left open for the model to
+    resample; the others are forced to the reference value. Rolling each
+    note on its own made a small amount change nothing at all
+    (a reply identical to the reference, which the novelty check refuses).
+    A resampled value is left open for the model to resample freely
     (subject to whatever other masks — e.g. controls["pitch_mask"] — are
     also active). Velocity is always left to free sampling in both modes:
     this checkpoint exposes no raw-velocity -> VelocityLevel-token
@@ -503,6 +507,7 @@ class _VariationForcer:
         self.group_idx = 0
         self.note_idx = 0
         self._lead = self._starts_late()
+        self._resampled = self._pick_resampled()
         self._roll_note()
 
     def _starts_late(self) -> bool:
@@ -519,9 +524,19 @@ class _VariationForcer:
         bar = self._current_bar()
         return bar[self.group_idx] if self.group_idx < len(bar) else None
 
+    def _pick_resampled(self):
+        """{(bar, group, note)} whose values are left open: round(amount * N) of the N reference notes, at least one
+        (none at amount 0, which validation refuses in a request)."""
+        notes = [(b, g, n) for b, bar in enumerate(self.bars_schedule)
+                 for g, (_tick, group) in enumerate(bar) for n in range(len(group))]
+        if self.amount <= 0 or not notes:
+            return set()
+        k = min(len(notes), max(1, round(self.amount * len(notes))))
+        return set(random.sample(notes, k))
+
     def _roll_note(self):
         # True = force the reference value; False = leave open for resampling.
-        keep = random.random() >= self.amount
+        keep = (self.bar_idx, self.group_idx, self.note_idx) not in self._resampled
         self._force_pitch = keep
         self._force_duration = True if self.mode == "pitch" else keep
 
@@ -623,6 +638,7 @@ class _VariationForcer:
         elif tname == "TimeAbsolutePos":
             self.group_idx += 1
             self.note_idx = 0
+            self._roll_note()
 
 
 class _MeterKeeper:

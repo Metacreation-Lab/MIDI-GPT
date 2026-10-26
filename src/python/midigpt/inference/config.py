@@ -215,8 +215,10 @@ def validate_remix(remix: dict[str, Any]) -> None:
     amount = remix.get("amount")
     if amount is None:
         raise ValueError("remix: 'amount' is required")
-    if not (0.0 <= float(amount) <= 1.0):
-        raise ValueError(f"remix.amount must be in [0, 1] (got {amount})")
+    if not (0.0 < float(amount) <= 1.0):
+        # 0 resamples nothing: the reply would be the reference itself, which the novelty check then rejects on
+        # every attempt. Refused like a request with nothing to generate.
+        raise ValueError(f"remix.amount must be in (0, 1] (got {amount}); 0 changes nothing")
     mode = remix.get("mode", "pitch")
     if mode not in ("pitch", "full"):
         raise ValueError(f"remix.mode must be 'pitch' or 'full' (got {mode!r})")

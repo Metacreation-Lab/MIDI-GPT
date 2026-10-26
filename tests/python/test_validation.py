@@ -334,3 +334,12 @@ def test_mask_mode_token_with_vocab_support_passes_without_masked_bars(
     assert isinstance(out, GenerationRequest)
     assert out.config.mask_mode == "token"
     assert all(tp.mask_bars == [] for tp in out.tracks)
+
+
+@pytest.mark.parametrize("amount", [0, 0.0, -0.1, 1.5])
+def test_remix_amount_must_change_something(simple_score, ghost_config, ghost_analyzer, amount):
+    """remix.amount 0 resamples nothing (the reply would be the reference itself): refused like nothing to generate."""
+    req = GenerationRequest(tracks=[TrackPrompt(id=0, bars=[1, 2], controls={"remix": {"amount": amount}})],
+                            config=InferenceConfig(model_dim=4, tracks_per_step=1))
+    with pytest.raises(RequestValidationError, match=r"remix"):
+        validate_request(req, simple_score, ghost_config, analyzer=ghost_analyzer)

@@ -204,3 +204,19 @@ def test_meter_keeper_holds_a_generated_bar_to_the_piece_meter():
     m = torch.ones(vocab, dtype=torch.bool)
     k.apply(m)
     assert onset_open(m) and int(m[TS[0] : TS[1]].sum()) == 1   # notes once it is written
+
+
+def test_variation_forcer_resamples_at_least_one_note():
+    # amount is the share of reference notes resampled, at least one: a tiny amount still changes a note, 1 all
+    bars = [[(0, [(60, 3)]), (12, [(62, 3)]), (24, [(64, 3)]), (36, [(65, 3)])]]
+    for amount, open_notes in ((0.0001, 1), (0.5, 2), (1.0, 4)):
+        f = _VariationForcer("pitch", amount, bars, POS, ONSET, DUR, VEL, BAREND)
+        free = 0
+        for g in range(4):
+            m = legal()
+            f.apply(m)
+            free += int(m[ONSET[0] : ONSET[1]].sum()) > 1   # pitch left open
+            f.advance("NoteOnset")
+            f.advance("NoteDuration")
+            f.advance("TimeAbsolutePos")
+        assert free == open_notes, (amount, free)
