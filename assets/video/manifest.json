@@ -1,0 +1,264 @@
+[
+  {
+    "midi": "sampling_drums_density1.mid",
+    "track_names": [
+      "distortion_guitar",
+      "slap_bass_1",
+      "drums"
+    ],
+    "id": "track_sampling_drums_density1",
+    "task": "Track Sampling",
+    "title": "Band: drums, note_density = 1",
+    "prompt": "prompt_band.mid",
+    "controls": "note_density = 1",
+    "generated_tracks": [
+      2
+    ],
+    "video": "docs/assets/video/track_sampling_drums_density1.mp4",
+    "source_midi": "docs/assets/midi/sampling_drums_density1.mid"
+  },
+  {
+    "midi": "sampling_drums_density3.mid",
+    "track_names": [
+      "distortion_guitar",
+      "slap_bass_1",
+      "drums"
+    ],
+    "id": "track_sampling_drums_density3",
+    "task": "Track Sampling",
+    "title": "Band: drums, note_density = 3",
+    "prompt": "prompt_band.mid",
+    "controls": "note_density = 3",
+    "generated_tracks": [
+      2
+    ],
+    "video": "docs/assets/video/track_sampling_drums_density3.mp4",
+    "source_midi": "docs/assets/midi/sampling_drums_density3.mid"
+  },
+  {
+    "midi": "sampling_drums_density8.mid",
+    "track_names": [
+      "distortion_guitar",
+      "slap_bass_1",
+      "drums"
+    ],
+    "id": "track_sampling_drums_density8",
+    "task": "Track Sampling",
+    "title": "Band: drums, note_density = 8",
+    "prompt": "prompt_band.mid",
+    "controls": "note_density = 8",
+    "generated_tracks": [
+      2
+    ],
+    "video": "docs/assets/video/track_sampling_drums_density8.mp4",
+    "source_midi": "docs/assets/midi/sampling_drums_density8.mid"
+  },
+  {
+    "midi": "sampling_cello_dur_16th.mid",
+    "track_names": [
+      "violin",
+      "violin",
+      "viola",
+      "cello"
+    ],
+    "id": "track_sampling_cello_dur_16th",
+    "task": "Track Sampling",
+    "title": "Quartet: cello, max_polyphony = 0, max_note_duration = 1",
+    "prompt": "prompt_quartet.mid",
+    "controls": "max_polyphony = 0, max_note_duration = 1",
+    "generated_tracks": [
+      3
+    ],
+    "video": "docs/assets/video/track_sampling_cello_dur_16th.mp4",
+    "source_midi": "docs/assets/midi/sampling_cello_dur_16th.mid"
+  },
+  {
+    "midi": "sampling_cello_dur_8th.mid",
+    "track_names": [
+      "violin",
+      "violin",
+      "viola",
+      "cello"
+    ],
+    "id": "track_sampling_cello_dur_8th",
+    "task": "Track Sampling",
+    "title": "Quartet: cello, max_polyphony = 0, max_note_duration = 2",
+    "prompt": "prompt_quartet.mid",
+    "controls": "max_polyphony = 0, max_note_duration = 2",
+    "generated_tracks": [
+      3
+    ],
+    "video": "docs/assets/video/track_sampling_cello_dur_8th.mp4",
+    "source_midi": "docs/assets/midi/sampling_cello_dur_8th.mid"
+  },
+  {
+    "midi": "sampling_cello_dur_4th.mid",
+    "track_names": [
+      "violin",
+      "violin",
+      "viola",
+      "cello"
+    ],
+    "id": "track_sampling_cello_dur_4th",
+    "task": "Track Sampling",
+    "title": "Quartet: cello, max_polyphony = 0, max_note_duration = 3",
+    "prompt": "prompt_quartet.mid",
+    "controls": "max_polyphony = 0, max_note_duration = 3",
+    "generated_tracks": [
+      3
+    ],
+    "video": "docs/assets/video/track_sampling_cello_dur_4th.mp4",
+    "source_midi": "docs/assets/midi/sampling_cello_dur_4th.mid"
+  },
+  {
+    "midi": "sampling_cello_dur_half.mid",
+    "track_names": [
+      "violin",
+      "violin",
+      "viola",
+      "cello"
+    ],
+    "id": "track_sampling_cello_dur_half",
+    "task": "Track Sampling",
+    "title": "Quartet: cello, max_polyphony = 0, max_note_duration = 4",
+    "prompt": "prompt_quartet.mid",
+    "controls": "max_polyphony = 0, max_note_duration = 4",
+    "generated_tracks": [
+      3
+    ],
+    "video": "docs/assets/video/track_sampling_cello_dur_half.mp4",
+    "source_midi": "docs/assets/midi/sampling_cello_dur_half.mid"
+  },
+  {
+    "midi": "sampling_cello_sustained.mid",
+    "track_names": [
+      "violin",
+      "violin",
+      "viola",
+      "cello"
+    ],
+    "id": "track_sampling_cello_sustained",
+    "task": "Track Sampling",
+    "title": "Quartet: cello, max_polyphony = 0, min_note_duration = 4",
+    "prompt": "prompt_quartet.mid",
+    "controls": "max_polyphony = 0, min_note_duration = 4",
+    "generated_tracks": [
+      3
+    ],
+    "video": "docs/assets/video/track_sampling_cello_sustained.mp4",
+    "source_midi": "docs/assets/midi/sampling_cello_sustained.mid"
+  },
+  {
+    "midi": "solo_resample1.mid",
+    "track_names": [
+      "distortion_guitar",
+      "slap_bass_1",
+      "drums"
+    ],
+    "id": "solo_resample1",
+    "task": "Track Sampling",
+    "title": "Guitar resample 1 (model-sampled controls)",
+    "prompt": "prompt_solo.mid",
+    "controls": "none (sampled by the model)",
+    "generated_tracks": [
+      0
+    ],
+    "video": "docs/assets/video/solo_resample1.mp4",
+    "source_midi": "docs/assets/midi/solo_resample1.mid"
+  },
+  {
+    "midi": "solo_resample2.mid",
+    "track_names": [
+      "distortion_guitar",
+      "slap_bass_1",
+      "drums"
+    ],
+    "id": "solo_resample2",
+    "task": "Track Sampling",
+    "title": "Guitar resample 2 (model-sampled controls)",
+    "prompt": "prompt_solo.mid",
+    "controls": "none (sampled by the model)",
+    "generated_tracks": [
+      0
+    ],
+    "video": "docs/assets/video/solo_resample2.mp4",
+    "source_midi": "docs/assets/midi/solo_resample2.mid"
+  },
+  {
+    "midi": "violin_infill_16th.mid",
+    "track_names": [
+      "violin",
+      "violin",
+      "viola",
+      "cello"
+    ],
+    "id": "violin_infill_16th",
+    "task": "Bar Infilling",
+    "title": "Second violin infill, max_note_duration = 1",
+    "prompt": "prompt_violin_infill.mid",
+    "controls": "max_note_duration = 1",
+    "target_bars": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "generated_tracks": [
+      1
+    ],
+    "video": "docs/assets/video/violin_infill_16th.mp4",
+    "source_midi": "docs/assets/midi/violin_infill_16th.mid"
+  },
+  {
+    "midi": "violin_infill_8th.mid",
+    "track_names": [
+      "violin",
+      "violin",
+      "viola",
+      "cello"
+    ],
+    "id": "violin_infill_8th",
+    "task": "Bar Infilling",
+    "title": "Second violin infill, max_note_duration = 2",
+    "prompt": "prompt_violin_infill.mid",
+    "controls": "max_note_duration = 2",
+    "target_bars": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "generated_tracks": [
+      1
+    ],
+    "video": "docs/assets/video/violin_infill_8th.mp4",
+    "source_midi": "docs/assets/midi/violin_infill_8th.mid"
+  },
+  {
+    "midi": "multistep_final.mid",
+    "track_names": [
+      "acoustic_grand_piano",
+      "electric_bass_finger",
+      "string_ensemble_1",
+      "acoustic_guitar_nylon",
+      "drums"
+    ],
+    "id": "multistep_final",
+    "task": "Multi-Step Composition",
+    "title": "Continuation + guitar + drums",
+    "prompt": "prompt_multistep.mid",
+    "controls": "guitar: max_polyphony = 0, max_note_duration = 1  |  drums: note_density = 9",
+    "target_bars": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "generated_tracks": [
+      3,
+      4
+    ],
+    "video": "docs/assets/video/multistep_final.mp4",
+    "source_midi": "docs/assets/midi/multistep_final.mid"
+  }
+]
