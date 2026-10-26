@@ -11,6 +11,11 @@ section above `[Unreleased]` before tagging.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-26
+
+### Fixed
+- **Remix in pitch mode kept the onsets but not the durations** (since 0.4.1): every note's duration was sampled freely. Pitch mode now keeps the reference durations again, and the request matrix checks them. ([#32](https://github.com/Metacreation-Lab/MIDI-GPT/pull/32))
+
 ## [0.4.1] - 2026-10-26
 
 ### Changed
