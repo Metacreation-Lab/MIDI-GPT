@@ -238,3 +238,20 @@ def test_variation_forcer_picks_the_same_notes_for_the_same_seed():
     bars = [[(g * 6, [(60 + g, 3)]) for g in range(8)]]
     picks = [_VariationForcer("pitch", 0.5, bars, POS, ONSET, DUR, VEL, BAREND, seed=s)._resampled for s in (7, 7, 8)]
     assert picks[0] == picks[1] and len(picks[0]) == 4
+
+
+def test_variation_forcer_keeps_the_reference_durations_in_pitch_mode():
+    # after a pitch only its duration is legal; pitch mode forces the reference duration even for resampled notes,
+    # full mode leaves a resampled note's duration open
+    bars = [[(0, [(60, 3)]), (12, [(62, 5)])]]
+    for mode, forced in (("pitch", True), ("full", False)):
+        f = _VariationForcer(mode, 1.0, bars, POS, ONSET, DUR, VEL, BAREND)
+        for dur in (3, 5):
+            f.apply(legal())
+            f.advance("NoteOnset")
+            m = torch.zeros(VOCAB, dtype=torch.bool)
+            m[DUR[0] : DUR[1]] = True   # the grammar after a NoteOnset
+            f.apply(m)
+            assert (int(m.sum()) == 1 and bool(m[DUR[0] + dur])) if forced else bool(m[DUR[0] : DUR[1]].all()), mode
+            f.advance("NoteDuration")
+            f.advance("TimeAbsolutePos")

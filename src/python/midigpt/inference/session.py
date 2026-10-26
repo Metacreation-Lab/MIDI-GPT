@@ -510,6 +510,7 @@ class _VariationForcer:
         self.group_idx = 0
         self.note_idx = 0
         self._lead = self._starts_late()
+        self._awaiting_duration = False   # a melodic note's pitch is written, its duration not yet
         # which notes are resampled follows the attempt's seed, so a fixed seed repeats a remix
         self._rng = random.Random(seed) if seed is not None and seed >= 0 else random.Random()
         self._resampled = self._pick_resampled()
@@ -560,6 +561,7 @@ class _VariationForcer:
         # that isn't actually legal here.
 
     def reset_bar(self):
+        self._awaiting_duration = False
         self.bar_idx += 1
         self.group_idx = 0
         self.note_idx = 0
@@ -582,6 +584,12 @@ class _VariationForcer:
                 mask_buf[lo:hi] = False
             return
         tick, notes = group
+        if self._awaiting_duration:
+            # The note's duration, right after its pitch: no pitch is legal here, so the checks below would read the
+            # onset as full and leave the duration free.
+            if self._force_duration and self.note_idx < len(notes):
+                self._narrow(mask_buf, self.dur_range, notes[self.note_idx][1])
+            return
         if self._lead:
             # Before the bar's first note, which isn't on the downbeat: move to it.
             target_id = self.pos_lo + tick
@@ -641,7 +649,10 @@ class _VariationForcer:
             self.reset_bar()
         elif tname == "TimeAbsolutePos" and self._lead:
             self._lead = False
+        elif tname == "NoteOnset" and self.count_on == "NoteDuration":
+            self._awaiting_duration = True
         elif tname == self.count_on:
+            self._awaiting_duration = False
             self.note_idx += 1
             self._roll_note()
         elif tname == "TimeAbsolutePos":

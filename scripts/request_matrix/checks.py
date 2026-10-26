@@ -112,6 +112,12 @@ def check(case, req, score_in, out, sess, streamed) -> list[tuple[str, str, str]
                     f.append(("violation", "remix_onsets", f"track {t} bar {b}: onsets {sorted(_onsets(got, rout))} "
                                                            f"!= reference {sorted(_onsets(ref, rin))}"))
                     break
+                if rx.get("mode", "pitch") == "pitch" and not limited:
+                    want = Counter((_q(n.onset_ticks, rin), _q(n.duration_ticks, rin)) for n in ref.notes)
+                    have = Counter((_q(n.onset_ticks, rout), _q(n.duration_ticks, rout)) for n in got.notes)
+                    if want != have:
+                        f.append(("violation", "remix_durations", f"track {t} bar {b}: pitch mode changed durations"))
+                        break
             # any amount resamples at least one note, and the novelty check retries an identical reply
             if bars and req["config"].get("novelty_check", True) and \
                     all(_notes(tin.bars[b], rin) == _notes(tout.bars[b], rout) for b in bars):
