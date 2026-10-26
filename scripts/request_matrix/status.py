@@ -34,8 +34,12 @@ def main():
         shards.update({k: int(v) for k, v in (p.split(":") for p in a.shards.split(","))})
     os.makedirs(a.out, exist_ok=True)
     if a.pull:
-        subprocess.run(["rsync", "-az", "-e", a.ssh, "--include=*.jsonl", "--exclude=*",
-                        a.pull.rstrip("/") + "/", a.out + "/"], check=True)
+        r = subprocess.run(["rsync", "-az", "-e", a.ssh, "--include=*.jsonl", "--exclude=*",
+                            a.pull.rstrip("/") + "/", a.out + "/"], capture_output=True, text=True)
+        if r.returncode == 23 and "No such file" in r.stderr:
+            print("no results on the cluster yet (the jobs haven't started running cases)")
+        elif r.returncode != 0:
+            sys.exit(f"rsync failed ({r.returncode}): {r.stderr.strip()[-300:]}")
 
     cases = all_cases(a.seeds)
     print(f"{'shard':26s} {'done':>9s}  {'secs':>6s}  outcomes")
