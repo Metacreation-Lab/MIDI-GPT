@@ -69,7 +69,11 @@ class Runner:
             sess.note_sink = lambda notes: streamed.extend(notes)
             sess.progress_sink = lambda: None
         sess.cancel_event = threading.Event()
-        timer = threading.Timer(self.timeout, sess.cancel_event.set)
+        # the limit grows with the request: 60 s, plus timeout/40 s per generated bar per take (3 s at the default)
+        n_bars = sum(len(tp["bars"]) for tp in req["tracks"] if tp["bars"])
+        limit = 60 + self.timeout / 40 * n_bars * max(1, int(case.get("takes", 1)))
+        r["limit_s"] = round(limit)
+        timer = threading.Timer(limit, sess.cancel_event.set)
         timer.start()
         try:
             if case["takes"] > 1:
@@ -132,7 +136,8 @@ def main():
     ap.add_argument("--seeds", type=int, default=2, help="covering arrays to run (the first one has the risky combinations)")
     ap.add_argument("--limit", type=int, default=0, help="run only this many cases (smoke test)")
     ap.add_argument("--device", default="auto")
-    ap.add_argument("--timeout", type=float, default=120.0, help="seconds before a generation is cancelled")
+    ap.add_argument("--timeout", type=float, default=120.0,
+                    help="generation limit scale: 60 s plus this/40 s per generated bar per take (3 s at 120)")
     a = ap.parse_args()
 
     os.environ.setdefault("TQDM_DISABLE", "1")
