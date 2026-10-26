@@ -242,9 +242,11 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             break;
 
         case TokenType::VelocityLevel:
-            // orig: VelocityLevel -> {NoteOnset, Delta}
+            // VelocityLevel -> {NoteOnset, Delta, DeltaDirection}: the encoder writes a negative offset as
+            // DeltaDirection Delta after the velocity, so an early note where the velocity changes needs it.
             allow(TokenType::NoteOnset);
             allow(TokenType::NotePitch);
+            allow(TokenType::DeltaDirection);
             allow(TokenType::Delta);
             break;
 
@@ -253,14 +255,11 @@ void GrammarConstraint::apply(std::vector<bool>& mask, const tokenizer::Vocabula
             break;
 
         case TokenType::Delta:
-            // orig: Delta -> {Delta, DeltaDirection, NoteOnset, FillInEnd}
-            allow(TokenType::Delta);
-            allow(TokenType::DeltaDirection);
+            // A Delta is the microtiming of the note right after it: the encoder writes at most one per note, and
+            // its note always follows. Allowing Delta -> Delta let the model stack offsets (the decoder sums them
+            // for the note), putting notes bars away; Delta -> FillInEnd left an offset with no note.
             allow(TokenType::NoteOnset);
             allow(TokenType::NotePitch);
-            if (in_infill_) {
-                if (!require_notes_ || has_notes_in_block_) allow(TokenType::FillInEnd);
-            }
             break;
 
         case TokenType::NoteOnset:

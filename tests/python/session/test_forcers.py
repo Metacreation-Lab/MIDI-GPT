@@ -139,8 +139,8 @@ def test_forcers_keep_a_fill_in_open_until_the_schedule_is_done():
 
 
 def test_forcers_block_microtiming_when_no_note_may_follow():
-    # Delta -> Delta is legal; with notes blocked (moving on, schedule done) and velocity off, a Delta could only
-    # be followed by another: the forcers block it there, and leave it open before a note that is due
+    # a Delta is the microtiming of the note right after it: where the forcer blocks notes (moving on, schedule
+    # done) it blocks the Delta too, and leaves it open before a note that is due
     DELTA, DDIR = (338, 344), (344, 346)
     vocab = 346
     for f in (_RhythmForcer([(0, 1), (12, 1)], POS, ONSET, VEL, BAREND, delta_ranges=(DELTA, DDIR)),
@@ -220,3 +220,15 @@ def test_variation_forcer_resamples_at_least_one_note():
             f.advance("NoteDuration")
             f.advance("TimeAbsolutePos")
         assert free == open_notes, (amount, free)
+
+
+def test_variation_forcer_leaves_an_empty_reference_bar_alone():
+    # no notes to vary: nothing forced or blocked in that bar (blocking every note left no legal token)
+    f = _VariationForcer("pitch", 1.0, [[], [(0, [(60, 3)])]], POS, ONSET, DUR, VEL, BAREND, fill_end_id=FILLEND)
+    m = legal()
+    f.apply(m)
+    assert bool(m.all())
+    f.advance("FillInEnd")
+    m = legal()
+    f.apply(m)
+    assert not bool(m[POS[0] : POS[1]].any())   # the next bar's schedule applies again

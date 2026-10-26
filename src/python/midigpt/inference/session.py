@@ -381,8 +381,8 @@ class _RhythmForcer:
         self.barend_id = barend_id
         # what closes a bar: BarEnd, and in infill FillInEnd (each target bar is its own fill-in block)
         self.end_ids = [barend_id] if fill_end_id is None else [barend_id, fill_end_id]
-        # microtiming (Delta, DeltaDirection) only ever leads to a note: blocked wherever notes are, or with velocity
-        # off the model could only loop on Delta (Delta -> Delta is legal, offsets add up)
+        # microtiming (Delta, DeltaDirection) is part of the next note: blocked wherever notes are, or the model
+        # could write an offset with no note allowed after it
         self.delta_ranges = [r for r in delta_ranges if r is not None]
         self.group_idx = 0
         self.notes_in_group = 0
@@ -562,6 +562,10 @@ class _VariationForcer:
         self._roll_note()
 
     def apply(self, mask_buf):
+        if self.bar_idx < len(self.bars_schedule) and not self.bars_schedule[self.bar_idx]:
+            # An empty reference bar has no notes to vary: the model writes it like any generated bar. Treating it
+            # as a finished schedule blocked every note, while a bar needs one before it can end.
+            return
         group = self._current_group()
         if group is None:
             # Reference bar's schedule exhausted — no more notes, no more moves.
