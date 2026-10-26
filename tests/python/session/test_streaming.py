@@ -47,3 +47,19 @@ def test_drum_notes_are_streamed(tiny_gpt2, ghost_tokenizer, ghost_analyzer, mon
     result, notes, sess = _streamed(engine, score, [TrackPrompt(id=0, bars=[]), TrackPrompt(id=1, bars=[1, 2])],
                                     monkeypatch, 0.0)
     assert _key(notes) == _generated(result, sess)
+
+
+def test_a_streamed_generation_streams_with_batched_attempts(tiny_gpt2, ghost_tokenizer, ghost_analyzer, monkeypatch):
+    """Batched attempts stream nothing, so a streamed generation runs its attempts one after the other."""
+    monkeypatch.setattr(session_mod, "STREAM_EVERY_S", 0.0)
+    engine = InferenceEngine(tiny_gpt2, ghost_tokenizer, ghost_analyzer)
+    score = Score(tracks=[melodic_track(n_bars=4, notes_per_bar=2), melodic_track(n_bars=4, notes_per_bar=3)],
+                  resolution=12)
+    cfg = InferenceConfig(model_dim=4, seed=0, max_attempts=3, batch_attempts=True, novelty_check=False,
+                          silence_check=False, density_hard_limit=4, mask_mode="attention")
+    sess = engine.session(score, GenerationRequest(tracks=[TrackPrompt(id=0, bars=[]), TrackPrompt(id=1, bars=[1, 2])],
+                                                   config=cfg))
+    notes = []
+    sess.note_sink = notes.extend
+    result = sess.run()
+    assert _key(notes) == _generated(result, sess) and notes

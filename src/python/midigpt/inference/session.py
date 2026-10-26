@@ -1183,7 +1183,9 @@ class SamplingSession:
         import torch
         _device_is_mps = next(self._engine._model.parameters()).device.type == "mps"
 
-        if getattr(cfg, "batch_attempts", False) and cfg.max_attempts > 1:
+        # Batched attempts run in _sample_step_batch, which streams nothing: a streamed generation (note_sink)
+        # runs its attempts one after the other instead.
+        if getattr(cfg, "batch_attempts", False) and cfg.max_attempts > 1 and self.note_sink is None:
             temperatures = [
                 cfg.temperature * (cfg.temperature_escalation**i) for i in range(cfg.max_attempts)
             ]
