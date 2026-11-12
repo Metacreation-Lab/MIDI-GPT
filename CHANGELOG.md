@@ -11,6 +11,9 @@ section above `[Unreleased]` before tagging.
 
 ## [Unreleased]
 
+### Added
+- **`Score.to_bytes() -> bytes`:** in-memory MIDI serializer symmetric with `Score.from_bytes`, so a `from_bytes` → edit → serialize round-trip no longer needs a temp file via `to_midi`. Wraps the already-bound `MidiWriter.write_bytes`. ([#34](https://github.com/Metacreation-Lab/MIDI-GPT/issues/34))
+
 ## [0.4.2] - 2026-10-26
 
 ### Fixed

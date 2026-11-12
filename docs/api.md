@@ -57,6 +57,7 @@ Score.from_dict(d: dict)      -> Score
 
 ```python
 score.to_midi(path: str) -> None
+score.to_bytes()         -> bytes   # MIDI file contents, inverse of from_bytes
 score.to_dict()          -> dict
 ```
 
