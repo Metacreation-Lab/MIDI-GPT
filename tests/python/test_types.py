@@ -130,6 +130,27 @@ def test_midi_roundtrip_preserves_track_and_note_count(sample_midi_path, tmp_pat
     assert sum(len(b.notes) for t in s2.tracks for b in t.bars) == orig_notes
 
 
+def test_to_bytes_roundtrips_through_from_bytes(sample_midi_path):
+    s = Score.from_midi(str(sample_midi_path))
+    orig_notes = sum(len(b.notes) for t in s.tracks for b in t.bars)
+    data = s.to_bytes()
+    assert isinstance(data, bytes) and len(data) > 0
+    s2 = Score.from_bytes(data)
+    # Empty meta-only tracks may be dropped by the writer; require every track
+    # carrying notes to survive, same as the to_midi file round-trip.
+    nonempty_orig = sum(1 for t in s.tracks if any(b.notes for b in t.bars))
+    nonempty_rt = sum(1 for t in s2.tracks if any(b.notes for b in t.bars))
+    assert nonempty_rt == nonempty_orig
+    assert sum(len(b.notes) for t in s2.tracks for b in t.bars) == orig_notes
+
+
+def test_to_bytes_matches_to_midi_file(sample_midi_path, tmp_path):
+    s = Score.from_midi(str(sample_midi_path))
+    out = tmp_path / "rt.mid"
+    s.to_midi(str(out))
+    assert s.to_bytes() == out.read_bytes()
+
+
 def test_two_track_score_roundtrip(two_track_score):
     r = Score.from_dict(two_track_score.to_dict())
     assert len(r.tracks) == 2

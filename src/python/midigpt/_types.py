@@ -55,6 +55,18 @@ class Score:
 
         _core.MidiWriter().write(to_cpp(self), path)
 
+    def to_bytes(self) -> bytes:
+        """Serialize to MIDI file bytes in memory (the inverse of ``from_bytes``).
+
+        Same encoding ``to_midi`` writes to disk, returned as ``bytes`` instead of
+        a file, so a ``from_bytes`` -> edit -> ``to_bytes`` round-trip needs no
+        temporary file.
+        """
+        import midigpt._core as _core
+        from midigpt._converters import to_cpp
+
+        return bytes(_core.MidiWriter().write_bytes(to_cpp(self)))
+
     def resample(self, target_tpq: int) -> "Score":
         """Return a copy of this score with all tick values rescaled to target_tpq.
 
